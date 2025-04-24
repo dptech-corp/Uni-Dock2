@@ -309,6 +309,7 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
                                      states, seed, randomize,
                                      mc_steps, opt_steps, exhuastiveness, npose * block_size);
     checkCUDA(cudaDeviceSynchronize());
+    spdlog::warn("[Line Search Steps Count]: {}", funcCallCount);
 
     // free mem
     checkCUDA(cudaFree(states));

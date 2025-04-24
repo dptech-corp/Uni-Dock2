@@ -139,3 +139,23 @@ TEST_CASE("rotate_vec_by_rodrigues rotates a vector by a quaternion", "[rotate_v
     }
     //! [rotate_vec_by_rodrigues]
 }
+
+
+TEST_CASE("tmp", "tmp me"){
+    Real dihedral = 0.3 * PI;
+    Real range[2] = {-PI, PI};
+
+    for (int i = 6; i < 10; ++i){
+        Real dihe_incre_raw = i * 0.1 * PI;
+        Real dihe_incre = normalize_angle(dihe_incre_raw);
+        // Real dihe_incre = dihe_incre_raw;
+
+        Real tmp = normalize_angle(dihedral + dihe_incre);
+        Real dihe_new = clamp_by_ranges(tmp, range ,1);
+
+        dihe_incre = dihe_new - dihedral;
+        printf("raw: %f, incre: %f\n", dihe_incre_raw, dihe_incre);
+    }
+
+}
+

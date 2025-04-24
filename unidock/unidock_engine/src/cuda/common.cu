@@ -28,6 +28,8 @@ __constant__ Gaff2 Score;
 void init_constants(const DockParam& dock_param){
     //======================= constants =======================
     checkCUDA(cudaMemcpyToSymbol(FLAG_CONSTRAINT_DOCK, &dock_param.constraint_docking, sizeof(bool)));
+    // checkCUDA(cudaMemcpyToSymbol(funcCallCount, 0, sizeof(unsigned int)));
+
     checkCUDA(cudaMemcpyToSymbol(BOX_X_HI, &dock_param.box.x_hi, sizeof(Real), 0, cudaMemcpyHostToDevice));
     checkCUDA(cudaMemcpyToSymbol(BOX_X_LO, &dock_param.box.x_lo, sizeof(Real), 0, cudaMemcpyHostToDevice));
     checkCUDA(cudaMemcpyToSymbol(BOX_Y_HI, &dock_param.box.y_hi, sizeof(Real), 0, cudaMemcpyHostToDevice));
