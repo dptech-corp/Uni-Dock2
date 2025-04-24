@@ -665,6 +665,8 @@ __device__ __forceinline__ void line_search_warp(const cg::thread_block_tile<TIL
 
     int trial = 0;
     for (; trial < LINE_SEARCH_STEPS; trial++){
+        atomicAdd(&funcCallCount, 1);  // todo: for debug, show call count
+
         duplicate_pose_warp(tile, out_x_new, x, dim_x, flex_topo.natom); // x_new = x
         // DPrint1("[[[after dup]]]  ---  dihe: %f, %f\n\n", out_x_new->dihedrals[0], out_x_new->dihedrals[1]);
 

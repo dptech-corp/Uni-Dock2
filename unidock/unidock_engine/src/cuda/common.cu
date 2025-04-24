@@ -2,6 +2,10 @@
 // Created by Congcong Liu on 24-12-12.
 //
 #include "common.cuh"
+
+__device__ __managed__ unsigned int funcCallCount = 0;
+
+
 __constant__ bool FLAG_CONSTRAINT_DOCK = false;
 __constant__ Real BOX_X_HI = 30;
 __constant__ Real BOX_X_LO = -30;

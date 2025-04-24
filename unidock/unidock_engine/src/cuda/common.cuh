@@ -10,7 +10,7 @@
 #include "score/vina.h"
 #include <cuda_runtime.h>
 
-
+extern __device__ __managed__ unsigned int funcCallCount;
 
 // -------------- Constants -----------------
 extern __constant__ bool FLAG_CONSTRAINT_DOCK;
