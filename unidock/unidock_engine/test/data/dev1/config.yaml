@@ -2,7 +2,7 @@
 # For item with a type tag (!!), the value is REQUIRED
 
 Advanced:
-  seed: !!int 1234567 # explicit random see
+  seed: !!int 1234567 # explicit random seed
   exhaustiveness: !!int 3 # MC candidates count (roughly proportional to time). If given, value for search_mode will be overridden
   mc_steps: !!int 3 # If given, value for search_mode will be overridden
   opt_steps: !!int 0 # Optimization steps after the global search

@@ -20,6 +20,7 @@ option(ONLY_C "If true, run the whole projects on host to perform tests on C++. 
 set(PRJ_NAME ud2)
 set(LIB_NAME ud_lib)
 set(BIN_NAME ud2)
+set(PYBIND_NAME unidock_engine)
 set(TESTS_NAME unit_test)
 
 # ------------------------------ Fixed Settings
@@ -43,6 +44,8 @@ project(${PRJ_NAME}
         LANGUAGES CUDA CXX C)
 
 set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)
+
+find_package(CUDAToolkit REQUIRED)
 
 # Default is a release build
 if(NOT CMAKE_BUILD_TYPE)
@@ -69,6 +72,9 @@ endif ()
 
 # ------------------------------ Start building
 add_subdirectory("src")
+
+# python binding
+add_subdirectory("api/python")
 
 if (BUILD_BIN)
     add_subdirectory("bin")

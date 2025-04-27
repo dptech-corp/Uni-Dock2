@@ -18,6 +18,7 @@ set(sources
         optimize/bfgs.h
         optimize/optimize.h
 
+        screening/screening.h   screening/screening.cpp
 
         search/mc.h
         search/bvh.cpp          search/bvh.h
@@ -42,9 +43,10 @@ set(sources
 
 )
 
-# compile a static lib for the bin to link to
-add_library(${LIB_NAME} OBJECT ${sources})
+# compile lib for the bin to link to
+add_library(${LIB_NAME} SHARED ${sources})
 
 # include src directory
 target_include_directories(${LIB_NAME} PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}  ${CMAKE_SOURCE_DIR}/include . )
-target_link_libraries(${LIB_NAME} PUBLIC cudart_static)
+target_link_libraries(${LIB_NAME} PUBLIC CUDA::cudart)
+set_target_properties(${LIB_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)

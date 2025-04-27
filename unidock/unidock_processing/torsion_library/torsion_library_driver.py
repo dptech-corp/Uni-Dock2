@@ -5,7 +5,6 @@ from rdkit.Geometry.rdGeometry import Point3D
 
 from unidock.unidock_processing.torsion_library.utils import get_torsion_atom_idx_tuple, get_torsion_mobile_atom_idx_list, rotate_torsion_angle
 from unidock.unidock_processing.torsion_library.torsion_rule_matcher import TorsionRuleMatcher
-from unidock.unidock_processing.bounding_volume_hierarchy.utils import construct_oriented_bounding_box_list
 
 class TorsionLibraryDriver(object):
     def __init__(self,
@@ -75,32 +74,3 @@ class TorsionLibraryDriver(object):
             self.torsion_atom_idx_nested_list[rotatable_bond_idx] = reordered_torsion_atom_idx_list
             #########################################################################################
             #########################################################################################
-
-    def generate_obb_for_specified_torsion_sets(self, specified_torsion_value_list, fragment_mol):
-        #############################################################################################
-        ## Rotate torsions to get specified conformer
-        for rotatable_bond_idx in range(self.num_rotatable_bonds):
-            torsion_atom_idx_list = self.torsion_atom_idx_nested_list[rotatable_bond_idx]
-            torsion_mobile_atom_idx_list = self.mobile_atom_idx_nested_list[rotatable_bond_idx]
-            torsion_value = specified_torsion_value_list[rotatable_bond_idx]
-
-            if torsion_value is None:
-                torsion_value = self.original_torsion_value_list[rotatable_bond_idx]
-
-            rotate_torsion_angle(self.mol, torsion_atom_idx_list, torsion_mobile_atom_idx_list, torsion_value)
-
-        coords_array = self.mol.GetConformer().GetPositions()
-        #############################################################################################
-
-        fragment_mol_conformer = fragment_mol.GetConformer()
-        num_fragment_atoms = fragment_mol.GetNumAtoms()
-        for fragment_atom_idx in range(num_fragment_atoms):
-            atom = fragment_mol.GetAtomWithIdx(fragment_atom_idx)
-            atom_idx = atom.GetIntProp('internal_atom_idx')
-            atom_coords = coords_array[atom_idx, :]
-            atom_point_3D = Point3D(atom_coords[0], atom_coords[1], atom_coords[2])
-            fragment_mol_conformer.SetAtomPosition(fragment_atom_idx, atom_point_3D)
-
-        fragment_obb_list, fragment_obb_info_dict_list = construct_oriented_bounding_box_list(fragment_mol)
-
-        return fragment_obb_list, fragment_obb_info_dict_list

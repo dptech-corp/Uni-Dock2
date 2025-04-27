@@ -11,6 +11,9 @@ from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from unidock.unidock_processing.ligand_topology import utils
 from unidock.unidock_processing.ligand_topology.generic_rotatable_bond import GenericRotatableBond
 
+from unidock.unidock_processing.unidocktools.vina_atom_type import AtomType
+from unidock.unidock_processing.unidocktools.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
+
 @pytest.fixture
 def template_configurations():
     return os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'unidock_configurations.yaml')
@@ -26,6 +29,27 @@ def nonbonded_exclusion_test_molecule():
 def root_finding_test_molecule():
     data_file_dir_name = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'ligand_topology')
     ligand_sdf_file_name = os.path.join(data_file_dir_name, 'test_root_finding_8E77_ligand_prepared.sdf')
+
+    return ligand_sdf_file_name
+
+@pytest.fixture
+def vina_atom_type_test_molecule_1():
+    data_file_dir_name = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'ligand_topology')
+    ligand_sdf_file_name = os.path.join(data_file_dir_name, 'test_vina_atom_type_1.sdf')
+
+    return ligand_sdf_file_name
+
+@pytest.fixture
+def vina_atom_type_test_molecule_2():
+    data_file_dir_name = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'ligand_topology')
+    ligand_sdf_file_name = os.path.join(data_file_dir_name, 'test_vina_atom_type_2.sdf')
+
+    return ligand_sdf_file_name
+
+@pytest.fixture
+def vina_atom_type_test_molecule_3():
+    data_file_dir_name = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'ligand_topology')
+    ligand_sdf_file_name = os.path.join(data_file_dir_name, 'test_vina_atom_type_3.sdf')
 
     return ligand_sdf_file_name
 
@@ -171,3 +195,48 @@ def test_root_finding_strategy(root_finding_test_molecule):
     valid_root_fragment_idx = 5
 
     assert root_fragment_idx == valid_root_fragment_idx
+
+def test_vina_atom_typing(vina_atom_type_test_molecule_1,
+                          vina_atom_type_test_molecule_2,
+                          vina_atom_type_test_molecule_3):
+
+    atom_typer = AtomType()
+    mol_1 = Chem.SDMolSupplier(vina_atom_type_test_molecule_1, removeHs=False)[0]
+    mol_2 = Chem.SDMolSupplier(vina_atom_type_test_molecule_2, removeHs=False)[0]
+    mol_3 = Chem.SDMolSupplier(vina_atom_type_test_molecule_3, removeHs=False)[0]
+
+    atom_typer = AtomType()
+    atom_typer.assign_atom_types(mol_1)
+    atom_typer.assign_atom_types(mol_2)
+    atom_typer.assign_atom_types(mol_3)
+
+    num_atoms_1 = mol_1.GetNumAtoms()
+    atom_type_list_1 = [None] * num_atoms_1
+    for atom_idx in range(num_atoms_1):
+        atom = mol_1.GetAtomWithIdx(atom_idx)
+        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp('vina_atom_type')]
+        atom_type_list_1[atom_idx] = atom_type
+
+    num_atoms_2 = mol_2.GetNumAtoms()
+    atom_type_list_2 = [None] * num_atoms_2
+    for atom_idx in range(num_atoms_2):
+        atom = mol_2.GetAtomWithIdx(atom_idx)
+        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp('vina_atom_type')]
+        atom_type_list_2[atom_idx] = atom_type
+
+    num_atoms_3 = mol_3.GetNumAtoms()
+    atom_type_list_3 = [None] * num_atoms_3
+    for atom_idx in range(num_atoms_3):
+        atom = mol_3.GetAtomWithIdx(atom_idx)
+        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp('vina_atom_type')]
+        atom_type_list_3[atom_idx] = atom_type
+
+    valid_atom_type_list_1 = [7, 3, 3, 5, 2, 2, 2, 2, 5, 2, 2, 2, 6, 3, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    valid_atom_type_list_2 = [2, 3, 10, 2, 3, 2, 2, 3, 3, 2, 2, 3, 3, 2, 3, 5, 3, 2, 2, 2, 2, 2, 2, 2, 2, 10, 5, 6, 2,
+                              16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    valid_atom_type_list_3 = [6, 3, 2, 5, 3, 10, 2, 2, 2, 2, 2, 3, 3, 4, 3, 15, 3, 2, 2, 3, 10, 5, 3, 2, 2, 3, 10, 10,
+                              3, 10, 10, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    assert atom_type_list_1 == valid_atom_type_list_1
+    assert atom_type_list_2 == valid_atom_type_list_2
+    assert atom_type_list_3 == valid_atom_type_list_3

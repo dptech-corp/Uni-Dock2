@@ -14,13 +14,13 @@ Hardware:
   ncpu: 12
 Settings:
   search_mode: free
-  size_x: 25.0
-  size_y: 25.0
-  size_z: 25.0
+  size_x: 30.0
+  size_y: 30.0
+  size_z: 30.0
   task: screen
 Preprocessing:
-  template_docking: false
-  reference_sdf_file_name: null
+  template_docking: true
+  reference_sdf_file_name: reference.sdf
   core_atom_mapping_dict_list: null
   covalent_ligand: false
   covalent_residue_atom_info_list: null

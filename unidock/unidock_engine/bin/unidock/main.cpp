@@ -9,7 +9,7 @@
 #include "myutils/errors.h"
 #include "model/model.h"
 #include "format/json.h"
-#include "screening.h"
+#include "screening/screening.h"
 
 
 

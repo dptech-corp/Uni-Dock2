@@ -63,6 +63,8 @@ def test_molecular_docking(receptor_molecular_docking,
     unidock_protocol_runner.run_unidock_protocol()
 
     assert os.path.exists(unidock_protocol_runner.unidock2_pose_sdf_file_name)
+    assert os.path.getsize(unidock_protocol_runner.unidock2_pose_sdf_file_name) > 0
+
     shutil.rmtree(working_dir_name, ignore_errors=True)
 
 def test_virtual_screening(receptor_virtual_screening,
@@ -94,4 +96,6 @@ def test_virtual_screening(receptor_virtual_screening,
     unidock_protocol_runner.run_unidock_protocol()
 
     assert os.path.exists(unidock_protocol_runner.unidock2_pose_sdf_file_name)
+    assert os.path.getsize(unidock_protocol_runner.unidock2_pose_sdf_file_name) > 0
+
     shutil.rmtree(working_dir_name, ignore_errors=True)

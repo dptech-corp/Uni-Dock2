@@ -158,62 +158,6 @@ def recover_full_atom_mapping_from_heavy_atoms(reference_mol,
 
     return full_atom_mapping_dict
 
-def get_template_docking_atom_mapping_parker(reference_mol, query_mol, atom_mapping_scheme='all'):
-    from parker.atom_mapping.atom_mapping import AtomMapping
-    from parker.molecule.parser import ParkerFileParser
-
-    parker_file_parser = ParkerFileParser()
-    reference_parker_mol = parker_file_parser.from_rdmol(reference_mol)
-    query_parker_mol = parker_file_parser.from_rdmol(query_mol)
-
-    if atom_mapping_scheme == 'all':
-        parker_atom_mapping_rgroup = AtomMapping(reference_parker_mol,
-                                                 query_parker_mol,
-                                                 pre_match_ring=False,
-                                                 detect_chirality=False,
-                                                 scheme=0)
-
-        parker_atom_mapping_core_hopping_1 = AtomMapping(reference_parker_mol,
-                                                         query_parker_mol,
-                                                         pre_match_ring=False,
-                                                         detect_chirality=False,
-                                                         scheme=1)
-
-        parker_atom_mapping_core_hopping_2 = AtomMapping(reference_parker_mol,
-                                                         query_parker_mol,
-                                                         pre_match_ring=False,
-                                                         detect_chirality=False,
-                                                         scheme=2)
-
-        rgroup_atom_mapping_list = parker_atom_mapping_rgroup.find()
-        core_hopping_1_atom_mapping_list = parker_atom_mapping_core_hopping_1.find()
-        core_hopping_2_atom_mapping_list = parker_atom_mapping_core_hopping_2.find()
-
-        num_matched_rgroup_atoms = len(rgroup_atom_mapping_list)
-        num_matched_core_hopping_1_atoms = len(core_hopping_1_atom_mapping_list)
-        num_matched_core_hopping_2_atoms = len(core_hopping_2_atom_mapping_list)
-
-        if num_matched_core_hopping_2_atoms > num_matched_core_hopping_1_atoms and num_matched_core_hopping_2_atoms > num_matched_rgroup_atoms:
-            atom_mapping_list = core_hopping_2_atom_mapping_list
-        elif num_matched_core_hopping_1_atoms >= num_matched_core_hopping_2_atoms and num_matched_core_hopping_1_atoms > num_matched_rgroup_atoms:
-            atom_mapping_list = core_hopping_1_atom_mapping_list
-        else:
-            atom_mapping_list = rgroup_atom_mapping_list
-
-    else:
-        parker_atom_mapping = AtomMapping(reference_parker_mol,
-                                          query_parker_mol,
-                                          pre_match_ring=False,
-                                          detect_chirality=False,
-                                          scheme=atom_mapping_scheme)
-
-        atom_mapping_list = parker_atom_mapping.find()
-
-    # to get flip_mapping for some symmetry case
-    core_atom_mapping_dict = dict(atom_mapping_list)
-
-    return core_atom_mapping_dict
-
 def get_template_docking_atom_mapping(reference_mol, query_mol):
     reference_mol = deepcopy(reference_mol)
     query_mol = deepcopy(query_mol)
