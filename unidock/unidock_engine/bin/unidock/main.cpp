@@ -49,7 +49,39 @@ int main(int argc, char* argv[])
 #else
     int log_level = 1;
 #endif
-    init_logger("ud.log", log_level);
+    std::string fp_log = "ud.log"; // default under working directory
+    std::string fp_config;
+
+    // parse arguments
+    for (int i = 1; i < argc; ++i){
+        std::string arg = argv[i];
+        if (arg == "--log"){
+            if (argc > i + 1){
+                fp_log = argv[i + 1];
+                i += 1; // log parameter done
+            } else{
+                printf("--log requires a log path");
+                exit(1);
+            }
+        } else{
+            if (fp_config.empty()){
+                fp_config = arg;
+                i ++;
+            } else{
+                printf("After config path is parsed as {}, unexpected argument: {}", fp_config, arg);
+                exit(1);
+            }
+        }
+
+    }
+    if (fp_config.empty()){
+        printf("Missing argument: config file path\n");
+        exit(1);
+    }
+
+    init_logger(fp_log, log_level);
+    spdlog::info("Using config file: {}", fp_config);
+
     std::cout << "UD2 Version " << VERSION_NUMBER << "\n";
     printSign();
 
@@ -60,16 +92,8 @@ int main(int argc, char* argv[])
     DockParam dock_param;
     std::string fp_score;
     int ncpu = std::thread::hardware_concurrency();
-    std::string config_file = "config.yaml"; // default config file path
 
-    if (argc > 1) {
-        config_file = argv[1];
-    } else {
-        spdlog::critical("Missing argument for config file path\n");
-        exit(1);
-    }
-    spdlog::info("Using config file: {}", config_file);
-    YAML::Node config = YAML::LoadFile(config_file);
+    YAML::Node config = YAML::LoadFile(fp_config);
 
 
     // -------------------------------  Parse Advanced -------------------------------
