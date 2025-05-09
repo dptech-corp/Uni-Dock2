@@ -5,6 +5,15 @@ on:
     tags:
       - "*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version'
+        required: true
+        default: '0.0.1'
+      build:
+        description: 'Build number'
+        required: true
+        default: '1'
 
 jobs:
   build:
@@ -17,8 +26,8 @@ jobs:
       QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
       QUETZ_SERVER_URL: ${{ vars.QUETZ_SERVER_URL }}
       CONDA_CHANNEL: baymax
-      VERSION: '0.0.1'
-      BUILD: '1'
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || '0.0.1' }}
+      BUILD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build || '1' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +47,12 @@ jobs:
         shell: bash -l {0}
         run: |
           mamba install -y boa quetz-client -c conda-forge
+
+      - name: Print version and build
+        shell: bash -l {0}
+        run: |
+          echo "VERSION: ${{ env.VERSION }}"
+          echo "BUILD: ${{ env.BUILD }}"
 
       - name: Build conda package
         shell: bash -l {0}
