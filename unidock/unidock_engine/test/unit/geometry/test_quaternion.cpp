@@ -44,30 +44,6 @@ TEST_CASE("quaternion_increment adds two quaternions", "[quaternion_increment]")
 }
 
 
-TEST_CASE("axis_angle_to_quaternion converts rotation axis and angle to quaternion", "[axis_angle_to_quaternion]"){
-    Real q1[] = {1.0f, 2.0f, 3.0f, 4.0f};
-    Real expected[] = {0.7071068f, 0.7071068f, 0.f, 0.f};
-    Real axis[] = {1.0f, 0.0f, 0.0f};
-    Real angle = M_PI / 2;
-
-    axis_angle_to_quaternion(q1, axis, angle);
-    for (int i = 0; i < 4; ++i){
-        REQUIRE_THAT(q1[i], Catch::Matchers::WithinAbs(expected[i], 1e-4));
-    }
-
-    Real q2[] = {1.0f, 2.0f, 3.0f, 4.0f};
-    Real expected2[] = {0.9238795f, 0.3826834f, 0.3826834f, 0.f};
-    Real axis2[] = {1.0f, 1.0f, 0.0f};
-    Real angle2 = M_PI / 4;
-
-    axis_angle_to_quaternion(q2, axis2, angle2);
-    for (int i = 0; i < 4; ++i){
-        REQUIRE_THAT(q2[i], Catch::Matchers::WithinAbs(expected2[i], 1e-4));
-    }
-    //! [axis_angle_to_quaternion]
-}
-
-
 TEST_CASE("rotate_vec_by_quaternion rotates a vector by a quaternion", "[rotate_vec_by_quaternion]"){
     Real vec[] = {2.0f, 0.0f, 0.0f};
     Real expected[] = {0.0f, 2.0f, 0.0f};
@@ -104,38 +80,22 @@ TEST_CASE("rotate_vec_by_quaternion rotates a vector by a quaternion", "[rotate_
 }
 
 
-TEST_CASE("rotate_vec_by_rodrigues rotates a vector by a quaternion", "[rotate_vec_by_rodrigues]"){
-    // test 1: rotate a vector by 90 degrees around the z axis
-    Real vec[] = {1.0f, 0.0f, 0.0f};
-    Real expected[] = {0.0f, 1.0f, 0.0f};
-    Real axis[] = {0.0f, 0.0f, 1.0f};
-    Real angle = M_PI / 2;
 
-    rotate_vec_by_rodrigues(vec, axis, angle);
-    for (int i = 0; i < 3; ++i){
-        REQUIRE_THAT(vec[i], Catch::Matchers::WithinAbs(expected[i], 1e-4));
-    }
 
-    // test 2: rotate a vector by 45 degrees around the x axis
-    Real vec2[] = {0.0f, 1.0f, 0.0f};
-    Real expected2[] = {0.0f, 0.7071f, 0.7071f};
-    Real axis2[] = {1.0f, 0.0f, 0.0f};
-    Real angle2 = M_PI / 4;
 
-    rotate_vec_by_rodrigues(vec2, axis2, angle2);
-    for (int i = 0; i < 3; ++i){
-        REQUIRE_THAT(vec2[i], Catch::Matchers::WithinAbs(expected2[i], 1e-4));
-    }
 
-    // corner case: rotate a zero vector by 90 degrees around the z axis
-    Real vec3[] = {0.0f, 0.0f, 0.0f};
-    Real expected3[] = {0.0f, 0.0f, 0.0f};
-    Real axis3[] = {0.0f, 0.0f, 1.0f};
-    Real angle3 = M_PI / 2;
 
-    rotate_vec_by_rodrigues(vec3, axis3, angle3);
-    for (int i = 0; i < 3; ++i){
-        REQUIRE_THAT(vec3[i], Catch::Matchers::WithinAbs(expected3[i], 1e-4));
-    }
-    //! [rotate_vec_by_rodrigues]
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

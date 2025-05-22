@@ -1,5 +1,15 @@
-
 set(sources
+        cuda/bfgs.cuh
+        cuda/bfgs_wrapper.cu
+        cuda/cluster.cu
+        cuda/common.cuh cuda/common.cu
+        cuda/mc.cu
+        cuda/model.cu
+        cuda/mymath_warp.cuh
+        cuda/optimize.cu
+        cuda/task.cu
+        cuda/vina.cu
+
         cluster/cluster.h
 
         constants/constants.h
@@ -7,11 +17,13 @@ set(sources
         format/json.cpp         format/json.h
 
         geometry/quaternion.h
+        geometry/rotation.h
 
         model/model.h
 
         myutils/common.h
         myutils/errors.h        myutils/errors.cpp
+        myutils/matrix.h
         myutils/myio.h          myutils/myio.cpp
         myutils/mymath.h
 
@@ -23,24 +35,11 @@ set(sources
         search/mc.h
         search/bvh.cpp          search/bvh.h
 
-        score/vina.h
         score/gaff2.cpp         score/gaff2.h
+        score/score.h
+        score/vina.h
 
         task/DockTask.cpp       task/DockTask.h
-
-        cuda/bfgs.cuh
-        cuda/bfgs_wrapper.cu
-        cuda/cluster.cu
-        cuda/common.cuh
-        cuda/mc.cu
-        cuda/model.cu
-        cuda/mymath_warp.cuh
-        cuda/optimize.cu
-        cuda/task.cu
-        cuda/vina.cu
-        cuda/common.cu
-        score/score.h
-
 )
 
 # compile lib for the bin to link to

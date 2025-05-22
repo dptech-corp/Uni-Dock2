@@ -27,10 +27,9 @@ void alloc_cu_flex_pose_list(FlexPose** flex_pose_list_cu, Real** flex_pose_list
             flex_pose_list[i * exhaustiveness + j].center[0] = m.center[0];
             flex_pose_list[i * exhaustiveness + j].center[1] = m.center[1];
             flex_pose_list[i * exhaustiveness + j].center[2] = m.center[2];
-            flex_pose_list[i * exhaustiveness + j].orientation[0] = 1;
-            flex_pose_list[i * exhaustiveness + j].orientation[1] = 0;
-            flex_pose_list[i * exhaustiveness + j].orientation[2] = 0;
-            flex_pose_list[i * exhaustiveness + j].orientation[3] = 0;
+            flex_pose_list[i * exhaustiveness + j].rot_vec[0] = 0;
+            flex_pose_list[i * exhaustiveness + j].rot_vec[1] = 0;
+            flex_pose_list[i * exhaustiveness + j].rot_vec[2] = 0;
             flex_pose_list[i * exhaustiveness + j].energy = 999;
 
             flex_pose_list[i * exhaustiveness + j].coords = p_real_cu;

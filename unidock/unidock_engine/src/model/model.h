@@ -17,8 +17,8 @@
 // ==================  For a single flexible molecule ==================
 struct FlexPose{
     Real energy = 999;
-    Real center[3]={0};
-    Real orientation[4]={1, 0, 0, 0}; // quaternion (w, x, y, z)
+    Real center[3]={0.};
+    Real rot_vec[4]={0.}; // # record the rot_vec of last rotation todo: move to FlexPoseGradient
     Real* coords; // size: natom * 3
     Real* dihedrals; // size: ntorsion. Unit: radian (not degree)
 };
@@ -32,7 +32,7 @@ void freecp_FlexPose_gpu(FlexPose* flex_pose_cu, FlexPose* out_flex_pose, int na
  */
 struct FlexPoseGradient{
     Real center_g[3] = {0}; // translation gradient (dx, dy, dz)
-    Real orientation_g[4] = {0, 0, 0, 0}; // Only the top 3 are used (-torque)
+    Real orientation_g[4] = {0.}; // Only the top 3 are used (-torque) todo: size from 4 to 3
     Real* dihedrals_g; // size: ntorsion. dihedrals_g
 };
 FlexPoseGradient* alloccp_FlexPoseGradient_gpu(const FlexPoseGradient& flex_pose_gradient, int ntorsion);
@@ -155,6 +155,8 @@ struct DockParam{
     Real rmsd_limit = 1.0; // a limit to judge whether two poses are the same during clustering
     Real tor_prec = 0.3; // todo sampling precision for position (Angstrom)
     Real box_prec = 1.0; // todo sampling precision for orientation/dihedral (radian)
+    Real slope = 1e6; // todo
+
     ScoreFunc search_score = vina;
     ScoreFunc opt_score = vina;
     Box box;

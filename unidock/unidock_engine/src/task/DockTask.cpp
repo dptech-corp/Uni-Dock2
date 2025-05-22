@@ -115,6 +115,7 @@ void DockTask::prepare_vina(){
     }
 }
 
+
 /**
  * One Step of MC to mutate?
  */
@@ -213,17 +214,17 @@ void DockTask::run_score(){
         int pose_num = 0;
         for (auto& j: filtered_pose_inds_list[i]){
             score(flex_pose_list_res + j, flex_pose_list_real_res + list_i_real[j * 2], udfix_mol, mol, dock_param.box);
-            flex_pose_list_res[j].orientation[1] = flex_pose_list_res[j].center[0] + flex_pose_list_res[j].center[1] +
+            flex_pose_list_res[j].rot_vec[1] = flex_pose_list_res[j].center[0] + flex_pose_list_res[j].center[1] +
                 flex_pose_list_res[j].center[2]; // Total
 
-            Real e_inter = flex_pose_list_res[j].orientation[1] - e_intra_rank1; // Real adopted inter
+            Real e_inter = flex_pose_list_res[j].rot_vec[1] - e_intra_rank1; // Real adopted inter
             // Free Energy of Binding
-            flex_pose_list_res[j].orientation[0] = v.vina_conf_indep(e_inter, n_tors);  // Affinity
-            flex_pose_list_res[j].orientation[3] = flex_pose_list_res[j].orientation[0] - e_inter;  // Conf-Independent
+            flex_pose_list_res[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors);  // Affinity
+            flex_pose_list_res[j].rot_vec[3] = flex_pose_list_res[j].rot_vec[0] - e_inter;  // Conf-Independent
 
             pose_num ++;
             if(show_score){
-                spdlog::info(show_format, pose_num, flex_pose_list_res[j].orientation[0]);
+                spdlog::info(show_format, pose_num, flex_pose_list_res[j].rot_vec[0]);
             }
         }
         if(show_score){

@@ -49,7 +49,38 @@ int main(int argc, char* argv[])
 #else
     int log_level = 1;
 #endif
-    init_logger("ud.log", log_level);
+    std::string fp_log = "ud.log"; // default under working directory
+    std::string fp_config;
+
+    // parse arguments
+    for (int i = 1; i < argc; ++i){
+        std::string arg = argv[i];
+        if (arg == "--log"){
+            if (argc > i + 1){
+                fp_log = argv[i + 1];
+                i += 1; // log parameter done
+            } else{
+                printf("--log requires a log path");
+                exit(1);
+            }
+        } else{
+            if (fp_config.empty()){
+                fp_config = arg;
+                i ++;
+            } else{
+                printf("After config path is parsed as %s, unexpected argument: %s", fp_config.c_str(), arg.c_str());
+                exit(1);
+            }
+        }
+    }
+    if (fp_config.empty()){
+        printf("Missing argument: config file path\n");
+        exit(1);
+    }
+
+    init_logger(fp_log, log_level);
+    spdlog::info("Using config file: {}", fp_config);
+
     std::cout << "UD2 Version " << VERSION_NUMBER << "\n";
     printSign();
 
@@ -60,16 +91,8 @@ int main(int argc, char* argv[])
     DockParam dock_param;
     std::string fp_score;
     int ncpu = std::thread::hardware_concurrency();
-    std::string config_file = "config.yaml"; // default config file path
 
-    if (argc > 1) {
-        config_file = argv[1];
-    } else {
-        spdlog::critical("Missing argument for config file path\n");
-        exit(1);
-    }
-    spdlog::info("Using config file: {}", config_file);
-    YAML::Node config = YAML::LoadFile(config_file);
+    YAML::Node config = YAML::LoadFile(fp_config);
 
 
     // -------------------------------  Parse Advanced -------------------------------
@@ -121,10 +144,14 @@ int main(int argc, char* argv[])
     if (not use_tor_lib){
         spdlog::warn("Torsion Library is NOT used.");
     }
-    dock_param.tor_prec = get_config_with_err<Real>(config, "Advanced", "tor_prec", 0.3);;
+    dock_param.tor_prec = get_config_with_err<Real>(config, "Advanced", "tor_prec", dock_param.tor_prec);;
     spdlog::info("tor_prec: {}", dock_param.tor_prec);
-    dock_param.box_prec = get_config_with_err<Real>(config, "Advanced", "box_prec", 1.0);;
+    dock_param.box_prec = get_config_with_err<Real>(config, "Advanced", "box_prec", dock_param.box_prec);;
     spdlog::info("box_prec: {}", dock_param.box_prec);
+
+    dock_param.slope = get_config_with_err<Real>(config, "Advanced", "slope", dock_param.slope);;
+    spdlog::info("slope: {}", dock_param.slope);
+
 
     // todo: write into constants.h
     Real cutoff = 8.0;
@@ -176,23 +203,24 @@ int main(int argc, char* argv[])
     // -------------------------------  Parse Settings -------------------------------
     std::string search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", "balance");
     if (search_mode == "fast"){
-        dock_param.exhaustiveness = 64;
-        dock_param.mc_steps = 30;
-        dock_param.opt_steps = 3;
+        dock_param.exhaustiveness = 128;
+        dock_param.mc_steps = 20;
+        dock_param.opt_steps = -1;
     } else if (search_mode == "balance"){
-        dock_param.exhaustiveness = 64;
-        dock_param.mc_steps = 200;
-        dock_param.opt_steps = 5;
+        dock_param.exhaustiveness = 256;
+        dock_param.mc_steps = 30;
+        dock_param.opt_steps = -1;
     } else if (search_mode == "detail"){
         dock_param.exhaustiveness = 512;
-        dock_param.mc_steps = 300;
-        dock_param.opt_steps = 5;
+        dock_param.mc_steps = 40;
+        dock_param.opt_steps = -1;
     } else if (search_mode == "free"){
-
+        //
     } else{
         spdlog::critical("Not supported search_mode: {} doesn't belong to (fast, balance, detail, free)" , search_mode);
         exit(1);
     }
+
     if (dock_param.exhaustiveness < ncpu) {
         spdlog::warn("Low exhaustiveness doesn't utilize all CPUs");
     }
