@@ -70,9 +70,9 @@ __device__ __forceinline__ void randomize_pose_warp(const cg::thread_block_tile<
             aux_g->orientation_g[0] = tmp4[1] * tmp4[0];
             aux_g->orientation_g[1] = tmp4[2] * tmp4[0];
             aux_g->orientation_g[2] = tmp4[3] * tmp4[0]; //todo: change to a more efficient sampling
-            if(tile.thread_rank() == 0){
-                printf("[RAND] %f, %f, %f\n", aux_g->orientation_g[0], aux_g->orientation_g[1], aux_g->orientation_g[2]);
-            }
+            // if(tile.thread_rank() == 0){
+            //     printf("[RAND] %f, %f, %f\n", aux_g->orientation_g[0], aux_g->orientation_g[1], aux_g->orientation_g[2]);
+            // }
         }
 
         // generate random uints for all torsions // todo: change sampling of torsions

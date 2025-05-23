@@ -148,10 +148,10 @@ struct DockParam{
     int exhaustiveness = 128;
     bool randomize = true;
     int mc_steps = 20; // MC steps
-    int opt_steps = 10; // optimization steps in MC process. Zero if only pure MC search is required.
+    int opt_steps = -1; // optimization steps in MC process. Zero if only pure MC search is required.
     int refine_steps = 5; // optimization steps after MC, namely a pure local refinement
-    int num_pose = 1;
-    Real energy_range = 3.0;
+    int num_pose = 10;
+    Real energy_range = 10.0;
     Real rmsd_limit = 1.0; // a limit to judge whether two poses are the same during clustering
     Real tor_prec = 0.3; // todo sampling precision for position (Angstrom)
     Real box_prec = 1.0; // todo sampling precision for orientation/dihedral (radian)
@@ -162,27 +162,19 @@ struct DockParam{
     Box box;
     DockParam() = default;
 
-    DockParam(int seed, bool constraint_docking, int exhaustiveness, int mc_steps, int refine_step, Real rmsd_limit,
-              ScoreFunc search_score, ScoreFunc opt_score, Real tor_prec): seed(seed),
-                                                            constraint_docking(constraint_docking),
-                                                            exhaustiveness(exhaustiveness),
-                                                            mc_steps(mc_steps),
-                                                            refine_steps(refine_step),
-                                                            rmsd_limit(rmsd_limit),
-                                                            search_score(search_score),
-                                                            opt_score(opt_score), tor_prec(tor_prec){
-    };
     void show() const{
         spdlog::info("DockParam: seed={}, search_score={}, opt_score={}, \n"
                      "box: x_lo={} Angstrom, x_hi={} Angstrom, y_lo={} Angstrom, y_hi={} Angstrom, z_lo={} Angstrom, z_hi={} Angstrom, \n"
                      "constraint_docking={}, exhaustiveness={}, \n"
                      "mc_steps={}, opt_steps={}, refine_steps={}, \n"
-                     "num_pose={}, rmsd_limit={} Angstrom, ",
+                     "num_pose={}, rmsd_limit={} Angstrom, \n"
+                     "tor_prec={}, box_prec={}, slope={}.",
                      seed, static_cast<int>(search_score), static_cast<int>(opt_score),
                      box.x_lo, box.x_hi, box.y_lo, box.y_hi, box.z_lo, box.z_hi,
                      constraint_docking, exhaustiveness,
                      mc_steps, opt_steps, refine_steps,
-                     num_pose, rmsd_limit);
+                     num_pose, rmsd_limit,
+                     tor_prec, box_prec, slope);
     }
 };
 

@@ -145,12 +145,8 @@ int main(int argc, char* argv[])
         spdlog::warn("Torsion Library is NOT used.");
     }
     dock_param.tor_prec = get_config_with_err<Real>(config, "Advanced", "tor_prec", dock_param.tor_prec);;
-    spdlog::info("tor_prec: {}", dock_param.tor_prec);
     dock_param.box_prec = get_config_with_err<Real>(config, "Advanced", "box_prec", dock_param.box_prec);;
-    spdlog::info("box_prec: {}", dock_param.box_prec);
-
     dock_param.slope = get_config_with_err<Real>(config, "Advanced", "slope", dock_param.slope);;
-    spdlog::info("slope: {}", dock_param.slope);
 
 
     // todo: write into constants.h
@@ -267,7 +263,29 @@ int main(int argc, char* argv[])
         dock_param.randomize = true;
         dock_param.opt_steps = 0;
         dock_param.refine_steps = 0;
-        spdlog::info("----------------------- RUN Only Monte Carlo Random Walking -----------------------");
+        spdlog::info("----------------------- RUN Only Monte Carlo Random Walking (With Clustering) -----------------------");
+        run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
+
+    } else if (task == "randomize"){
+        dock_param.randomize = true;
+        dock_param.mc_steps = 0;
+        dock_param.opt_steps = 0;
+        dock_param.refine_steps = 0;
+        dock_param.num_pose = dock_param.exhaustiveness;
+        dock_param.energy_range = 1e9;
+        dock_param.rmsd_limit = 0.;
+        spdlog::info("----------------------- RUN Only Randomization (No Clustering) -----------------------");
+        run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
+
+    } else if (task == "optimize"){
+        dock_param.randomize = false;
+        dock_param.exhaustiveness = 1;
+        dock_param.mc_steps = 0;
+        dock_param.opt_steps = 0;
+        dock_param.num_pose = 1;
+        dock_param.energy_range = 1e9;
+        dock_param.rmsd_limit = 0.;
+        spdlog::info("----------------------- RUN Only Optimization on Input Pose (for `refine_steps) -----------------------");
         run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
 
     } else{

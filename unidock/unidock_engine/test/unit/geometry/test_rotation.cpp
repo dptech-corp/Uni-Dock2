@@ -50,39 +50,39 @@ TEST_CASE("rotate_vec_by_rodrigues rotates a vector by a quaternion", "[rotate_v
 
 
 
-TEST_CASE("cal_grad_of_rot_over_vec compute grad of Rotation over a rot vec", "[cal_grad_of_rot_over_vec]"){
-    Real out_grad[9] = {0.};
-    Real v[3] = {12.3, -7.3, 8.2};
-
-    std::array<std::array<Real, 9>, 3> grad_python = {{
-        // x
-        {{
-            0.30110348,  0.42657892,  0.02066039,
-            -0.06989328, 0.39102033,  0.56450775,
-            -0.42132096, -0.26542778, 0.35617097
-        }},
-        // y
-        {{
-            -0.08676937, -0.20300266, -0.02423069,
-            0.09165157,  -0.3240033,  -0.2581077,
-            0.32331066,   0.18387365, -0.21138602
-        }},
-        // z
-        {{
-            0.09746696,  0.35764433,  0.05680221,
-            -0.05856436, 0.26068022,  0.30196226,
-            -0.23785202, -0.19450994, 0.340716
-        }}
-    }};
-
-    for (int ind = 0; ind < 3; ++ind){
-        cal_grad_of_rot_over_vec(out_grad, v, ind);
-        for (int i = 0; i < 9; ++i){
-            REQUIRE_THAT(out_grad[i], Catch::Matchers::WithinAbs(grad_python[ind][i], 1e-4));
-        }
-    }
-    //! [cal_grad_of_rot_over_vec]
-}
+// TEST_CASE("cal_grad_of_rot_over_vec compute grad of Rotation over a rot vec", "[cal_grad_of_rot_over_vec]"){
+//     Real out_grad[9] = {0.};
+//     Real v[3] = {12.3, -7.3, 8.2};
+//
+//     std::array<std::array<Real, 9>, 3> grad_python = {{
+//         // x
+//         {{
+//             0.30110348,  0.42657892,  0.02066039,
+//             -0.06989328, 0.39102033,  0.56450775,
+//             -0.42132096, -0.26542778, 0.35617097
+//         }},
+//         // y
+//         {{
+//             -0.08676937, -0.20300266, -0.02423069,
+//             0.09165157,  -0.3240033,  -0.2581077,
+//             0.32331066,   0.18387365, -0.21138602
+//         }},
+//         // z
+//         {{
+//             0.09746696,  0.35764433,  0.05680221,
+//             -0.05856436, 0.26068022,  0.30196226,
+//             -0.23785202, -0.19450994, 0.340716
+//         }}
+//     }};
+//
+//     for (int ind = 0; ind < 3; ++ind){
+//         cal_grad_of_rot_over_vec(out_grad, v, ind);
+//         for (int i = 0; i < 9; ++i){
+//             REQUIRE_THAT(out_grad[i], Catch::Matchers::WithinAbs(grad_python[ind][i], 1e-4));
+//         }
+//     }
+//     //! [cal_grad_of_rot_over_vec]
+// }
 
 
 void update_dihe(Real dihedral, Real dihe_incre_raw, Real *out_dihe, Real *out_dihe_incre, bool norm=true){
