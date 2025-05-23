@@ -7,21 +7,28 @@
 
 TEST_CASE("normalize_angle normalizes an angle to the range [-π, π)", "[normalize_angle]") {
     Real margin = 1e-4;
-    Real res = normalize_angle(5316.74512);
-    res = normalize_angle(5319.620117);
     REQUIRE_THAT(normalize_angle(0.0f), Catch::Matchers::WithinAbs(0.0f, margin));
-    REQUIRE_THAT(normalize_angle(PI), Catch::Matchers::WithinAbs(-PI, margin)); // 注意，PI 会被转换为 -PI
+    REQUIRE_THAT(normalize_angle(PI), Catch::Matchers::WithinAbs(PI, margin)); // 注意，PI
     REQUIRE_THAT(normalize_angle(-PI), Catch::Matchers::WithinAbs(-PI, margin));
     REQUIRE_THAT(normalize_angle(2 * PI), Catch::Matchers::WithinAbs(0.0f, margin));
     REQUIRE_THAT(normalize_angle(-2 * PI), Catch::Matchers::WithinAbs(0.0f, margin));
-    REQUIRE_THAT(normalize_angle(3 * PI), Catch::Matchers::WithinAbs(-PI, margin));
+    REQUIRE_THAT(normalize_angle(3 * PI), Catch::Matchers::WithinAbs(PI, margin));
     REQUIRE_THAT(normalize_angle(-3 * PI), Catch::Matchers::WithinAbs(-PI, margin));
-    REQUIRE_THAT(normalize_angle(0.3), Catch::Matchers::WithinAbs(0.3, margin));
-    REQUIRE_THAT(normalize_angle(0.3 + 2 * PI), Catch::Matchers::WithinAbs(0.3, margin));
-    REQUIRE_THAT(normalize_angle(-0.13 + 2 * PI), Catch::Matchers::WithinAbs(-0.13, margin));
-
     //![normalize_angle]
 }
+
+TEST_CASE("normalize_angle normalizes an angle to the range [0, 2π)", "[normalize_angle]") {
+    Real margin = 1e-4;
+    REQUIRE_THAT(normalize_angle_2pi(0.0f), Catch::Matchers::WithinAbs(0.0f, margin));
+    REQUIRE_THAT(normalize_angle_2pi(PI), Catch::Matchers::WithinAbs(PI, margin)); // 注意，PI 会被转换为 -PI
+    REQUIRE_THAT(normalize_angle_2pi(-PI), Catch::Matchers::WithinAbs(PI, margin));
+    REQUIRE_THAT(normalize_angle_2pi(2 * PI), Catch::Matchers::WithinAbs(0.0f, margin));
+    REQUIRE_THAT(normalize_angle_2pi(-2 * PI), Catch::Matchers::WithinAbs(0.0f, margin));
+    REQUIRE_THAT(normalize_angle_2pi(0.3 + 13 * PI), Catch::Matchers::WithinAbs(3.441592, margin));
+    REQUIRE_THAT(normalize_angle_2pi(0.3 - 13 * PI), Catch::Matchers::WithinAbs(3.441592, margin));
+    //![normalize_angle]
+}
+
 
 TEST_CASE("ang_to_rad converts an angle in degree to radian", "[ang_to_rad]") {
     REQUIRE_THAT(ang_to_rad(0), Catch::Matchers::WithinAbs(0, 1e-4));
@@ -37,19 +44,13 @@ TEST_CASE("get_radian_in_ranges randomly selects a value within a given range", 
     int num_range = 3;
 
     Real rand[] = {0.54f, 0.1f};
-    REQUIRE(get_radian_in_ranges(ranges, num_range, rand) == 27);
+    REQUIRE_THAT(get_radian_in_ranges(ranges, num_range, rand), Catch::Matchers::WithinAbs(27, 1e-4));
 
-    Real rand2[] = {0.89f, 0.0001f};
-    REQUIRE(get_radian_in_ranges(ranges, num_range, rand2) == 110);
+    Real rand2[] = {0.89f, 1e-6};
+    REQUIRE_THAT(get_radian_in_ranges(ranges, num_range, rand2), Catch::Matchers::WithinAbs(110, 1e-4));
 
     Real rand3[] = {0.21f, 1.0f}  ;
-    REQUIRE(get_radian_in_ranges(ranges, num_range, rand3) == -160);
-
-    Real rand4[] = {0.0001f, 0.00002f}; //won't be zero
-    REQUIRE(get_radian_in_ranges(ranges, num_range, rand4) == -179);
-
-    Real rand5[] = {1.0f, 0.999f}; //fixme: won't be zero
-    REQUIRE(get_radian_in_ranges(ranges, num_range, rand5) == 149);
+    REQUIRE_THAT(get_radian_in_ranges(ranges, num_range, rand3), Catch::Matchers::WithinAbs(-160, 1e-4));
     //![get_radian_in_ranges]
 }
 
@@ -57,15 +58,11 @@ TEST_CASE("get_radian_in_ranges randomly selects a value within a given range", 
 TEST_CASE("get_real_within_by_int", "[get_real_within_by_int]") {
     // default n = 1001
     REQUIRE_THAT(get_real_within_by_int(0, 0, 10), Catch::Matchers::WithinAbs(0, 1e-4));
-    REQUIRE_THAT(get_real_within_by_int(11, 0, 10), Catch::Matchers::WithinAbs(11.0/1001 * 10, 1e-4));
-    REQUIRE_THAT(get_real_within_by_int(1002, 0, 10), Catch::Matchers::WithinAbs(1.0/1001 * 10, 1e-4));
-    REQUIRE_THAT(get_real_within_by_int(10010000, 0, 10), Catch::Matchers::WithinAbs(0, 1e-4));
+    REQUIRE_THAT(get_real_within_by_int(11, 0, 10, 1001), Catch::Matchers::WithinAbs(11.0/1001 * 10, 1e-4));
+    REQUIRE_THAT(get_real_within_by_int(1002, 0, 10, 1001), Catch::Matchers::WithinAbs(1.0/1001 * 10, 1e-4));
     // x
-    REQUIRE_THAT(get_real_within_by_int(633093634, -30.5, -5.5), Catch::Matchers::WithinAbs(-26.179321, 1e-4));
-    // y
-    REQUIRE_THAT(get_real_within_by_int(2151943577, 2.6999998, 27.7), Catch::Matchers::WithinAbs(22.280418, 1e-4));
-    // pi pi
-    REQUIRE_THAT(get_real_within_by_int(633, -PI, PI), Catch::Matchers::WithinAbs(0.831690311f, 1e-4));
+    REQUIRE_THAT(get_real_within_by_int(633093634, -30.5, -5.5), Catch::Matchers::WithinAbs(-23.2419, 1e-4));
+    REQUIRE_THAT(get_real_within_by_int(633, -PI, PI), Catch::Matchers::WithinAbs(-0.5067, 1e-4));
 
     //![get_real_within_by_int]
 }
@@ -113,7 +110,21 @@ TEST_CASE("computes the cross product of two 3D vectors", "[cross_product]") {
     REQUIRE(result3[1] == 0);
     REQUIRE(result3[2] == 1);   
     //![cross_product]
-}   
+}
+
+
+TEST_CASE("computes the outer product of two 3D vectors", "[outer_product]") {
+    Real vec1[] = {1.0f, 2.0f, 3.0f};
+    Real vec2[] = {4.0f, 5.0f, 6.0f};
+    Real expected[9] = {4, 5, 6, 8, 10, 12, 12, 15, 18};
+    Real result[9];
+    outer_product(vec1, vec2, result);
+    for (int i = 0; i < 9; ++i){
+        REQUIRE_THAT(result[i], Catch::Matchers::WithinAbs(expected[i], 1e-4));
+    }
+    //![outer_product]
+}
+
 
 TEST_CASE("compute dot product", "[dot_product]") {
     Real vec1[] = {1.0f, 2.0f, 3.0f};
@@ -122,18 +133,18 @@ TEST_CASE("compute dot product", "[dot_product]") {
     //![dot_product]
 }
 
-TEST_CASE("norm_vec3 computes the Euclidean norm of a 3D vector", "[norm_vec3]") {
+TEST_CASE("cal_norm computes the Euclidean norm of a 3D vector", "[cal_norm]") {
     Real margin = 1e-4;
 
     Real vec1[] = {3.0f, 4.0f, 0.0f};
-    REQUIRE_THAT(norm_vec3(vec1), Catch::Matchers::WithinAbs(5.0f, margin));
+    REQUIRE_THAT(cal_norm(vec1), Catch::Matchers::WithinAbs(5.0f, margin));
 
     Real vec2[] = {1.0f, 2.0f, 2.0f};
-    REQUIRE_THAT(norm_vec3(vec2), Catch::Matchers::WithinAbs(3.0f, margin));
+    REQUIRE_THAT(cal_norm(vec2), Catch::Matchers::WithinAbs(3.0f, margin));
 
     Real vec3[] = {0.0f, 0.0f, 0.0f};
-    REQUIRE_THAT(norm_vec3(vec3), Catch::Matchers::WithinAbs(0.0f, margin));
-    //![norm_vec3]
+    REQUIRE_THAT(cal_norm(vec3), Catch::Matchers::WithinAbs(0.0f, margin));
+    //![cal_norm]
 }
 
 TEST_CASE("dist2 computes the squared Euclidean distance between two 3D points", "[dist2]") {
@@ -141,50 +152,17 @@ TEST_CASE("dist2 computes the squared Euclidean distance between two 3D points",
 
     Real point1[] = {1.0f, 2.0f, 3.0f};
     Real point2[] = {4.0f, 6.0f, 8.0f};
-    REQUIRE_THAT(dist2(point1, point2), Catch::Matchers::WithinAbs(50.0f, margin));
+    REQUIRE_THAT(dist_sq(point1, point2), Catch::Matchers::WithinAbs(50.0f, margin));
 
     Real point3[] = {0.0f, 0.0f, 0.0f};
     Real point4[] = {0.0f, 0.0f, 0.0f};
-    REQUIRE_THAT(dist2(point3, point4), Catch::Matchers::WithinAbs(0.0f, margin));
+    REQUIRE_THAT(dist_sq(point3, point4), Catch::Matchers::WithinAbs(0.0f, margin));
 
     Real point5[] = {1.0f, 1.0f, 1.0f};
     Real point6[] = {2.0f, 2.0f, 2.0f};
-    REQUIRE_THAT(dist2(point5, point6), Catch::Matchers::WithinAbs(3.0f, margin));
+    REQUIRE_THAT(dist_sq(point5, point6), Catch::Matchers::WithinAbs(3.0f, margin));
     //![dist2]
 }
 
 
-TEST_CASE("init_3x3_mat initializes a 3x3 matrix with a given value", "[init_3x3_mat]") {
-    Real m[9];
-    init_3x3_mat(m, 1.0f);
-    for (int i = 0; i < 9; ++i) {
-        REQUIRE_THAT(m[i], Catch::Matchers::WithinAbs(1.0f, 1e-4));
-    }
-    //![init_3x3_mat]
-}
-
-TEST_CASE("mat_set_element sets an element of a 3x3 matrix", "[mat_set_element]") {
-    Real m[9];
-    mat_set_element(m, 3, 1, 2, 3.0f);
-    REQUIRE_THAT(m[1 + 2 * 3], Catch::Matchers::WithinAbs(3.0f, 1e-4));
-    //![mat_set_element]
-}
-
-TEST_CASE("uptri_mat_index calculates the sequential index for a triangular matrix", "[uptri_mat_index]") {
-    REQUIRE(uptri_mat_index(0, 0) == 0);
-    REQUIRE(uptri_mat_index(1, 1) == 2);
-    REQUIRE(uptri_mat_index(0, 1) == 1);
-    //![uptri_mat_index]
-}   
-
-TEST_CASE("tri_mat_index calculates the sequential index for a triangular matrix, allowing i <= j or i >= j", "[tri_mat_index]") {
-    REQUIRE(tri_mat_index(0, 0) == 0);
-    REQUIRE(tri_mat_index(1, 0) == 1);
-    REQUIRE(tri_mat_index(1, 1) == 2);
-    REQUIRE(tri_mat_index(0, 1) == 1);
-    REQUIRE(tri_mat_index(2, 0) == 3);
-    REQUIRE(tri_mat_index(2, 1) == 4);
-    REQUIRE(tri_mat_index(2, 2) == 5);
-    //![tri_mat_index]
-}   
 

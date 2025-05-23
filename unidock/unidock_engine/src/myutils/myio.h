@@ -19,7 +19,7 @@ inline char separator() {
 }
 
 
-std::string genOutFilePathForMol(const std::string& fn, const std::string& dp_out);
+std::string gen_filepath(const std::string& fn, const std::string& dp_out);
 
 void my_info(const std::string& fn);
 

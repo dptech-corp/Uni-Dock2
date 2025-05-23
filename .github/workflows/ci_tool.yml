@@ -30,7 +30,7 @@ jobs:
     needs: [style-check]
     runs-on: [nvidia, t4]
     container:
-      image: dptechnology/unidock2:base-0.0.1
+      image: dptechnology/unidock2:base-0.0.2
       options: --gpus all
     steps:
     - uses: actions/checkout@v4

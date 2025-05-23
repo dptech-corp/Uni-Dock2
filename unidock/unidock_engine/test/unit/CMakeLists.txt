@@ -8,13 +8,14 @@ set(sources unit_test.cpp
         format/test_json.cpp
 
         geometry/test_quaternion.cpp
+        geometry/test_rotation.cpp
 
         myutils/test_math.cpp
 
         score/test_vina.cpp
 
         search/test_mc.cpp
-        ../component/test_scoring.cpp
+        myutils/test_matrix.cpp
 )
 
 add_executable(${TESTS_NAME} ${sources})

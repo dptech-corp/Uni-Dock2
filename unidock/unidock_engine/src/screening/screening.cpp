@@ -175,7 +175,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
 
             spdlog::info("Batch {} size: {}", batch_id, batch_size);
             num_flex_processed += batch_size;
-            std::string fp_json = genOutFilePathForMol(name_json + "_" + std::to_string(batch_id) + ".json", dp_out);
+            std::string fp_json = gen_filepath(name_json + "_" + std::to_string(batch_id) + ".json", dp_out);
 
             // run on this batch. An individual procedure for global_search_with_local_optimize
             spdlog::info("Perform the Task...");

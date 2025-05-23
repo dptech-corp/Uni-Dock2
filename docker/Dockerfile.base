@@ -15,3 +15,5 @@ RUN micromamba install -y \
     python=3.10 ipython pyyaml pathos numpy pandas scipy networkx \
     rdkit mdanalysis openbabel pdbfixer openmm \
     msys_viparr_lpsolve55 ambertools_stable && micromamba clean -a
+
+RUN micromamba install -y conda-forge::sysroot_linux-64==2.34

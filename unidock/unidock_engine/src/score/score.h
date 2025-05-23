@@ -119,7 +119,7 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
         }
         Real atom_penalty = cal_box_penalty_atom(flex_coords[i * 3], flex_coords[i * 3 + 1], flex_coords[i * 3 + 2], box);
         if (atom_penalty > 0){
-            DPrintCPU("Atom %d penalty = %f\n", i, atom_penalty);
+            // DPrintCPU("Atom %d penalty = %f\n", i, atom_penalty);
             cal_box_penalty_atom(flex_coords[i * 3], flex_coords[i * 3 + 1], flex_coords[i * 3 + 2], box);
         }
         e_penalty += atom_penalty;

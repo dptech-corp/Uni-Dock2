@@ -14,10 +14,9 @@ FlexPose* alloccp_FlexPose_gpu(const FlexPose& flex_pose, int natom, int ntorsio
     flex_pose_tmp.center[0] = flex_pose.center[0];
     flex_pose_tmp.center[1] = flex_pose.center[1];
     flex_pose_tmp.center[2] = flex_pose.center[2];
-    flex_pose_tmp.orientation[0] = flex_pose.orientation[0];
-    flex_pose_tmp.orientation[1] = flex_pose.orientation[1];
-    flex_pose_tmp.orientation[2] = flex_pose.orientation[2];
-    flex_pose_tmp.orientation[3] = flex_pose.orientation[3];
+    flex_pose_tmp.rot_vec[0] = flex_pose.rot_vec[0];
+    flex_pose_tmp.rot_vec[1] = flex_pose.rot_vec[1];
+    flex_pose_tmp.rot_vec[2] = flex_pose.rot_vec[2];
     checkCUDA(cudaMalloc(&flex_pose_tmp.coords, sizeof(Real) * natom * 3));
     checkCUDA(cudaMemcpy(flex_pose_tmp.coords, flex_pose.coords, sizeof(Real) * natom * 3, cudaMemcpyHostToDevice));
     checkCUDA(cudaMalloc(&flex_pose_tmp.dihedrals, sizeof(Real) * ntorsion));
@@ -59,7 +58,7 @@ FlexPoseGradient* alloccp_FlexPoseGradient_gpu(const FlexPoseGradient& flex_pose
     flex_pose_gradient_tmp.orientation_g[0] = flex_pose_gradient.orientation_g[0];
     flex_pose_gradient_tmp.orientation_g[1] = flex_pose_gradient.orientation_g[1];
     flex_pose_gradient_tmp.orientation_g[2] = flex_pose_gradient.orientation_g[2];
-    flex_pose_gradient_tmp.orientation_g[3] = flex_pose_gradient.orientation_g[3];
+
     checkCUDA(cudaMalloc(&flex_pose_gradient_tmp.dihedrals_g, sizeof(Real) * ntorsion));
     checkCUDA(cudaMemcpy(flex_pose_gradient_tmp.dihedrals_g, flex_pose_gradient.dihedrals_g, sizeof(Real) * ntorsion, cudaMemcpyHostToDevice));
     

@@ -3,14 +3,14 @@ cmake_minimum_required(VERSION 3.27)
 # ------------------------------ Options for Users
 option(BUILD_BIN "build binaries" TRUE)
 option(BUILD_API "build api" TRUE)
-option(BUILD_TEST "build unit tests" FALSE)
+option(BUILD_TEST "build unit tests" TRUE)
 option(BUILD_DOC "build documents" FALSE)
 
 # Precision
 option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for the whole project." FALSE)
 
 # ------------------------------ Options for Developers
-set(VERSION_NUMBER 0.2)
+set(VERSION_NUMBER 0.3)
 
 # For Building Stage
 link_directories(${CMAKE_SOURCE_DIR}/lib)
@@ -59,8 +59,10 @@ endif()
 
 if (USE_DOUBLE)
     add_compile_definitions(Real=double)
+    message("Precision: double")
 else ()
     add_compile_definitions(Real=float)
+    message("Precision: float")
 endif ()
 
 
