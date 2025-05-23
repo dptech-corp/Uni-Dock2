@@ -103,8 +103,8 @@ __device__ __forceinline__ void cal_grad_warp(const cg::thread_block_tile<TILE_S
 
             // compute the torque on the atom for the torsion
             cross_product(tmp1, tmp2, tmp3);
-            DPrint("iat= %d: arm: %f, %f, %f; f: %f, %f, %f; t: %f, %f, %f\n", i_at,
-                tmp1[0], tmp1[1], tmp1[2], tmp2[0], tmp2[1], tmp2[2], tmp3[0], tmp3[1], tmp3[2]);
+            // DPrint("iat= %d: arm: %f, %f, %f; f: %f, %f, %f; t: %f, %f, %f\n", i_at,
+            //     tmp1[0], tmp1[1], tmp1[2], tmp2[0], tmp2[1], tmp2[2], tmp3[0], tmp3[1], tmp3[2]);
             // accumulate the torque for the torsion
             tmp5[0] += tmp3[0];
             tmp5[1] += tmp3[1];
@@ -115,7 +115,7 @@ __device__ __forceinline__ void cal_grad_warp(const cg::thread_block_tile<TILE_S
         tmp3[0] = pose->coords[iat_to * 3] - pose->coords[iat_from * 3];
         tmp3[1] = pose->coords[iat_to * 3 + 1] - pose->coords[iat_from * 3 + 1];
         tmp3[2] = pose->coords[iat_to * 3 + 2] - pose->coords[iat_from * 3 + 2];
-        DPrint("t_total: %f, %f, %f\n", tmp5[0], tmp5[1], tmp5[2]);
+
         // projection on axis as the gradient on dihedral
         out_g->dihedrals_g[i_tor] = dot_product(tmp5, tmp3) / cal_norm(tmp3);
         DPrint("dihedrals_g: %f\n", out_g->dihedrals_g[i_tor]);
@@ -241,44 +241,6 @@ SCOPE_INLINE Real cal_box_penalty_clamp_coord(Real* out_x, Real* out_y, Real* ou
 
     return penalty * PENALTY_SLOPE;
 }
-
-SCOPE_INLINE void check_add_one_direction_penalty(Real* out_d, Real* out_f, Real* out_penalty, int i){
-    Real lo = 0., hi = 0.;
-    Real tmp = 0.;
-    assert(i < 3 and i > -1);
-    if (i == 0){
-        lo = BOX_X_LO;
-        hi = BOX_X_HI;
-    }else if(i == 1){
-        lo = BOX_Y_LO;
-        hi = BOX_Y_HI;
-    }else if(i == 2){
-        lo = BOX_Z_LO;
-        hi = BOX_Z_HI;
-    }
-
-    if (*out_d < lo){
-        tmp = (*out_d - lo);
-        *out_d = lo;
-    }
-    else if (*out_d > hi){
-        tmp = (*out_d - hi);
-        *out_d = hi;
-    }
-    *out_penalty += PENALTY_SLOPE * pow(tmp, 2);
-    out_f[i] += 2 * PENALTY_SLOPE * pow(tmp, 2 - 1);
-}
-
-SCOPE_INLINE Real cal_box_penalty_clamp_coord_smooth(Real* out_x, Real* out_y, Real* out_z, Real* out_f){
-    Real penalty = 0.;
-
-    check_add_one_direction_penalty(out_x, out_f, &penalty, 0);
-    check_add_one_direction_penalty(out_y, out_f, &penalty, 1);
-    check_add_one_direction_penalty(out_z, out_f, &penalty, 2);
-
-    return penalty;
-}
-
 
 
 __device__ __forceinline__ Real cal_e_f_warp(const cg::thread_block_tile<TILE_SIZE>& tile,

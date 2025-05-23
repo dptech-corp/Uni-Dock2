@@ -82,19 +82,19 @@ SCOPE_INLINE void quaternion_increment(Real* out_q1, const Real* q2){
 
 
 /**
- * @brief Convert rotation angles to quaternion
- * @snippet test_quaternion.cpp angle_to_quaternion
+ * @brief Convert rotation vector to quaternion
+ * @snippet test_quaternion.cpp rotvec_to_quaternion
  * @param out_q The output quaternion (w, x, y, z)
  * @param rot_vec The 1x3 rotation vector
  */
 SCOPE_INLINE void rotvec_to_quaternion(Real* out_q, const Real* rot_vec){
     // the real rotation angle
-    Real angle = cal_norm(rot_vec);
+    Real theta = cal_norm(rot_vec);
     // DPrintCPU("Angle = %f, rot_vec = %f, %f, %f\n", angle, rot_vec[0], rot_vec[1], rot_vec[2]);
-    if (angle > EPSILON){
-        Real axis[3] = {rot_vec[0] / angle, rot_vec[1] / angle, rot_vec[2] / angle};
-        Real s = sin(angle / 2);
-        out_q[0] = cos(angle / 2);
+    if (theta > EPSILON){
+        Real axis[3] = {rot_vec[0] / theta, rot_vec[1] / theta, rot_vec[2] / theta};
+        Real s = sin(theta / 2);
+        out_q[0] = cos(theta / 2);
         out_q[1] = s * axis[0];
         out_q[2] = s * axis[1];
         out_q[3] = s * axis[2];
@@ -107,6 +107,30 @@ SCOPE_INLINE void rotvec_to_quaternion(Real* out_q, const Real* rot_vec){
         out_q[3] = 0;
     }
 }
+
+/**
+ * @brief Convert unit quaternion to rotation vector
+ * @snippet test_quaternion.cpp quaternion_to_rotvec
+ * @param q The original unit quaternion (w, x, y, z)
+ * @param out_v The 1x3 rotation vector
+ */
+SCOPE_INLINE void quaternion_to_rotvec(Real* out_v, const Real* q){
+    // the angle
+    Real theta = 2 * acos(q[0]);
+    Real s = sin(theta / 2);
+    if (s > EPSILON){
+        Real theta_div_s = theta / s;
+        out_v[0] = q[1] * theta_div_s;
+        out_v[1] = q[2] * theta_div_s;
+        out_v[2] = q[3] * theta_div_s;
+    }
+    else{
+        out_v[0] = 0;
+        out_v[1] = 0;
+        out_v[2] = 0;
+    }
+}
+
 
 
 /**

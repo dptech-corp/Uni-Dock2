@@ -19,6 +19,7 @@
 __device__ __forceinline__ void randomize_pose_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                     FlexPose* out_pose_new, FlexPoseGradient* aux_g,
                                                     const FlexPose* pose_old, const FlexTopo& flex_topo,
+                                                    int n,
                                                     curandStatePhilox4_32_10_t* state){
     float4 rf4 = curand_uniform4(state);
     Real tmp4[4] = {0};
@@ -64,15 +65,25 @@ __device__ __forceinline__ void randomize_pose_warp(const cg::thread_block_tile<
             aux_g->center_g[1] = tmp4[1] - out_pose_new->center[1];
             aux_g->center_g[2] = tmp4[2] - out_pose_new->center[2];
 
-            // random orientation, set gradient
-            rotvec_to_axis_angle(tmp4, rotvec); // tmp4 is axis_angle
-            tmp4[0] = rf4.w * PI;
-            aux_g->orientation_g[0] = tmp4[1] * tmp4[0];
-            aux_g->orientation_g[1] = tmp4[2] * tmp4[0];
-            aux_g->orientation_g[2] = tmp4[3] * tmp4[0]; //todo: change to a more efficient sampling
-            // if(tile.thread_rank() == 0){
-            //     printf("[RAND] %f, %f, %f\n", aux_g->orientation_g[0], aux_g->orientation_g[1], aux_g->orientation_g[2]);
-            // }
+            // random orientation, set gradient.
+            // Alexa, M. (2022). Super-Fibonacci Spirals: Fast, Low-Discrepancy Sampling of SO(3). Proceedings of the
+            // IEEE Computer Society Conference on Computer Vision and Pattern Recognition, 2022-June(3), 8281–8290.
+            // https://doi.org/10.1109/CVPR52688.2022.00811
+
+            int id_pose = ((blockIdx.x * blockDim.x + threadIdx.x) % (n * TILE_SIZE)) / TILE_SIZE; // global idx of the thread
+            DPrint1("id_pose: %d\n", id_pose);
+
+            Real s = id_pose + 0.5;
+            Real r = sqrt( s / n);
+            Real R = sqrt(1.0 - s / n);
+            Real alpha = 2.0 * PI * s / PHI;
+            Real beta = 2.0 * PI * s / PSI;
+            tmp4[0] = r * sin(alpha);
+            tmp4[1] = r * cos(alpha);
+            tmp4[2] = R * sin(beta);
+            tmp4[3] = R * cos(beta);
+            quaternion_to_rotvec(aux_g->orientation_g, tmp4);
+            // printf("[RAND] %f, %f, %f\n", aux_g->orientation_g[0], aux_g->orientation_g[1], aux_g->orientation_g[2]);
         }
 
         // generate random uints for all torsions // todo: change sampling of torsions
@@ -295,7 +306,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
 
         if (randomize){
             // prepare the initial pose: each pose is a random pose!
-            randomize_pose_warp(tile, &pose_accepted, &aux_g, &out_pose, flex_topo, &state);
+            randomize_pose_warp(tile, &pose_accepted, &aux_g, &out_pose, flex_topo, num_pose_per_flex, &state);
         }else{
             duplicate_pose_warp(tile, &pose_accepted, &out_pose, dim, flex_topo.natom);
         }

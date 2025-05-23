@@ -79,6 +79,68 @@ TEST_CASE("rotate_vec_by_quaternion rotates a vector by a quaternion", "[rotate_
     //! [rotate_vec_by_quaternion]
 }
 
+//! [quaternion_to_rotvec]
+TEST_CASE("Convert unit quaternion to rotation vector", "[quaternion_to_rotvec]") {
+
+    SECTION("Identity quaternion (no rotation)") {
+        Real q[] = {1.0f, 0.0f, 0.0f, 0.0f};
+        Real out_v[3];
+        Real expected[] = {0.0f, 0.0f, 0.0f};
+
+        quaternion_to_rotvec(out_v, q);
+        for (int i = 0; i < 3; ++i) {
+            REQUIRE_THAT(out_v[i], Catch::Matchers::WithinAbs(expected[i], 1e-4));
+        }
+    }
+
+    SECTION("180-degree rotation around Z-axis") {
+        Real q[] = {0.0f, 0.0f, 0.0f, 1.0f};  // w=0, (x,y,z)=(0,0,1)
+        Real out_v[3] = {0.};
+        Real expected[] = {0.0f, 0.0f, PI};  // (0,0,π)
+
+        quaternion_to_rotvec(out_v, q);
+        for (int i = 0; i < 3; ++i) {
+            REQUIRE_THAT(out_v[i], Catch::Matchers::WithinAbs(expected[i], 1e-4));
+        }
+    }
+
+    SECTION("90-degree rotation around X-axis") {
+        const Real cos_pi_4 = 0.7071068f;
+        Real q[] = {cos_pi_4, cos_pi_4, 0.0f, 0.0f};  // w=cos(π/4), x=sin(π/4)
+        Real out_v[3] = {0.};
+        Real expected[] = {PI / 2, 0.0f, 0.0f};  // (π/2,0,0)
+
+        quaternion_to_rotvec(out_v, q);
+        for (int i = 0; i < 3; ++i) {
+            REQUIRE_THAT(out_v[i], Catch::Matchers::WithinAbs(expected[i], 1e-4));
+        }
+    }
+
+    SECTION("Arbitrary axis rotation") {
+        Real q[] = {0.9586831, 0.2370836, 0.0848071, -0.1323853};  // Normalized quaternion
+        Real out_v[3] = {0.};
+        Real expected[] = {0.4808074, 0.1719894, -0.2684785};
+
+        quaternion_to_rotvec(out_v, q);
+        for (int i = 0; i < 3; ++i) {
+            REQUIRE_THAT(out_v[i], Catch::Matchers::WithinAbs(expected[i], 1e-4));
+        }
+    }
+
+    SECTION("Small angle approximation") {
+        // Test case where sin(theta/2) approaches zero
+        Real q[] = {0.9999999f, 0.0001f, 0.0f, 0.0f};
+        Real out_v[3];
+        Real expected[] = {0.0002f, 0.0f, 0.0f};  // Should trigger s < EPSILON
+
+        quaternion_to_rotvec(out_v, q);
+        for (int i = 0; i < 3; ++i) {
+            REQUIRE_THAT(out_v[i], Catch::Matchers::WithinAbs(expected[i], 1e-4f));
+        }
+    }
+}
+//! [quaternion_to_rotvec]
+
 
 
 

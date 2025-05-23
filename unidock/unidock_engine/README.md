@@ -94,6 +94,8 @@ Users could perform further analysis based on these data.
 * **set_env.sh** An easy-to-use shell script for developers to quickly set up a ready-to-use development environment.
 * **scripts** [Not Loaded] Provides easy-to-use scripts for users to run standard docking processes, requiring no understanding of the coding details.
 
+## TODO:
+- [ ] Use new data structure to simplify the memory management. 
 
 
    

@@ -43,6 +43,9 @@ SCOPE_INLINE T square(T x) {
 
 // ------------------------------- CPU & CUDA -------------------------------
 #define PI Real(3.1415927)
+#define PHI 1.4142136
+#define PSI 1.5337512
+
 constexpr Real DEG2RAD = PI / 180;
 constexpr Real RAD2DEG = 180 / PI;
 
