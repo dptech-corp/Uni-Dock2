@@ -123,6 +123,5 @@ def main():
 
     docking_runner.run_unidock_protocol()
 
-
 if __name__ == "__main__":
     main()
