@@ -25,4 +25,5 @@ unidock_tools/dist/*
 torsion_library.pkl
 _version.py
 test_ud2
+test_conf.yaml
 setup.py.depre
