@@ -58,11 +58,14 @@ jobs:
         shell: bash -l {0}
         run: |
           export CONDA_REPODATA_USE_ZST=false
-          COMMIT=$(git rev-parse --short HEAD)
-          FULL_VERSION="${VERSION}+${COMMIT}"
+          if [[ "$VERSION" == v* ]]; then
+            VERSION_CLEAN="${VERSION#v}"
+          else
+            VERSION_CLEAN="$VERSION"
+          fi
           conda mambabuild -c http://quetz.dp.tech:8088/get/baymax \
             -c conda-forge \
-            --variants "{python: ['${{ matrix.python }}'], cuda_compiler_version: ['${{ matrix.cuda_compiler_version }}'], version: ['${FULL_VERSION}'], build: ['${{ env.BUILD }}']}" \
+            --variants "{python: ['${{ matrix.python }}'], cuda_compiler_version: ['${{ matrix.cuda_compiler_version }}'], version: ['${VERSION_CLEAN}'], build: ['${{ env.BUILD }}']}" \
             --no-anaconda-upload \
             --output-folder conda-build \
             conda-recipe
