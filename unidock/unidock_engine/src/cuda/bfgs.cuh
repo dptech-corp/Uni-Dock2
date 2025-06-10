@@ -195,6 +195,10 @@ __device__ __forceinline__ void cal_grad_warp(const cg::thread_block_tile<TILE_S
             cal_grad_of_rot_over_vec(dR_dv, pose->rot_vec, i);
             // DPrint("dR/dv_%d: \n%f, %f, %f\n%f, %f, %f\n%f, %f, %f\n", i,
             //     dR_dv[0], dR_dv[1], dR_dv[2], dR_dv[3], dR_dv[4], dR_dv[5], dR_dv[6], dR_dv[7], dR_dv[8]);
+
+            // Mirzaei, H., Beglov, D., Paschalidis, I. C., Vajda, S., Vakili, P., & Kozakov, D. (2012).
+            // Rigid body energy minimization on manifolds for molecular docking. Journal of Chemical
+            // Theory and Computation, 8(11), 4374–4380. https://doi.org/10.1021/ct300272j
             out_g->orientation_g[i] = frobenius_product(mat, dR_dv);
         }
         DPrint("orientation_g: %f, %f, %f\n", out_g->orientation_g[0], out_g->orientation_g[1], out_g->orientation_g[2]);
