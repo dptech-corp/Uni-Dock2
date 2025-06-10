@@ -1,6 +1,7 @@
 #include <iostream>
 #include <filesystem>
 #include <string>
+#include <fstream>
 #include <vector> // ligand paths
 #include <cuda_runtime.h>
 #include <yaml-cpp/yaml.h>
@@ -10,10 +11,23 @@
 #include "model/model.h"
 #include "format/json.h"
 #include "screening/screening.h"
+#include "main.h"
 
 
+void print_help(){
+    const char* STR_HELP = R"(
+Usage: ud2 [options] [config_path]
 
-void printSign() {
+Options:
+  --version             Show version information
+  --help                Show this help message
+  --dump_config [path]  Dump default config to file (default: default.yaml)
+  --log <path>          Specify log file path, only take effects when [config_path] is given
+)";
+    std::cout << STR_HELP;
+}
+
+void print_sign() {
     // ANSI Shadow
         std::cout << R"(
     ██╗ccc██╗██████╗c██████╗c
@@ -25,6 +39,11 @@ void printSign() {
     )" << std::endl;
 
 }
+
+void print_version(){
+    std::cout << "UD2 C++ Engine Version: " << VERSION_NUMBER << "\n";
+}
+
 
 template<typename T>
 T get_config_with_err(const YAML::Node& config, const std::string& section, const std::string& key,
@@ -41,6 +60,17 @@ T get_config_with_err(const YAML::Node& config, const std::string& section, cons
     }
 }
 
+void dump_config_template(const std::string& p){
+    std::ofstream f(p);
+    if (!f){
+        std::cout << "Failed to create config template file: " << p.c_str() << "\n";
+        exit(1);
+    }
+
+    f << STR_CONFIG_TEMPLATE;
+}
+
+
 
 int main(int argc, char* argv[])
 {
@@ -49,9 +79,61 @@ int main(int argc, char* argv[])
 #else
     int log_level = 1;
 #endif
-    init_logger("ud.log", log_level);
-    std::cout << "UD2 Version " << VERSION_NUMBER << "\n";
-    printSign();
+    std::string fp_log = "ud.log"; // default under working directory
+    std::string fp_config;
+
+    // parse arguments
+    for (int i = 1; i < argc; ++i){
+        std::string arg = argv[i];
+        if (arg == "--version"){
+            print_version();
+            return 0;
+        }
+        if (arg == "--help"){
+            print_help();
+            return 0;
+        }
+        if (arg == "--dump_config"){
+            std::string fp_dump = "default.yaml";
+            if ((i + 1 < argc) && (argv[i + 1][0] != '-')){
+                fp_dump = argv[++i];
+            }
+            dump_config_template(fp_dump);
+            return 0;
+        }
+
+        if (arg == "--log"){
+            if (argc > i + 1){
+                fp_log = argv[i + 1];
+                i += 1; // log parameter done
+            } else{
+                print_help();
+                printf("--log requires a log path\n");
+                return 1;
+            }
+        } else{
+            if (fp_config.empty()){
+                fp_config = arg;
+                i ++;
+            } else{
+                print_help();
+                printf("After config path is parsed as %s, unexpected argument: %s\n", fp_config.c_str(), arg.c_str());
+                return 1;
+            }
+        }
+    }
+
+    if (fp_config.empty()){
+        print_help();
+        printf("Missing argument: config file path\n");
+        exit(1);
+    }
+
+    init_logger(fp_log, log_level);
+    spdlog::info("Using config file: {}", fp_config);
+
+    print_sign();
+    print_version();
 
     spdlog::info("==================== UD2 Starts! ======================\n");
     auto start = std::chrono::high_resolution_clock::now();
@@ -60,16 +142,8 @@ int main(int argc, char* argv[])
     DockParam dock_param;
     std::string fp_score;
     int ncpu = std::thread::hardware_concurrency();
-    std::string config_file = "config.yaml"; // default config file path
 
-    if (argc > 1) {
-        config_file = argv[1];
-    } else {
-        spdlog::critical("Missing argument for config file path\n");
-        exit(1);
-    }
-    spdlog::info("Using config file: {}", config_file);
-    YAML::Node config = YAML::LoadFile(config_file);
+    YAML::Node config = YAML::LoadFile(fp_config);
 
 
     // -------------------------------  Parse Advanced -------------------------------
@@ -121,10 +195,10 @@ int main(int argc, char* argv[])
     if (not use_tor_lib){
         spdlog::warn("Torsion Library is NOT used.");
     }
-    dock_param.tor_prec = get_config_with_err<Real>(config, "Advanced", "tor_prec", 0.3);;
-    spdlog::info("tor_prec: {}", dock_param.tor_prec);
-    dock_param.box_prec = get_config_with_err<Real>(config, "Advanced", "box_prec", 1.0);;
-    spdlog::info("box_prec: {}", dock_param.box_prec);
+    dock_param.tor_prec = get_config_with_err<Real>(config, "Advanced", "tor_prec", dock_param.tor_prec);;
+    dock_param.box_prec = get_config_with_err<Real>(config, "Advanced", "box_prec", dock_param.box_prec);;
+    dock_param.slope = get_config_with_err<Real>(config, "Advanced", "slope", dock_param.slope);;
+
 
     // todo: write into constants.h
     Real cutoff = 8.0;
@@ -176,23 +250,24 @@ int main(int argc, char* argv[])
     // -------------------------------  Parse Settings -------------------------------
     std::string search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", "balance");
     if (search_mode == "fast"){
-        dock_param.exhaustiveness = 64;
-        dock_param.mc_steps = 30;
-        dock_param.opt_steps = 3;
+        dock_param.exhaustiveness = 128;
+        dock_param.mc_steps = 20;
+        dock_param.opt_steps = -1;
     } else if (search_mode == "balance"){
-        dock_param.exhaustiveness = 64;
-        dock_param.mc_steps = 200;
-        dock_param.opt_steps = 5;
+        dock_param.exhaustiveness = 256;
+        dock_param.mc_steps = 30;
+        dock_param.opt_steps = -1;
     } else if (search_mode == "detail"){
         dock_param.exhaustiveness = 512;
-        dock_param.mc_steps = 300;
-        dock_param.opt_steps = 5;
+        dock_param.mc_steps = 40;
+        dock_param.opt_steps = -1;
     } else if (search_mode == "free"){
-
+        //
     } else{
         spdlog::critical("Not supported search_mode: {} doesn't belong to (fast, balance, detail, free)" , search_mode);
         exit(1);
     }
+
     if (dock_param.exhaustiveness < ncpu) {
         spdlog::warn("Low exhaustiveness doesn't utilize all CPUs");
     }
@@ -239,7 +314,29 @@ int main(int argc, char* argv[])
         dock_param.randomize = true;
         dock_param.opt_steps = 0;
         dock_param.refine_steps = 0;
-        spdlog::info("----------------------- RUN Only Monte Carlo Random Walking -----------------------");
+        spdlog::info("----------------------- RUN Only Monte Carlo Random Walking (With Clustering) -----------------------");
+        run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
+
+    } else if (task == "randomize"){
+        dock_param.randomize = true;
+        dock_param.mc_steps = 0;
+        dock_param.opt_steps = 0;
+        dock_param.refine_steps = 0;
+        dock_param.num_pose = dock_param.exhaustiveness;
+        dock_param.energy_range = 1e9;
+        dock_param.rmsd_limit = 0.;
+        spdlog::info("----------------------- RUN Only Randomization (No Clustering) -----------------------");
+        run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
+
+    } else if (task == "optimize"){
+        dock_param.randomize = false;
+        dock_param.exhaustiveness = 1;
+        dock_param.mc_steps = 0;
+        dock_param.opt_steps = 0;
+        dock_param.num_pose = 1;
+        dock_param.energy_range = 1e9;
+        dock_param.rmsd_limit = 0.;
+        spdlog::info("----------------------- RUN Only Optimization on Input Pose (for `refine_steps) -----------------------");
         run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
 
     } else{

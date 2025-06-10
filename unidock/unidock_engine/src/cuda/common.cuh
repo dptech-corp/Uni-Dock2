@@ -10,7 +10,7 @@
 #include "score/vina.h"
 #include <cuda_runtime.h>
 
-
+extern __device__ __managed__ unsigned int funcCallCount;
 
 // -------------- Constants -----------------
 extern __constant__ bool FLAG_CONSTRAINT_DOCK;
@@ -36,7 +36,7 @@ void init_constants(const DockParam& dock_param);
 #define SCOPE_KERNEL __launch_bounds__(MAX_THREADS_PER_BLOCK, MIN_BLOCKS_PER_MP)
 #define MAX_THREADS_PER_BLOCK 32
 #define MIN_BLOCKS_PER_MP 32
-const int TILE_SIZE = 32;
+#define TILE_SIZE 32
 #define STRIDE_POSE 4
 #define STRIDE_G 6
 
@@ -101,12 +101,30 @@ __forceinline__ __device__ void gen_4_rand_in_sphere(Real *out_rand_4, curandSta
         out_rand_4[1] = (rand_4.y - 0.5) * 2.0;
         out_rand_4[2] = (rand_4.z - 0.5) * 2.0;
 
-        if (norm_vec3(out_rand_4) < 1) { // not a specific length, also a randomization on rotation degree
+        if (cal_norm(out_rand_4) < 1) { // not a specific length, also a randomization on rotation degree
             out_rand_4[3] = rand_4.w;
             return;
         }
     }
 }
+
+
+SCOPE_INLINE Real gyration_radius(const FlexPose* flex_pose, const FlexTopo* flex_topo){
+    // compute gyration radius:
+    Real d_sq_sum = 0;
+    int natom = 0;
+    // for each atom
+    for (int i = 0; i < flex_topo->natom; i++){
+        // only tackle non-H atoms
+        if (flex_topo->vn_types[i] != VN_TYPE_H){
+            d_sq_sum += dist_sq(flex_pose->coords + 3 * i, flex_pose->center);
+            ++natom;
+        }
+    }
+    return natom > 0 ? sqrtf(d_sq_sum / natom) : 0;
+}
+
+
 
 #endif //COMMON_CUH
 

@@ -15,24 +15,107 @@
 #include "bfgs.cuh"
 
 
-SCOPE_INLINE Real gyration_radius(const FlexPose& flex_pose, const FlexTopo* flex_topo){
-    // compute gyration radius:
-    Real d2_sum = 0;
-    int natom = 0;
-    // for each atom
-    for (int i = 0; i < flex_topo->natom; i++){
-        // only tackle non-H atoms
-        if (flex_topo->vn_types[i] != VN_TYPE_H){
-            d2_sum += dist2(flex_pose.coords + 3 * i, flex_pose.center);
-            ++natom;
+
+__device__ __forceinline__ void randomize_pose_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+                                                    FlexPose* out_pose_new, FlexPoseGradient* aux_g,
+                                                    const FlexPose* pose_old, const FlexTopo& flex_topo,
+                                                    int n,
+                                                    curandStatePhilox4_32_10_t* state){
+    float4 rf4 = curand_uniform4(state);
+    Real tmp4[4] = {0};
+    Real rotvec[3] = {map_01_to_dot5(rf4.x), map_01_to_dot5(rf4.y), map_01_to_dot5(rf4.z)};
+    uint4 ri4 = curand4(state);
+
+    // copy cartesian coordinates
+    for (int i = tile.thread_rank(); i < flex_topo.natom * 3; i += tile.num_threads()){
+        out_pose_new->coords[i] = pose_old->coords[i];
+    }
+    tile.sync();
+
+    // generate a random pose inside the box
+    if (tile.thread_rank() == 0){
+        // set energy
+        out_pose_new->energy = pose_old->energy;
+
+        // copy center & orientation
+        out_pose_new->center[0] = pose_old->center[0];
+        out_pose_new->center[1] = pose_old->center[1];
+        out_pose_new->center[2] = pose_old->center[2];
+        out_pose_new->rot_vec[0] = pose_old->rot_vec[0];
+        out_pose_new->rot_vec[1] = pose_old->rot_vec[1];
+        out_pose_new->rot_vec[2] = pose_old->rot_vec[2];
+
+        if (FLAG_CONSTRAINT_DOCK){
+            // center and orientation are fixed
+            aux_g->center_g[0] = 0;
+            aux_g->center_g[1] = 0;
+            aux_g->center_g[2] = 0;
+            aux_g->orientation_g[0] = 0;
+            aux_g->orientation_g[1] = 0;
+            aux_g->orientation_g[2] = 0;
+        }
+        else{
+            // random center, set gradient
+            Real a = gyration_radius(pose_old, &flex_topo);
+            tmp4[0] = get_real_within_by_int(ri4.x, BOX_X_LO + a, BOX_X_HI - a, ceil((BOX_X_HI - BOX_X_LO - 2 * a) / BOX_PREC) + 1);
+            tmp4[1] = get_real_within_by_int(ri4.y, BOX_Y_LO + a, BOX_Y_HI - a, ceil((BOX_Y_HI - BOX_Y_LO - 2 * a) / BOX_PREC) + 1);
+            tmp4[2] = get_real_within_by_int(ri4.z, BOX_Z_LO + a, BOX_Z_HI - a, ceil((BOX_Z_HI - BOX_Z_LO - 2 * a) / BOX_PREC) + 1);
+
+            aux_g->center_g[0] = tmp4[0] - out_pose_new->center[0];
+            aux_g->center_g[1] = tmp4[1] - out_pose_new->center[1];
+            aux_g->center_g[2] = tmp4[2] - out_pose_new->center[2];
+
+            // random orientation, set gradient.
+            // Alexa, M. (2022). Super-Fibonacci Spirals: Fast, Low-Discrepancy Sampling of SO(3). Proceedings of the
+            // IEEE Computer Society Conference on Computer Vision and Pattern Recognition, 2022-June(3), 8281–8290.
+            // https://doi.org/10.1109/CVPR52688.2022.00811
+
+            int id_pose = ((blockIdx.x * blockDim.x + threadIdx.x) % (n * TILE_SIZE)) / TILE_SIZE; // global idx of the thread
+            DPrint1("id_pose: %d\n", id_pose);
+
+            Real s = id_pose + 0.5;
+            Real r = sqrt( s / n);
+            Real R = sqrt(1.0 - s / n);
+            Real alpha = 2.0 * PI * s / PHI;
+            Real beta = 2.0 * PI * s / PSI;
+            tmp4[0] = r * sin(alpha);
+            tmp4[1] = r * cos(alpha);
+            tmp4[2] = R * sin(beta);
+            tmp4[3] = R * cos(beta);
+            quaternion_to_rotvec(aux_g->orientation_g, tmp4);
+            // printf("[RAND] %f, %f, %f\n", aux_g->orientation_g[0], aux_g->orientation_g[1], aux_g->orientation_g[2]);
+        }
+
+        // generate random uints for all torsions // todo: change sampling of torsions
+        for (int i = 0; i < flex_topo.ntorsion; i ++){
+            // copy dihedrals
+            tmp4[3] = pose_old->dihedrals[i];
+
+            out_pose_new->dihedrals[i] = tmp4[3];
+            // set gradient
+            ri4.x = curand(state);
+            ri4.w = ri4.x % flex_topo.range_inds[i * 2 + 1]; // save index of range_list
+            ri4.z = flex_topo.range_inds[i * 2] + ri4.w * 2; // save a tmp index
+            ri4.x = curand(state);
+
+            tmp4[1] = flex_topo.range_list[ri4.z + 1] - flex_topo.range_list[ri4.z];
+            ri4.y = ceil(tmp4[1] / TOR_PREC) + 1; // 10 degree as precision
+
+            tmp4[0] = get_real_within_by_int(ri4.x, flex_topo.range_list[ri4.z], flex_topo.range_list[ri4.z + 1], ri4.y);
+            aux_g->dihedrals_g[i] = tmp4[0] - tmp4[3];
         }
     }
-    return natom > 0 ? sqrtf(d2_sum / natom) : 0;
+    tile.sync();
+
+    apply_grad_update_pose_warp(tile, out_pose_new, aux_g, flex_topo, 1.);
+
 }
 
 
+
+
 /**
- * @brief Mutate one pose and update coords..
+ * @brief Mutate one pose and update coords.
  * 
  * @param tile Cooperative group
  * @param out_pose Pointer to the pose to be mutated
@@ -101,7 +184,7 @@ __forceinline__ __device__ void mutate_pose_warp(const cg::thread_block_tile<TIL
         // 1 for rotation
         if (tile.thread_rank() == 0){
             //1 for rotation of the whole molecule
-            a = gyration_radius(*out_pose, flex_topo); // an indicator of the size
+            a = gyration_radius(out_pose, flex_topo); // an indicator of the size
             if (a > EPSILON){
                 // add a random rotation to temporary quaternion
                 // the movement step of an atom is roughly amplitude Angstrom
@@ -110,7 +193,9 @@ __forceinline__ __device__ void mutate_pose_warp(const cg::thread_block_tile<TIL
                 tmp1[2] = amplitude / a * rand_5[2];
 
                 rotvec_to_quaternion(q, tmp1);
-                quaternion_increment(out_pose->orientation, q);
+                out_pose->rot_vec[0] = tmp1[0];
+                out_pose->rot_vec[1] = tmp1[1];
+                out_pose->rot_vec[2] = tmp1[2];
             }
         }
         tile.sync();
@@ -221,7 +306,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
 
         if (randomize){
             // prepare the initial pose: each pose is a random pose!
-            randomize_pose_warp(tile, &pose_accepted, &aux_g, &out_pose, flex_topo, &state);
+            randomize_pose_warp(tile, &pose_accepted, &aux_g, &out_pose, flex_topo, num_pose_per_flex, &state);
         }else{
             duplicate_pose_warp(tile, &pose_accepted, &out_pose, dim, flex_topo.natom);
         }
@@ -314,6 +399,7 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
                                      states, seed, randomize,
                                      mc_steps, opt_steps, exhuastiveness, npose * block_size);
     checkCUDA(cudaDeviceSynchronize());
+    spdlog::warn("[Line Search Steps Count]: {}", funcCallCount);
 
     // free mem
     checkCUDA(cudaFree(states));

@@ -75,5 +75,6 @@ void optimize_cu(FlexPose* out_poses, const int* pose_inds, const FlexTopo* flex
                           aux_poses, aux_gradients, aux_hessians,
                           aux_forces, refine_steps, npose_per_flex);
     checkCUDA(cudaDeviceSynchronize());
+    spdlog::warn("[Refinement Line Search Steps Count]: {}", funcCallCount);
 
 }

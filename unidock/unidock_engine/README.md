@@ -6,7 +6,7 @@ This document serves for Developers, not Users.
 
 ## Requirements
 * CUDA 11.8+
-* GLIB 2.31+ (Ubuntu 20.04+); GLIB 2.35+ (Ubuntu 22.04+) for unit tests
+* GLIB 2.31+ (Ubuntu 20.04+); GLIB 2.35+ (Ubuntu 22.04+) for unit tests [todo: re-compile catch2 for 2.31]
 
 ## Compilation
 There will be a binary `ud2` under `build/bin` and the library it relies on: `build/src/libud_lib.so`.
@@ -50,14 +50,23 @@ Penalty Score]`.
 
 #### score
 Just provide score for the current pose of each providing ligand. No 
-randomization/searching/optimization/clustering/filtering will be performed.
+randomization/searching/optimization/clustering/filtering/refinement will be performed.
 Only the given pose and its energy terms will be saved to the result json file.
+
+#### optimize
+Just optimize the input ligand pose. No randomization/searching/optimization/clustering/filtering will be performed.
+The optimized pose and its energy terms will be saved to the result json file.
+
+#### randomize
+Only perform randomization to create `exhaustiveness` poses for each given ligand. It is usually used to generate
+random poses. And you can also test the distribution of randomization methods with it.
+No optimization/clustering/filtering/refinement will be performed.
 
 #### mc
 Only perform Monte Carlo searching to find the best poses. It is usually used to test the 
 sampling ability of MC process. In this task, after randomization, the metropolis MC will 
 be performed without optimization of each pose. 
-clustering/filtering will still be performed.
+Clustering/filtering will still be performed.
 No refinement.
 
 #### free
@@ -74,17 +83,19 @@ along with the total time cost.
 Users could perform further analysis based on these data.
 
 ## Source Code Illustration
+* **api** Provides APIs for other languages like python.
+* **bin** Stores published functional binaries for users.
+* **data** Stores reference files, such as the input configuration file template.
+* **doc** Provides Doxygen-generated documents.
+* **include** Contains third-party header files.
+* **lib** Contains third-party static libraries (not modified from source) built for this project.
 * **src** Contains basic source code files.
 * **test** Includes unit tests and component tests.
-* **bin** Stores published functional binaries for users.
-* **doc** Provides Doxygen-generated documents.
-* **lib** Contains third-party static libraries (not modified from source) built for this project.
-* **include** Contains third-party header files.
-* **cmake** Includes settings for the build system.
 * **set_env.sh** An easy-to-use shell script for developers to quickly set up a ready-to-use development environment.
-* **api** Provides APIs for other languages like python, front-end (Node.js).
 * **scripts** [Not Loaded] Provides easy-to-use scripts for users to run standard docking processes, requiring no understanding of the coding details.
 
+## TODO:
+- [ ] Use new data structure to simplify the memory management. 
 
 
    

@@ -22,7 +22,7 @@ const Real EPSILON_c = std::numeric_limits<Real>::epsilon();
     #define SCOPE_INLINE __attribute__((always_inline)) inline
 #endif
 
-SCOPE_INLINE float getEpsilon() {
+SCOPE_INLINE Real getEpsilon() {
 #ifdef __CUDACC__
         return EPSILON_cu; // GPU
 #else
@@ -43,6 +43,9 @@ SCOPE_INLINE T square(T x) {
 
 // ------------------------------- CPU & CUDA -------------------------------
 #define PI Real(3.1415927)
+#define PHI 1.4142136
+#define PSI 1.5337512
+
 constexpr Real DEG2RAD = PI / 180;
 constexpr Real RAD2DEG = 180 / PI;
 
@@ -51,14 +54,18 @@ constexpr Real RAD2DEG = 180 / PI;
 #define DPrint1(fmt, ...) if(tile.thread_rank() == 0) {printf(fmt, __VA_ARGS__);}
 #define DPrint(fmt, ...) printf(fmt, __VA_ARGS__)
 #define DPrintCPU(fmt, ...) printf(fmt, __VA_ARGS__)
+#define DExec(stmt) if(tile.thread_rank() == 0){stmt}
 
 // #define DPrint1(fmt, ...) if((blockIdx.x == 0) && (tile.thread_rank() == 0)) {printf("[CUDA info]");printf(fmt, __VA_ARGS__);}
 // #define DPrint(fmt, ...) if(tile.thread_rank() == 0) {printf("[CUDA info]");printf(fmt, __VA_ARGS__);}
 
 #else
+
 #define DPrint1(fmt, ...)
 #define DPrint(fmt, ...)
 #define DPrintCPU(fmt, ...)
+#define DExec(stmt)
+
 #endif
 
 

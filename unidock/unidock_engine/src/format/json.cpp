@@ -363,12 +363,12 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
             pose_obj.SetObject();
 
             rj::Value energy(rj::kArrayType);
-            energy.PushBack(flex_pose_list_res[j].orientation[0], doc.GetAllocator()); // affinity
-            energy.PushBack(flex_pose_list_res[j].orientation[1], doc.GetAllocator()); // total = intra + inter
+            energy.PushBack(flex_pose_list_res[j].rot_vec[0], doc.GetAllocator()); // affinity
+            energy.PushBack(flex_pose_list_res[j].rot_vec[1], doc.GetAllocator()); // total = intra + inter
             energy.PushBack(flex_pose_list_res[j].center[0], doc.GetAllocator()); // intra
             energy.PushBack(flex_pose_list_res[j].center[1], doc.GetAllocator()); // inter
             energy.PushBack(flex_pose_list_res[j].center[2], doc.GetAllocator()); // penalty
-            energy.PushBack(flex_pose_list_res[j].orientation[3], doc.GetAllocator()); // conf independent contribution
+            energy.PushBack(flex_pose_list_res[j].rot_vec[3], doc.GetAllocator()); // conf independent contribution
             pose_obj.AddMember("energy", energy.Move(), doc.GetAllocator());
 
             rj::Value coords(rj::kArrayType);

@@ -214,10 +214,15 @@ public:
      * @param d surface distance
      * @param at1 Atom type of the first atom
      * @param at2 Atom type of the second atom
-     * @param out_f Output derivative
+     * @param out_f Output derivative (-force)
      * @return energy
      */
     SCOPE_INLINE Real eval_ef(Real d, int at1, int at2, Real* out_f){
+        // Real r = d + 1.9 + 1.9;
+        // Real e1 = r * r;
+        // *out_f = 2 * r;
+        // return e1;
+
         // add all items of geometrical energy
         Real e = 0;
         *out_f = 0;

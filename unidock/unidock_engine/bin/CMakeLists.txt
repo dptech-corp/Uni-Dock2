@@ -2,6 +2,7 @@ message("   [Section] Building BIN ...")
 
 add_executable(${BIN_NAME}
         unidock/main.cpp
+        unidock/main.h
 )
 target_compile_definitions(${BIN_NAME} PRIVATE VERSION_NUMBER="${VERSION_NUMBER}")
 target_link_libraries(${BIN_NAME} PRIVATE yaml-cpp_0.8.0 ${LIB_NAME})

@@ -9,6 +9,8 @@
 #include "common.cuh"
 #include "mymath_warp.cuh"
 #include "geometry/quaternion.h"
+#include "geometry/rotation.h"
+#include "myutils/matrix.h"
 
 namespace cg = cooperative_groups;
 
@@ -39,7 +41,7 @@ __device__ __forceinline__ void duplicate_pose_warp(const cg::thread_block_tile<
             out_pose_new->center[i] = pose_old->center[i];
         }
         else if (i < dof_x){
-            out_pose_new->orientation[i - 3] = pose_old->orientation[i - 3];
+            out_pose_new->rot_vec[i - 3] = pose_old->rot_vec[i - 3];
         }
         else{
             out_pose_new->dihedrals[i - dof_x] = pose_old->dihedrals[i - dof_x];
@@ -69,7 +71,9 @@ __device__ __forceinline__ void cal_grad_warp(const cg::thread_block_tile<TILE_S
                                                const Real* aux_f, const FlexTopo& flex_topo,
                                                const FlexPose* pose, FlexPoseGradient* out_g
 ){
-    Real tmp1[3] = {0}, tmp2[3] = {0}, tmp3[3] = {0}, tmp4[3] = {0}, torque[3] = {0};
+    Real tmp1[3] = {0}, tmp2[3] = {0}, tmp3[3] = {0}, tmp4[3] = {0}, tmp5[3] = {0};
+    Real mat_tmp[9] = {0.};
+    Real mat[9] = {0.};
     int i_at = 0;
 
     // each thread for a torsion. Cal gradient on dihedral
@@ -79,7 +83,7 @@ __device__ __forceinline__ void cal_grad_warp(const cg::thread_block_tile<TILE_S
         int iat_from = flex_topo.axis_atoms[i_tor * 2];
         int iat_to = flex_topo.axis_atoms[i_tor * 2 + 1];
 
-        torque[0] = torque[1] = torque[2] = 0.;
+        tmp5[0] = tmp5[1] = tmp5[2] = 0.;
 
         for (int j = begin; j < end + 1; j++){
             i_at = flex_topo.rotated_atoms[j];
@@ -91,6 +95,7 @@ __device__ __forceinline__ void cal_grad_warp(const cg::thread_block_tile<TILE_S
             tmp1[1] = pose->coords[i_at * 3 + 1] - pose->coords[iat_to * 3 + 1];
             tmp1[2] = pose->coords[i_at * 3 + 2] - pose->coords[iat_to * 3 + 2];
 
+
             // take gradient from aux_f
             tmp2[0] = aux_f[i_at * 3];
             tmp2[1] = aux_f[i_at * 3 + 1];
@@ -98,11 +103,12 @@ __device__ __forceinline__ void cal_grad_warp(const cg::thread_block_tile<TILE_S
 
             // compute the torque on the atom for the torsion
             cross_product(tmp1, tmp2, tmp3);
-
+            // DPrint("iat= %d: arm: %f, %f, %f; f: %f, %f, %f; t: %f, %f, %f\n", i_at,
+            //     tmp1[0], tmp1[1], tmp1[2], tmp2[0], tmp2[1], tmp2[2], tmp3[0], tmp3[1], tmp3[2]);
             // accumulate the torque for the torsion
-            torque[0] += tmp3[0];
-            torque[1] += tmp3[1];
-            torque[2] += tmp3[2];
+            tmp5[0] += tmp3[0];
+            tmp5[1] += tmp3[1];
+            tmp5[2] += tmp3[2];
         }
 
         // take the axis
@@ -111,66 +117,92 @@ __device__ __forceinline__ void cal_grad_warp(const cg::thread_block_tile<TILE_S
         tmp3[2] = pose->coords[iat_to * 3 + 2] - pose->coords[iat_from * 3 + 2];
 
         // projection on axis as the gradient on dihedral
-        out_g->dihedrals_g[i_tor] = dot_product(torque, tmp3) / norm_vec3(tmp3);
+        out_g->dihedrals_g[i_tor] = dot_product(tmp5, tmp3) / cal_norm(tmp3);
+        DPrint("dihedrals_g: %f\n", out_g->dihedrals_g[i_tor]);
+
     }
     tile.sync();
 
     // Derivative on center
-    torque[0] = torque[1] = torque[2] = 0.;
+    tmp5[0] = tmp5[1] = tmp5[2] = 0.;
+
+    // cal inverse of this rotation (namely last orientation_g;
+    Real q[4] = {0.};
+    rotvec_to_quaternion(q, pose->rot_vec);
+    quaternion_conjugate(q);
+
     for (i_at = tile.thread_rank(); i_at < flex_topo.natom; i_at += tile.num_threads()){
         if (flex_topo.vn_types[i_at] == VN_TYPE_H){
             continue;
         }
-        // compute the lever arm vector to center
+        // compute the coord of atom relative to rotation center
         tmp1[0] = pose->coords[i_at * 3] - pose->center[0];
         tmp1[1] = pose->coords[i_at * 3 + 1] - pose->center[1];
         tmp1[2] = pose->coords[i_at * 3 + 2] - pose->center[2];
 
-        // take force grad from aux_f
+
+        // rotate tmp1 to get real rotation coord
+        rotate_vec_by_quaternion(tmp1, q);
+        // DPrint("Last coord %d: %f, %f, %f\n", i_at, tmp1[0], tmp1[1], tmp1[2]);
+
+
+        // take grad over pos of each atom
         tmp2[0] = aux_f[i_at * 3];
         tmp2[1] = aux_f[i_at * 3 + 1];
         tmp2[2] = aux_f[i_at * 3 + 2];
 
-        tmp4[0] += tmp2[0];
+        tmp4[0] += tmp2[0]; // sum the grad on position
         tmp4[1] += tmp2[1];
         tmp4[2] += tmp2[2];
 
-        // compute the torque on the atom for the center
-        cross_product(tmp1, tmp2, tmp3);
-        torque[0] += tmp3[0];
-        torque[1] += tmp3[1];
-        torque[2] += tmp3[2];
-
-        DPrint("Atom %d V: %f, %f, %f F: %f, %f, %f Torque: %f, %f, %f\n",
-            i_at, tmp1[0], tmp1[1], tmp1[2], tmp2[0], tmp2[1], tmp2[2],
-            tmp3[0], tmp3[1], tmp3[2]);
+        // compute (\bar f) \outer (\bar x)
+        outer_product(tmp2, tmp1, mat_tmp);
+        for (int j = 0; j < 9; ++j){
+            mat[j] += mat_tmp[j];
+        }
     }
     tile.sync();
-    // -force
-    tmp1[0] = cg::reduce(tile, tmp4[0], cg::plus<Real>());
-    tmp1[1] = cg::reduce(tile, tmp4[1], cg::plus<Real>());
-    tmp1[2] = cg::reduce(tile, tmp4[2], cg::plus<Real>());
-    // -torque
-    torque[0] = cg::reduce(tile, torque[0], cg::plus<Real>());
-    torque[1] = cg::reduce(tile, torque[1], cg::plus<Real>());
-    torque[2] = cg::reduce(tile, torque[2], cg::plus<Real>());
+    // gradient over position
+    tmp4[0] = cg::reduce(tile, tmp4[0], cg::plus<Real>());
+    tmp4[1] = cg::reduce(tile, tmp4[1], cg::plus<Real>());
+    tmp4[2] = cg::reduce(tile, tmp4[2], cg::plus<Real>());
+    // (\bar f) \outer (\bar x)
+    mat[0] = cg::reduce(tile, mat[0], cg::plus<Real>());
+    mat[1] = cg::reduce(tile, mat[1], cg::plus<Real>());
+    mat[2] = cg::reduce(tile, mat[2], cg::plus<Real>());
+    mat[3] = cg::reduce(tile, mat[3], cg::plus<Real>());
+    mat[4] = cg::reduce(tile, mat[4], cg::plus<Real>());
+    mat[5] = cg::reduce(tile, mat[5], cg::plus<Real>());
+    mat[6] = cg::reduce(tile, mat[6], cg::plus<Real>());
+    mat[7] = cg::reduce(tile, mat[7], cg::plus<Real>());
+    mat[8] = cg::reduce(tile, mat[8], cg::plus<Real>());
     tile.sync();
 
 
     // write gradient of center
-    if (tile.thread_rank() == 0){
-        out_g->center_g[0] = tmp1[0];
-        out_g->center_g[1] = tmp1[1];
-        out_g->center_g[2] = tmp1[2];
-        DPrint("Total force: %f, %f, %f\n", tmp1[0], tmp1[1], tmp1[2]);
+    if ((!FLAG_CONSTRAINT_DOCK) and (tile.thread_rank() == 0)){
+        out_g->center_g[0] = tmp4[0];
+        out_g->center_g[1] = tmp4[1];
+        out_g->center_g[2] = tmp4[2];
+        DPrint("Total force: %f, %f, %f\n", tmp4[0], tmp4[1], tmp4[2]);
+        // DPrint("mat: \n%f, %f, %f\n%f, %f, %f\n%f, %f, %f\n",
+            // mat[0], mat[1], mat[2], mat[3], mat[4], mat[5], mat[6], mat[7], mat[8]);
 
-        // projection on random axis as the gradient on orientation
-        // todo: incorrect but may work
-        out_g->orientation_g[0] = torque[0];
-        out_g->orientation_g[1] = torque[1];
-        out_g->orientation_g[2] = torque[2];
-        out_g->orientation_g[3] = 0;
-        DPrint("Total Torque: %f, %f, %f\n", torque[0], torque[1], torque[2]);
+        // gradient of rotation over vector
+        // DPrint("pose.orientation (rotvec in real): %f, %f, %f\n", pose->rot_vec[0], pose->rot_vec[1], pose->rot_vec[2]);
+        for (int i = 0; i < 3; ++i){
+            Real dR_dv[9] = {0.};
+            cal_grad_of_rot_over_vec(dR_dv, pose->rot_vec, i);
+            // DPrint("dR/dv_%d: \n%f, %f, %f\n%f, %f, %f\n%f, %f, %f\n", i,
+            //     dR_dv[0], dR_dv[1], dR_dv[2], dR_dv[3], dR_dv[4], dR_dv[5], dR_dv[6], dR_dv[7], dR_dv[8]);
+
+            // Mirzaei, H., Beglov, D., Paschalidis, I. C., Vajda, S., Vakili, P., & Kozakov, D. (2012).
+            // Rigid body energy minimization on manifolds for molecular docking. Journal of Chemical
+            // Theory and Computation, 8(11), 4374–4380. https://doi.org/10.1021/ct300272j
+            out_g->orientation_g[i] = frobenius_product(mat, dR_dv);
+        }
+        DPrint("orientation_g: %f, %f, %f\n", out_g->orientation_g[0], out_g->orientation_g[1], out_g->orientation_g[2]);
+
     }
     tile.sync();
 }
@@ -213,7 +245,6 @@ SCOPE_INLINE Real cal_box_penalty_clamp_coord(Real* out_x, Real* out_y, Real* ou
 
     return penalty * PENALTY_SLOPE;
 }
-
 
 
 __device__ __forceinline__ Real cal_e_f_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
@@ -402,21 +433,23 @@ __device__ __forceinline__ void apply_grad_update_dihe_warp(const cg::thread_blo
     int iat_to = -1;
 
     if (tile.thread_rank() == 0){
+        dihe_incre = dihe_incre_raw;
         dihe_incre = normalize_angle(dihe_incre_raw);
-        // DPrint1("i_tor: %d, dihe_incre_raw: %f, normalized dihe_incre: %f\n", i_tor, dihe_incre_raw, dihe_incre);
+        DPrint1("\ni_tor: %d, dihe_incre_raw: %f, dihe_incre: %f\n", i_tor, dihe_incre_raw, dihe_incre);
 
         // apply constraint by Torsion Library
         int i_lo = flex_topo->range_inds[i_tor * 2];
         tmp1[0] = normalize_angle(out_x->dihedrals[i_tor] + dihe_incre);
+
         Real dihe_new = clamp_by_ranges(tmp1[0],
                                         flex_topo->range_list + i_lo, flex_topo->range_inds[i_tor * 2 + 1]);
-        // DPrint("Ranges: %f, %f, %f, %f, %f, %f\n\n",
-        //     flex_topo->range_list[0], flex_topo->range_list[1], flex_topo->range_list[2], flex_topo->range_list[3],
-        //     flex_topo->range_list[4], flex_topo->range_list[5]);
+        DPrint("Ranges: %f, %f, %f, %f, %f, %f\n",
+            flex_topo->range_list[0], flex_topo->range_list[1], flex_topo->range_list[2], flex_topo->range_list[3],
+            flex_topo->range_list[4], flex_topo->range_list[5]);
 
         // update dihedral value
         dihe_incre = dihe_new - out_x->dihedrals[i_tor];
-        // DPrint("dihe_new[%d] after clamping: %f, dihe_now: %f, dihe_incre: %f\n", i_tor, dihe_new, out_x->dihedrals[i_tor], dihe_incre);
+        DPrint("dihe_new[%d] after clamping: %f, dihe_now: %f, dihe_incre: %f\n", i_tor, dihe_new, out_x->dihedrals[i_tor], dihe_incre);
         out_x->dihedrals[i_tor] = dihe_new;
 
         // influenced atoms
@@ -434,7 +467,7 @@ __device__ __forceinline__ void apply_grad_update_dihe_warp(const cg::thread_blo
         axis_unit[1] = coord_to[1] - out_x->coords[iat_from * 3 + 1];
         axis_unit[2] = coord_to[2] - out_x->coords[iat_from * 3 + 2];
 
-        Real l = norm_vec3(axis_unit);
+        Real l = cal_norm(axis_unit);
 
         if (l <= EPSILON_cu){ //todo: not allowed
             // CUDA_ERROR("l <= EPSILON_cu");
@@ -512,6 +545,7 @@ __device__ __forceinline__ void apply_grad_update_pose_warp(const cg::thread_blo
                                                             Real alpha){
     // -------------- torsion increment --------------
     for (int i_tor = 0; i_tor < flex_topo.ntorsion; i_tor++){
+        DPrint1("dihedral_g[%d] = %f\n", i_tor, g->dihedrals_g[i_tor]);
         apply_grad_update_dihe_warp(tile, out_x, &flex_topo, i_tor, g->dihedrals_g[i_tor] * alpha);
     }
     tile.sync();
@@ -528,19 +562,19 @@ __device__ __forceinline__ void apply_grad_update_pose_warp(const cg::thread_blo
 
         if (tile.thread_rank() == 0){
             // then update center
-            out_x->center[0] = clamp_by_range(tmp1[0] + alpha * g->center_g[0], BOX_X_HI, BOX_X_LO);
-            out_x->center[1] = clamp_by_range(tmp1[1] + alpha * g->center_g[1], BOX_Y_HI, BOX_Y_LO);
-            out_x->center[2] = clamp_by_range(tmp1[2] + alpha * g->center_g[2], BOX_Z_HI, BOX_Z_LO);
+            out_x->center[0] = clamp_to_center(tmp1[0] + alpha * g->center_g[0], BOX_X_HI, BOX_X_LO);
+            out_x->center[1] = clamp_to_center(tmp1[1] + alpha * g->center_g[1], BOX_Y_HI, BOX_Y_LO);
+            out_x->center[2] = clamp_to_center(tmp1[2] + alpha * g->center_g[2], BOX_Z_HI, BOX_Z_LO);
 
             // and update orientation
             tmp2[0] = g->orientation_g[0] * alpha;
             tmp2[1] = g->orientation_g[1] * alpha;
             tmp2[2] = g->orientation_g[2] * alpha;
             rotvec_to_quaternion(q, tmp2);
-            DPrint1("\nRotVec: %f, %f, %f, q: %f, %f, %f, %f\n", tmp2[0], tmp2[1], tmp2[2], q[0], q[1], q[2], q[3]);
-            quaternion_increment(out_x->orientation, q);
-            // DPrint1("q is %f, %f, %f, %f\n", q[0])
-
+            DPrint1("RotVec: %f, %f, %f, q: %f, %f, %f, %f\n", tmp2[0], tmp2[1], tmp2[2], q[0], q[1], q[2], q[3]);
+            out_x->rot_vec[0] = tmp2[0]; // record rotvec fixme
+            out_x->rot_vec[1] = tmp2[1];
+            out_x->rot_vec[2] = tmp2[2];
         }
         tile.sync();
         q[0] = tile.shfl(q[0], 0);
@@ -567,87 +601,6 @@ __device__ __forceinline__ void apply_grad_update_pose_warp(const cg::thread_blo
 }
 
 
-__device__ __forceinline__ void randomize_pose_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
-                                                    FlexPose* out_pose_new, FlexPoseGradient* aux_g,
-                                                    const FlexPose* pose_old, const FlexTopo& flex_topo,
-                                                    curandStatePhilox4_32_10_t* state){
-    float4 rf4 = curand_uniform4(state);
-    Real tmp4[4] = {0};
-    Real rotvec[3] = {map_01_to_dot5(rf4.x), map_01_to_dot5(rf4.y), map_01_to_dot5(rf4.z)};
-    uint4 ri4 = curand4(state);
-
-    // copy cartesian coordinates
-    for (int i = tile.thread_rank(); i < flex_topo.natom * 3; i += tile.num_threads()){
-        out_pose_new->coords[i] = pose_old->coords[i];
-    }
-    tile.sync();
-
-    // generate a random pose inside the box
-    if (tile.thread_rank() == 0){
-        // set energy
-        out_pose_new->energy = pose_old->energy;
-
-        // copy center & orientation
-        out_pose_new->center[0] = pose_old->center[0];
-        out_pose_new->center[1] = pose_old->center[1];
-        out_pose_new->center[2] = pose_old->center[2];
-        out_pose_new->orientation[0] = pose_old->orientation[0];
-        out_pose_new->orientation[1] = pose_old->orientation[1];
-        out_pose_new->orientation[2] = pose_old->orientation[2];
-        out_pose_new->orientation[3] = pose_old->orientation[3];
-
-        if (FLAG_CONSTRAINT_DOCK){
-            // center and orientation are fixed
-            aux_g->center_g[0] = 0;
-            aux_g->center_g[1] = 0;
-            aux_g->center_g[2] = 0;
-            aux_g->orientation_g[0] = 0;
-            aux_g->orientation_g[1] = 0;
-            aux_g->orientation_g[2] = 0;
-            aux_g->orientation_g[3] = 0;
-        }
-        else{
-            // random center, set gradient
-            tmp4[0] = get_real_within_by_int(ri4.x, BOX_X_LO, BOX_X_HI, ceil((BOX_X_HI - BOX_X_LO) / BOX_PREC) + 1);
-            tmp4[1] = get_real_within_by_int(ri4.y, BOX_Y_LO, BOX_Y_HI, ceil((BOX_Y_HI - BOX_Y_LO) / BOX_PREC) + 1);
-            tmp4[2] = get_real_within_by_int(ri4.z, BOX_Z_LO, BOX_Z_HI, ceil((BOX_Z_HI - BOX_Z_LO) / BOX_PREC) + 1);
-
-            aux_g->center_g[0] = tmp4[0] - out_pose_new->center[0];
-            aux_g->center_g[1] = tmp4[1] - out_pose_new->center[1];
-            aux_g->center_g[2] = tmp4[2] - out_pose_new->center[2];
-
-            // random orientation, set gradient
-            rotvec_to_axis_angle(tmp4, rotvec); // tmp4 is axis_angle
-            tmp4[0] = get_real_within_by_int(ri4.w, -PI, PI, ceil(2 * PI / TOR_PREC) + 1);
-            aux_g->orientation_g[0] = tmp4[1] * tmp4[0];
-            aux_g->orientation_g[1] = tmp4[2] * tmp4[0];
-            aux_g->orientation_g[2] = tmp4[3] * tmp4[0]; //todo: change to a more efficient sampling
-        }
-
-        // generate random uints for all torsions
-        for (int i = 0; i < flex_topo.ntorsion; i ++){
-            // copy dihedrals
-            tmp4[3] = pose_old->dihedrals[i];
-
-            out_pose_new->dihedrals[i] = tmp4[3];
-            // set gradient
-            ri4.x = curand(state);
-            ri4.w = ri4.x % flex_topo.range_inds[i * 2 + 1]; // save index of range_list
-            ri4.z = flex_topo.range_inds[i * 2] + ri4.w * 2; // save a tmp index
-            ri4.x = curand(state);
-
-            tmp4[1] = flex_topo.range_list[ri4.z + 1] - flex_topo.range_list[ri4.z];
-            ri4.y = ceil(tmp4[1] / TOR_PREC) + 1; // 10 degree as precision
-
-            tmp4[0] = get_real_within_by_int(ri4.x, flex_topo.range_list[ri4.z], flex_topo.range_list[ri4.z + 1], ri4.y);
-            aux_g->dihedrals_g[i] = tmp4[0] - tmp4[3];
-        }
-    }
-    tile.sync();
-
-    apply_grad_update_pose_warp(tile, out_pose_new, aux_g, flex_topo, 1.);
-
-}
 
 
 __device__ __forceinline__ void line_search_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
@@ -665,12 +618,13 @@ __device__ __forceinline__ void line_search_warp(const cg::thread_block_tile<TIL
 
     int trial = 0;
     for (; trial < LINE_SEARCH_STEPS; trial++){
+        atomicAdd(&funcCallCount, 1);  // todo: for debug, show call count
+
         duplicate_pose_warp(tile, out_x_new, x, dim_x, flex_topo.natom); // x_new = x
-        // DPrint1("[[[after dup]]]  ---  dihe: %f, %f\n\n", out_x_new->dihedrals[0], out_x_new->dihedrals[1]);
+        // DPrint1("coord_0: %f, %f, %f\n\n", out_x_new->coords[0], out_x_new->coords[1], out_x_new->coords[2]);
 
         // apply alpha * gradient, get new x
         apply_grad_update_pose_warp(tile, out_x_new, p, flex_topo, alpha); // apply gradient increment
-        // DPrint1("[[[after update]]]  ---  dihe: %f, %f\n\n", out_x_new->dihedrals[0], out_x_new->dihedrals[1]);
 
         e_new = cal_e_grad_warp(tile, out_x_new, out_g_new, flex_topo, fix_mol, flex_param, fix_param, aux_f);
         // DPrint1("\n[LINE SEARCH] coord0_new: %f, %f, %f coord10_new: %f, %f, %f e_new: %f, alpha: %f, p: %f, %f, %f, %f, %f, %f, pg: %f \n",
@@ -679,6 +633,7 @@ __device__ __forceinline__ void line_search_warp(const cg::thread_block_tile<TIL
         //     e_new, alpha,
         //     p->center_g[0], p->center_g[1], p->center_g[2],
         //     p->orientation_g[0], p->orientation_g[1], p->orientation_g[2], pg);
+        DPrint1("Alpha = %f, e_new = %f\n", alpha, e_new);
 
         if (e_new - e0 < LINE_SEARCH_C0 * alpha * pg){
             // DPrint1("\nLine search SUCCEED!\n", 1);
@@ -721,6 +676,7 @@ __forceinline__ __device__ void bfgs_update_hessian_warp(const cg::thread_block_
                                                          FlexPoseGradient* aux_minus_hy, const Real alpha){
     Real yp = 0, yhy = 0;
     yp = g_dot_product_warp(tile, y, p, dim);
+    DPrint1("yp is %f\n", yp);
     if (alpha * yp < EPSILON_cu){
         return;
     }
@@ -766,12 +722,12 @@ SCOPE_INLINE void print_g(const FlexPoseGradient* g, int dim){
         DPrint("%f ", g->center_g[i]);
     }
     DPrint("Orientation: ", 1);
-    for (int i = 3; i < 7; i ++){
-        DPrint("%f ", g->orientation_g[i - 3]);
+    for (int i = 0; i < dof_g - 3; i ++){
+        DPrint("%f ", g->orientation_g[i]);
     }
     DPrint("Dihedrals: ", 1);
-    for (int i = 7; i < dim; i ++){
-        DPrint("%f ", g->dihedrals_g[i - 7]);
+    for (int i = 0; i < dim - dof_g; i ++){
+        DPrint("%f ", g->dihedrals_g[i]);
     }
     DPrint("\n", 1);
 
@@ -823,10 +779,18 @@ __forceinline__ __device__ void bfgs_warp(const cg::thread_block_tile<TILE_SIZE>
         // find the best alpha, and updates x_new & aux_g_new. f1 is the new energy
         line_search_warp(tile, fix_mol, fix_param, flex_param, out_x, aux_g, flex_topo,
                          aux_p, aux_f->f, aux_x_new, aux_g_new, E, dim_g, dim_x, &E1, &alpha);
-        DPrint1("\nAlpha is %f, New Energy is %f\n", alpha, E1);
+        DPrint1("Alpha is %f, New Energy is %f\n", alpha, E1);
 
         // aux_y = aux_g_new
         duplicate_grad_warp(tile, aux_y, aux_g_new, dim_g);
+        if(tile.thread_rank() == 0){
+            DPrint1("p is \n", 1);
+            print_g(aux_p, dim_g);
+            DPrint1("g_new is \n", 1);
+            print_g(aux_y, dim_g);
+            DPrint1("g_old is \n", 1);
+            print_g(aux_g, dim_g);
+        }
 
         // aux_y = aux_y - aux_g, namely aux_y = aux_g_new - aux_g
         for (int i = tile.thread_rank(); i < dim_g; i += tile.num_threads()){
@@ -834,7 +798,10 @@ __forceinline__ __device__ void bfgs_warp(const cg::thread_block_tile<TILE_SIZE>
             grad_index_write(aux_y, i, tmp);
         }
         tile.sync();
-
+        if(tile.thread_rank() == 0){
+            DPrint1("y is \n", 1);
+            print_g(aux_y, dim_g);
+        }
         // Update energy as the new one
         E = E1;
 
@@ -857,12 +824,27 @@ __forceinline__ __device__ void bfgs_warp(const cg::thread_block_tile<TILE_SIZE>
                 // yp = aux_y * -Hg
                 Real yp = g_dot_product_warp(tile, aux_y, aux_p, dim_g);
                 set_tri_mat_diagonal_warp(tile, aux_h->matrix, dim_g, alpha * yp / yy); // heuristic value
+
+                DExec(
+                    printf("yy is %f, yp is %f\n", yy, yp);
+                    printf("modified Hessian of Step 1: \n");
+                    print_uptri_mat(aux_h->matrix, dim_g);
+                )
             }
+
         }
         tile.sync();
 
+
+
         // aux_minus_hy serves a container rather than a given parameter
         bfgs_update_hessian_warp(tile, aux_h->matrix, dim_g, aux_p, aux_y, aux_minus_hy, alpha);
+
+
+        DExec(
+            printf("Updated Hessian: \n");
+            print_uptri_mat(aux_h->matrix, dim_g);
+        )
     }
 
     // If this optimization fails (a higher energy is found), resume to the original state
