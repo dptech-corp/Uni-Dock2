@@ -1,3 +1,11 @@
+//
+// Created by Congcong Liu on 25-6-10.
+//
+
+#ifndef MAIN_H
+#define MAIN_H
+
+const char* STR_CONFIG_TEMPLATE = R"(
 # For each item with type tag (!!), the value is REQUIRED
 
 Advanced:
@@ -11,7 +19,7 @@ Advanced:
   rmsd_limit: !!float 1.0   # minimum RMSD between output poses
   num_pose: !!int 10        # number of the finally generated poses to output
   energy_range: !!float 10  # maximum energy difference between output poses and the best pose
-  tor_lib: !!bool false     # true to use torsion library
+  tor_lib: !!bool false     # true to use torsion library (Not recommended)
   tor_prec: !!float 0.3     # sampling precision of angle.
   box_prec: !!float 2.0     # sampling precision of position
 
@@ -47,5 +55,7 @@ Outputs:
 Inputs:
   json: !!str ./5S8I.json   # Input json file containing receptor & ligands info.
 
+)";
 
 
+#endif //MAIN_H

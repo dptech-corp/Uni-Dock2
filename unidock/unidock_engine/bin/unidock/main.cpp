@@ -1,6 +1,7 @@
 #include <iostream>
 #include <filesystem>
 #include <string>
+#include <fstream>
 #include <vector> // ligand paths
 #include <cuda_runtime.h>
 #include <yaml-cpp/yaml.h>
@@ -10,10 +11,23 @@
 #include "model/model.h"
 #include "format/json.h"
 #include "screening/screening.h"
+#include "main.h"
 
 
+void print_help(){
+    const char* STR_HELP = R"(
+Usage: ud2 [options] [config_path]
 
-void printSign() {
+Options:
+  --version             Show version information
+  --help                Show this help message
+  --dump_config [path]  Dump default config to file (default: default.yaml)
+  --log <path>          Specify log file path, only take effects when [config_path] is given
+)";
+    std::cout << STR_HELP;
+}
+
+void print_sign() {
     // ANSI Shadow
         std::cout << R"(
     ██╗ccc██╗██████╗c██████╗c
@@ -25,6 +39,11 @@ void printSign() {
     )" << std::endl;
 
 }
+
+void print_version(){
+    std::cout << "UD2 C++ Engine Version: " << VERSION_NUMBER << "\n";
+}
+
 
 template<typename T>
 T get_config_with_err(const YAML::Node& config, const std::string& section, const std::string& key,
@@ -41,6 +60,17 @@ T get_config_with_err(const YAML::Node& config, const std::string& section, cons
     }
 }
 
+void dump_config_template(const std::string& p){
+    std::ofstream f(p);
+    if (!f){
+        std::cout << "Failed to create config template file: " << p.c_str() << "\n";
+        exit(1);
+    }
+
+    f << STR_CONFIG_TEMPLATE;
+}
+
+
 
 int main(int argc, char* argv[])
 {
@@ -55,25 +85,46 @@ int main(int argc, char* argv[])
     // parse arguments
     for (int i = 1; i < argc; ++i){
         std::string arg = argv[i];
+        if (arg == "--version"){
+            print_version();
+            return 0;
+        }
+        if (arg == "--help"){
+            print_help();
+            return 0;
+        }
+        if (arg == "--dump_config"){
+            std::string fp_dump = "default.yaml";
+            if ((i + 1 < argc) && (argv[i + 1][0] != '-')){
+                fp_dump = argv[++i];
+            }
+            dump_config_template(fp_dump);
+            return 0;
+        }
+
         if (arg == "--log"){
             if (argc > i + 1){
                 fp_log = argv[i + 1];
                 i += 1; // log parameter done
             } else{
-                printf("--log requires a log path");
-                exit(1);
+                print_help();
+                printf("--log requires a log path\n");
+                return 1;
             }
         } else{
             if (fp_config.empty()){
                 fp_config = arg;
                 i ++;
             } else{
-                printf("After config path is parsed as %s, unexpected argument: %s", fp_config.c_str(), arg.c_str());
-                exit(1);
+                print_help();
+                printf("After config path is parsed as %s, unexpected argument: %s\n", fp_config.c_str(), arg.c_str());
+                return 1;
             }
         }
     }
+
     if (fp_config.empty()){
+        print_help();
         printf("Missing argument: config file path\n");
         exit(1);
     }
@@ -81,8 +132,8 @@ int main(int argc, char* argv[])
     init_logger(fp_log, log_level);
     spdlog::info("Using config file: {}", fp_config);
 
-    std::cout << "UD2 Version " << VERSION_NUMBER << "\n";
-    printSign();
+    print_sign();
+    print_version();
 
     spdlog::info("==================== UD2 Starts! ======================\n");
     auto start = std::chrono::high_resolution_clock::now();

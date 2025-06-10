@@ -10,7 +10,7 @@ option(BUILD_DOC "build documents" FALSE)
 option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for the whole project." FALSE)
 
 # ------------------------------ Options for Developers
-set(VERSION_NUMBER 0.3_fibo)
+set(VERSION_NUMBER 0.4)
 
 # For Building Stage
 link_directories(${CMAKE_SOURCE_DIR}/lib)
