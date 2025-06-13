@@ -2,6 +2,14 @@ from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
 import yaml
 
+@dataclass
+class RequiredConfig:
+    receptor: str = None
+    ligand: str = None
+    ligand_batch: str = None
+    center: List[float] = field(
+        default_factory=lambda: [0.0, 0.0, 0.0]
+    )
 
 @dataclass
 class AdvancedConfig:
@@ -16,11 +24,9 @@ class AdvancedConfig:
     seed: int = 1234567
     use_tor_lib: bool = False
 
-
 @dataclass
 class HardwareConfig:
     gpu_device_id: int = 0
-
 
 @dataclass
 class SettingsConfig:
@@ -29,7 +35,6 @@ class SettingsConfig:
     size_z: float = 30.0
     task: str = "screen"
     search_mode: str = "balance"
-
 
 @dataclass
 class PreprocessingConfig:
@@ -42,9 +47,9 @@ class PreprocessingConfig:
     remove_temp_files: bool = True
     working_dir_name: str = "./"
 
-
 @dataclass
 class UnidockConfig:
+    required: RequiredConfig = field(default_factory=RequiredConfig)
     advanced: AdvancedConfig = field(default_factory=AdvancedConfig)
     hardware: HardwareConfig = field(default_factory=HardwareConfig)
     settings: SettingsConfig = field(default_factory=SettingsConfig)
@@ -54,6 +59,9 @@ class UnidockConfig:
     def from_dict(cls, data: Dict[str, Any]) -> "UnidockConfig":
         """Create UnidockConfig from a dictionary."""
         config = cls()
+
+        if "Required" in data:
+            config.required = RequiredConfig(**data["Required"])
 
         if "Advanced" in data:
             config.advanced = AdvancedConfig(**data["Advanced"])
@@ -71,6 +79,10 @@ class UnidockConfig:
 
     def to_protocol_kwargs(self) -> Dict[str, Any]:
         kwargs_dict = {
+            "receptor": self.required.receptor,
+            "ligand": self.required.ligand,
+            "ligand_batch": self.required.ligand_batch,
+            "center": self.required.center,
             "template_docking": self.preprocessing.template_docking,
             "reference_sdf_file_name": self.preprocessing.reference_sdf_file_name,
             "core_atom_mapping_dict_list": \
@@ -98,7 +110,6 @@ class UnidockConfig:
             "use_tor_lib": self.advanced.use_tor_lib,
         }
         return kwargs_dict
-
 
 def read_unidock_params_from_yaml(yaml_file: str) -> UnidockConfig:
     """
