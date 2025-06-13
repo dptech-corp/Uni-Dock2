@@ -2,6 +2,8 @@ name: Conda Build
 
 on:
   push:
+    branches:
+      - build/fix_conda_setup
     tags:
       - "*"
   workflow_dispatch:
@@ -35,13 +37,11 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python }}
-          environment-name: conda-build
           auto-activate-base: false
           activate-environment: conda-build
+          use-mamba: true
           mamba-version: "*"
           channels: conda-forge
-          mamba: true
-          auto-update-conda: true
       
       - name: Install dependencies
         shell: bash -l {0}
@@ -70,8 +70,8 @@ jobs:
             --output-folder conda-build \
             conda-recipe
 
-      - name: Upload conda package
-        shell: bash -l {0}
-        run: |
-          UNIDOCK_PACKAGE=$(find conda-build/ -type f -name 'unidock2-*.tar.bz2')
-          quetz-client post_file_to_channel $CONDA_CHANNEL ${UNIDOCK_PACKAGE}
+      # - name: Upload conda package
+      #   shell: bash -l {0}
+      #   run: |
+      #     UNIDOCK_PACKAGE=$(find conda-build/ -type f -name 'unidock2-*.tar.bz2')
+      #     quetz-client post_file_to_channel $CONDA_CHANNEL ${UNIDOCK_PACKAGE}
