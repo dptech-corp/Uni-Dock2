@@ -46,6 +46,7 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
+          mamba update -y conda mamba -c conda-forge
           mamba install -y boa quetz-client -c conda-forge
 
       - name: Print version and build
