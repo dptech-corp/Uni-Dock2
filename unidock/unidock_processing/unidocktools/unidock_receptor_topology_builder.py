@@ -12,7 +12,6 @@ from unidock_processing.unidocktools.receptor_topology_preparation import (
 from unidock_processing.unidocktools.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
 from unidock_processing.unidocktools.unidock_ff_atom_types import FF_ATOM_TYPE_DICT
 
-
 class UnidockReceptorTopologyBuilder(object):
     def __init__(
         self,
@@ -149,6 +148,7 @@ class UnidockReceptorTopologyBuilder(object):
                 "Only PDB and DMS are supported for receptor file extensions!!"
             )
 
+    def analyze_receptor_topology(self):
         receptor_msys_system = msys.LoadDMS(self.receptor_parameterized_dms_file_name)
         (
             self.protein_property_mol,

@@ -11,7 +11,9 @@ class CLICommand:
     Preprocessing:
         covalent_residue_atom_info_list: null
         preserve_receptor_hydrogen: false
-        working_dir_name: .
+        temp_dir_name: str = /tmp
+        output_receptor_dms_file_name = receptor_parameterized.dms
+
     """
 
     def add_arguments(parser):

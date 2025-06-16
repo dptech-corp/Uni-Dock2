@@ -33,8 +33,8 @@ class SettingsConfig:
     size_x: float = 30.0
     size_y: float = 30.0
     size_z: float = 30.0
-    task: str = "screen"
-    search_mode: str = "balance"
+    task: str = 'screen'
+    search_mode: str = 'balance'
 
 @dataclass
 class PreprocessingConfig:
@@ -44,8 +44,9 @@ class PreprocessingConfig:
     covalent_ligand: bool = False
     covalent_residue_atom_info_list: Optional[List[Any]] = None
     preserve_receptor_hydrogen: bool = False
-    remove_temp_files: bool = True
-    working_dir_name: str = "./"
+    temp_dir_name: str = '/tmp'
+    output_receptor_dms_file_name: str = 'receptor_parameterized.dms'
+    output_docking_pose_sdf_file_name: str = 'unidock2_pose.sdf'
 
 @dataclass
 class UnidockConfig:
@@ -56,58 +57,58 @@ class UnidockConfig:
     preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "UnidockConfig":
+    def from_dict(cls, data: Dict[str, Any]) -> 'UnidockConfig':
         """Create UnidockConfig from a dictionary."""
         config = cls()
 
-        if "Required" in data:
-            config.required = RequiredConfig(**data["Required"])
+        if 'Required' in data:
+            config.required = RequiredConfig(**data['Required'])
 
-        if "Advanced" in data:
-            config.advanced = AdvancedConfig(**data["Advanced"])
+        if 'Advanced' in data:
+            config.advanced = AdvancedConfig(**data['Advanced'])
 
-        if "Hardware" in data:
-            config.hardware = HardwareConfig(**data["Hardware"])
+        if 'Hardware' in data:
+            config.hardware = HardwareConfig(**data['Hardware'])
 
-        if "Settings" in data:
-            config.settings = SettingsConfig(**data["Settings"])
+        if 'Settings' in data:
+            config.settings = SettingsConfig(**data['Settings'])
 
-        if "Preprocessing" in data:
-            config.preprocessing = PreprocessingConfig(**data["Preprocessing"])
+        if 'Preprocessing' in data:
+            config.preprocessing = PreprocessingConfig(**data['Preprocessing'])
 
         return config
 
     def to_protocol_kwargs(self) -> Dict[str, Any]:
         kwargs_dict = {
-            "receptor": self.required.receptor,
-            "ligand": self.required.ligand,
-            "ligand_batch": self.required.ligand_batch,
-            "center": self.required.center,
-            "template_docking": self.preprocessing.template_docking,
-            "reference_sdf_file_name": self.preprocessing.reference_sdf_file_name,
-            "core_atom_mapping_dict_list": \
+            'receptor': self.required.receptor,
+            'ligand': self.required.ligand,
+            'ligand_batch': self.required.ligand_batch,
+            'center': self.required.center,
+            'template_docking': self.preprocessing.template_docking,
+            'reference_sdf_file_name': self.preprocessing.reference_sdf_file_name,
+            'core_atom_mapping_dict_list': \
                 self.preprocessing.core_atom_mapping_dict_list,
-            "covalent_ligand": self.preprocessing.covalent_ligand,
-            "covalent_residue_atom_info_list": \
+            'covalent_ligand': self.preprocessing.covalent_ligand,
+            'covalent_residue_atom_info_list': \
                 self.preprocessing.covalent_residue_atom_info_list,
-            "preserve_receptor_hydrogen": self.preprocessing.preserve_receptor_hydrogen,
-            "remove_temp_files": self.preprocessing.remove_temp_files,
-            "working_dir_name": self.preprocessing.working_dir_name,
-            "gpu_device_id": self.hardware.gpu_device_id,
-            "box_size": (self.settings.size_x, self.settings.size_y,
+            'preserve_receptor_hydrogen': self.preprocessing.preserve_receptor_hydrogen,
+            'remove_temp_files': self.preprocessing.remove_temp_files,
+            'working_dir_name': self.preprocessing.working_dir_name,
+            'gpu_device_id': self.hardware.gpu_device_id,
+            'box_size': (self.settings.size_x, self.settings.size_y,
                          self.settings.size_z),
-            "task": self.settings.task,
-            "search_mode": self.settings.search_mode,
-            "exhaustiveness": self.advanced.exhaustiveness,
-            "randomize": self.advanced.randomize,
-            "mc_steps": self.advanced.mc_steps,
-            "opt_steps": self.advanced.opt_steps,
-            "refine_steps": self.advanced.refine_steps,
-            "num_pose": self.advanced.num_pose,
-            "rmsd_limit": self.advanced.rmsd_limit,
-            "energy_range": self.advanced.energy_range,
-            "seed": self.advanced.seed,
-            "use_tor_lib": self.advanced.use_tor_lib,
+            'task': self.settings.task,
+            'search_mode': self.settings.search_mode,
+            'exhaustiveness': self.advanced.exhaustiveness,
+            'randomize': self.advanced.randomize,
+            'mc_steps': self.advanced.mc_steps,
+            'opt_steps': self.advanced.opt_steps,
+            'refine_steps': self.advanced.refine_steps,
+            'num_pose': self.advanced.num_pose,
+            'rmsd_limit': self.advanced.rmsd_limit,
+            'energy_range': self.advanced.energy_range,
+            'seed': self.advanced.seed,
+            'use_tor_lib': self.advanced.use_tor_lib,
         }
         return kwargs_dict
 

@@ -37,8 +37,8 @@ class CLICommand:
         covalent_ligand: false
         covalent_residue_atom_info_list: null
         preserve_receptor_hydrogen: false
-        remove_temp_files: true
-        working_dir_name: .
+        temp_dir_name: /tmp
+        output_docking_pose_sdf_file_name: unidock2_pose.sdf
 
     """
 

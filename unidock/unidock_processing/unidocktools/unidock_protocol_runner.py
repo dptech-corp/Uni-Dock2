@@ -16,7 +16,6 @@ from unidock_processing.unidocktools.unidock_ligand_pose_writer import (
 )
 from unidock_processing.ligand_topology import utils
 
-
 class UnidockProtocolRunner(object):
     def __init__(
         self,
@@ -117,6 +116,7 @@ class UnidockProtocolRunner(object):
         )
 
         unidock_receptor_topology_builder.generate_receptor_topology()
+        unidock_receptor_topology_builder.analyze_receptor_topology()
         unidock_receptor_topology_builder.get_summary_receptor_info_dict()
 
         ## prepare ligands input
