@@ -1,3 +1,8 @@
+Required:
+  receptor: 1G9V_protein_water_cleaned.pdb
+  ligand: ligand_prepared.sdf
+  ligand_batch: null
+  center: [5.122, 18.327, 37.332]
 Advanced:
   exhaustiveness: 512
   randomize: true
@@ -12,9 +17,7 @@ Advanced:
 Hardware:
   gpu_device_id: 0
 Settings:
-  size_x: 30.0
-  size_y: 30.0
-  size_z: 30.0
+  box_size: [30.0, 30.0, 30.0]
   task: screen
   search_mode: balance
 Preprocessing:
@@ -24,5 +27,5 @@ Preprocessing:
   covalent_ligand: false
   covalent_residue_atom_info_list: null
   preserve_receptor_hydrogen: false
-  remove_temp_files: true
-  working_dir_name: .
+  temp_dir_name: /tmp
+  output_docking_pose_sdf_file_name: unidock2_pose.sdf

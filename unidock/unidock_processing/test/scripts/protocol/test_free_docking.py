@@ -40,6 +40,7 @@ def test_free_docking(
 ):
     box_size = (30.0, 30.0, 30.0)
     working_dir_name = os.path.abspath(f"./tmp-{uuid.uuid4()}")
+    docking_pose_sdf_file_name = os.path.join(working_dir_name, 'unidock2_pose.sdf')
     os.mkdir(working_dir_name)
 
     unidock_protocol_runner = UnidockProtocolRunner(
@@ -47,12 +48,14 @@ def test_free_docking(
         [ligand],
         target_center=pocket_center,
         box_size=box_size,
+        working_dir_name=working_dir_name,
+        docking_pose_sdf_file_name=docking_pose_sdf_file_name
     )
 
     unidock_protocol_runner.run_unidock_protocol()
 
-    assert os.path.exists(unidock_protocol_runner.unidock2_pose_sdf_file_name)
-    assert os.path.getsize(unidock_protocol_runner.unidock2_pose_sdf_file_name) > 0
+    assert os.path.exists(unidock_protocol_runner.docking_pose_sdf_file_name)
+    assert os.path.getsize(unidock_protocol_runner.docking_pose_sdf_file_name) > 0
 
     shutil.rmtree(working_dir_name, ignore_errors=True)
 
@@ -69,6 +72,7 @@ def test_free_docking(
         )
     ]
 )
+
 def test_free_docking_by_yaml(
     receptor,
     ligand,
@@ -79,9 +83,11 @@ def test_free_docking_by_yaml(
         unidock2_option_dict = yaml.safe_load(template_configuration_file)
 
     working_dir_name = os.path.abspath(f"./tmp-{uuid.uuid4()}")
+    docking_pose_sdf_file_name = os.path.join(working_dir_name, 'unidock2_pose.sdf')
     os.mkdir(working_dir_name)
 
-    unidock2_option_dict["Preprocessing"]["working_dir_name"] = working_dir_name
+    unidock2_option_dict["Preprocessing"]["temp_dir_name"] = working_dir_name
+    unidock2_option_dict["Preprocessing"]["output_docking_pose_sdf_file_name"] = docking_pose_sdf_file_name
 
     test_configuration_file_name = os.path.join(
         working_dir_name, "unidock_configurations.yaml"
@@ -99,7 +105,7 @@ def test_free_docking_by_yaml(
 
     unidock_protocol_runner.run_unidock_protocol()
 
-    assert os.path.exists(unidock_protocol_runner.unidock2_pose_sdf_file_name)
-    assert os.path.getsize(unidock_protocol_runner.unidock2_pose_sdf_file_name) > 0
+    assert os.path.exists(unidock_protocol_runner.docking_pose_sdf_file_name)
+    assert os.path.getsize(unidock_protocol_runner.docking_pose_sdf_file_name) > 0
 
     shutil.rmtree(working_dir_name, ignore_errors=True)

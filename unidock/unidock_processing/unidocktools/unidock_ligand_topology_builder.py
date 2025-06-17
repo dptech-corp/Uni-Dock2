@@ -319,7 +319,6 @@ def batch_topology_builder_process(
     template_docking,
     reference_sdf_file_name,
     core_atom_mapping_dict_list,
-    remove_temp_files,
     working_dir_name,
 ):
     torsion_library_pkl_file_name = os.path.join(
@@ -371,12 +370,12 @@ def batch_topology_builder_process(
         ligand_info_dict["fragment_atom_idx"] = fragment_atom_idx_nested_list
         ligand_info_dict_list[ligand_idx] = ligand_info_dict
 
-        if remove_temp_files:
-            temp_file_name = os.path.join(working_dir_name, "*")
-            os.system(f"rm -rf {temp_file_name}")
+#        if remove_temp_files:
+#            temp_file_name = os.path.join(working_dir_name, "*")
+#            os.system(f"rm -rf {temp_file_name}")
 
-    if remove_temp_files:
-        os.system(f"rm -rf {working_dir_name}")
+#    if remove_temp_files:
+#        os.system(f"rm -rf {working_dir_name}")
 
     return ligand_info_dict_list
 
@@ -389,7 +388,6 @@ class UnidockLigandTopologyBuilder(object):
         template_docking=False,
         reference_sdf_file_name=None,
         core_atom_mapping_dict_list=None,
-        remove_temp_files=True,
         working_dir_name=".",
     ):
         self.ligand_sdf_file_name_list = ligand_sdf_file_name_list
@@ -450,7 +448,6 @@ class UnidockLigandTopologyBuilder(object):
         )
 
         self.n_cpu = os.cpu_count()
-        self.remove_temp_files = remove_temp_files
 
     def generate_batch_ligand_topology(self):
         Chem.SetDefaultPickleProperties(Chem.PropertyPickleOptions.AllProps)
@@ -509,7 +506,6 @@ class UnidockLigandTopologyBuilder(object):
                         self.template_docking,
                         self.reference_sdf_file_name,
                         batch_core_atom_mapping_dict_list,
-                        self.remove_temp_files,
                         working_dir_name,
                     ),
                 )

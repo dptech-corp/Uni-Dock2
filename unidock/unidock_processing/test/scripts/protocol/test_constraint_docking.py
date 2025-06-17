@@ -71,6 +71,7 @@ def test_constraint_docking(
 ):
     box_size = (30.0, 30.0, 30.0)
     working_dir_name = os.path.abspath(f"./tmp-{uuid.uuid4()}")
+    docking_pose_sdf_file_name = os.path.join(working_dir_name, 'unidock2_pose.sdf')
     os.mkdir(working_dir_name)
 
     unidock_protocol_runner = UnidockProtocolRunner(
@@ -82,12 +83,13 @@ def test_constraint_docking(
         reference_sdf_file_name=reference,
         preserve_receptor_hydrogen=True,
         working_dir_name=working_dir_name,
-        core_atom_mapping_dict_list=core_atom_mapping,
+        docking_pose_sdf_file_name=docking_pose_sdf_file_name,
+        core_atom_mapping_dict_list=core_atom_mapping
     )
 
     unidock_protocol_runner.run_unidock_protocol()
 
-    assert os.path.exists(unidock_protocol_runner.unidock2_pose_sdf_file_name)
-    assert os.path.getsize(unidock_protocol_runner.unidock2_pose_sdf_file_name) > 0
+    assert os.path.exists(unidock_protocol_runner.docking_pose_sdf_file_name)
+    assert os.path.getsize(unidock_protocol_runner.docking_pose_sdf_file_name) > 0
 
     shutil.rmtree(working_dir_name, ignore_errors=True)

@@ -24,10 +24,8 @@ class CLICommand:
         use_tor_lib: false
     Hardware:
         gpu_device_id: 0
-        Settings:
-        size_x: 30.0
-        size_y: 30.0
-        size_z: 30.0
+    Settings:
+        size: [30.0, 30.0, 30.0]
         task: screen
         search_mode: balance
     Preprocessing:
@@ -83,7 +81,8 @@ class CLICommand:
 
     def run(args):
         import os
-        from unidock_processing.io import read_unidock_params_from_yaml
+        from unidock_processing.io.yaml import read_unidock_params_from_yaml
+        from unidock_processing.io.get_temp_dir_name import get_temp_dir_name
         from unidock_processing.unidocktools.unidock_protocol_runner import (
             UnidockProtocolRunner,
         )
@@ -158,16 +157,34 @@ class CLICommand:
 
         ## Parse docking center input
         kwargs_center = kwargs_dict.pop('center', None)
-        if args.center != [0.0, 0.0, 0.0]:
+        if args.center != (0.0, 0.0, 0.0):
             docking_center = args.center
         else:
             docking_center = kwargs_center
 
+        ## Prepare temp dir
+        root_temp_dir_name = os.path.abspath(kwargs_dict.pop('temp_dir_name', None))
+        temp_dir_name = os.path.join(
+            root_temp_dir_name, get_temp_dir_name('docking')
+        )
+        os.makedirs(temp_dir_name, exist_ok=False)
+
+        ## Specify docking pose SDF file name
+        docking_pose_sdf_file_name = os.path.abspath(kwargs_dict.pop('output_docking_pose_sdf_file_name', None))
+        _ = kwargs_dict.pop('output_receptor_dms_file_name', None)
+
+        ## Run docking protocol
         docking_runner = UnidockProtocolRunner(
             receptor_file_name=receptor_file_name,
             ligand_sdf_file_name_list=total_ligand_sdf_file_name_list,
             target_center=tuple(docking_center),
+            working_dir_name=temp_dir_name,
+            docking_pose_sdf_file_name=docking_pose_sdf_file_name,
             **kwargs_dict,
         )
 
         docking_runner.run_unidock_protocol()
+
+        ## Remove temp files
+        if root_temp_dir_name == '/tmp':
+            os.system(f'rm -rf {temp_dir_name}')

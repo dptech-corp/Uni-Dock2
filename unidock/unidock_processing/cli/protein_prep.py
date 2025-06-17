@@ -33,17 +33,20 @@ class CLICommand:
 
     def run(args):
         import os
-        from unidock_processing.io import read_unidock_params_from_yaml
+        from unidock_processing.io.yaml import read_unidock_params_from_yaml
+        from unidock_processing.io.get_temp_dir_name import get_temp_dir_name
         from unidock_processing.unidocktools.unidock_receptor_topology_builder import (
         UnidockReceptorTopologyBuilder,
         )
 
+        ## Read all arguments from user unput YAML first
         kwargs_dict = {}
         if args.configurations:
             extra_params = read_unidock_params_from_yaml(args.configurations)
             kwargs_dict = extra_params.to_protocol_kwargs()
         print(kwargs_dict)
 
+        ## Parse receptor input
         kwargs_receptor_file_name = kwargs_dict.pop('receptor', None)
         if kwargs_receptor_file_name is not None:
             kwargs_receptor_file_name = os.path.abspath(kwargs_receptor_file_name)
@@ -56,11 +59,27 @@ class CLICommand:
         if receptor_file_name is None:
             raise ValueError('Receptor file name not specified !')
 
+        ## Prepare temp dir
+        root_temp_dir_name = os.path.abspath(kwargs_dict.pop('temp_dir_name', None))
+        temp_dir_name = os.path.join(
+            root_temp_dir_name, get_temp_dir_name('docking')
+        )
+        os.makedirs(temp_dir_name, exist_ok=False)
+
+        ## Run receptor preparation
         unidock_receptor_topology_builder = UnidockReceptorTopologyBuilder(
             receptor_file_name,
             prepared_hydrogen=kwargs_dict['preserve_receptor_hydrogen'],
             covalent_residue_atom_info_list=kwargs_dict['covalent_residue_atom_info_list'],
-            working_dir_name=kwargs_dict['working_dir_name'],
+            working_dir_name=temp_dir_name,
         )
 
         unidock_receptor_topology_builder.generate_receptor_topology()
+
+        receptor_dms_file_name = os.path.abspath(kwargs_dict['output_receptor_dms_file_name'])
+        os.system(f'cp {unidock_receptor_topology_builder.receptor_parameterized_dms_file_name} {receptor_dms_file_name}')
+
+        ## Remove temp files
+        if root_temp_dir_name == '/tmp':
+            os.system(f'rm -rf {temp_dir_name}')
+
