@@ -25,6 +25,13 @@ class CLICommand:
         )
 
         parser.add_argument(
+            '-o',
+            '--output_receptor_dms_file_name',
+            default='receptor_parameterized.dms',
+            help='Output receptor DMS file name',
+        )
+
+        parser.add_argument(
             '-cf',
             '--configurations',
             default=None,
@@ -66,6 +73,15 @@ class CLICommand:
         )
         os.makedirs(temp_dir_name, exist_ok=False)
 
+        ## Specify receptor DMS file name
+        kwargs_receptor_dms_file_name = kwargs_dict.pop('output_receptor_dms_file_name', None)
+        if args.output_receptor_dms_file_name != 'receptor_parameterized.dms':
+            receptor_dms_file_name = args.output_receptor_dms_file_name
+        else:
+            receptor_dms_file_name = kwargs_receptor_dms_file_name
+
+        receptor_dms_file_name = os.path.abspath(receptor_dms_file_name)
+
         ## Run receptor preparation
         unidock_receptor_topology_builder = UnidockReceptorTopologyBuilder(
             receptor_file_name,
@@ -76,10 +92,8 @@ class CLICommand:
 
         unidock_receptor_topology_builder.generate_receptor_topology()
 
-        receptor_dms_file_name = os.path.abspath(kwargs_dict['output_receptor_dms_file_name'])
         os.system(f'cp {unidock_receptor_topology_builder.receptor_parameterized_dms_file_name} {receptor_dms_file_name}')
 
         ## Remove temp files
         if root_temp_dir_name == '/tmp':
             os.system(f'rm -rf {temp_dir_name}')
-

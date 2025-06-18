@@ -76,10 +76,7 @@ A proper docking inputs should at least contains one receptor file, one or more 
 * gpu_device_id: GPU device ID. (default: 0)
 
 ** Docking Settings options:
-* size_x: Docking box size in the X dimension in Angstrom. (default: 30.0)
-* size_y: Docking box size in the Y dimension in Angstrom. (default: 30.0)
-* size_z: Docking box size in the Z dimension in Angstrom. (default: 30.0)
-
+* box_size: Docking box size in the X, Y and Z dimension respectively in Angstrom (default: [30.0, 30.0, 30.0]).
 * task: screen | score | mc (default: screen)
 *** screen: The most common mode, perform randomize (if true) + MC (mc_steps) + optimization (opt_steps) + cluster (if true) + refinement (refine_steps)
 *** score: Only provide scores for input ligands, no searching or optimization
@@ -94,8 +91,12 @@ A proper docking inputs should at least contains one receptor file, one or more 
 * covalent_ligand: Specified to true to perform covalent docking mode. (default: false)
 * covalent_residue_atom_info_list: Covalent warhead information for covalent receptor residues, please see example case for more detail. (default: null)
 * preserve_receptor_hydrogen: Preserve hydrogen atoms in receptor preparation protocol. (default: false)
-* remove_temp_files: Remove intermediate files after docking protocol. (default: true)
-* working_dir_name: Docking working directory. (default: .)
+* temp_dir_name: Docking temporary files working directory. (default: /tmp)
+                 If this is not specified, the default intermidiate files would be saved in /tmp and removed after finishing docking protocol.
+
+* output_docking_pose_sdf_file_name: Output docking ligand pose SDF file name for `docking` command mode. (default: unidock2_pose.sdf)
+* output_receptor_dms_file_name: Output receptor DMS file name for `protein_prep` command mode. (default: receptor_parameterized.dms)
+
 
 ### Example case:
 The default configuration YAML file is at `unidock/unidock_configurations.yaml`.

@@ -73,6 +73,13 @@ class CLICommand:
         )
 
         parser.add_argument(
+            '-o',
+            '--output_docking_pose_sdf_file_name',
+            default='unidock2_pose.sdf',
+            help='Output docking pose SDF file name',
+        )
+
+        parser.add_argument(
             '-cf',
             '--configurations',
             default=None,
@@ -170,7 +177,13 @@ class CLICommand:
         os.makedirs(temp_dir_name, exist_ok=False)
 
         ## Specify docking pose SDF file name
-        docking_pose_sdf_file_name = os.path.abspath(kwargs_dict.pop('output_docking_pose_sdf_file_name', None))
+        kwargs_docking_pose_sdf_file_name = kwargs_dict.pop('output_docking_pose_sdf_file_name', None)
+        if args.output_docking_pose_sdf_file_name != 'unidock2_pose.sdf':
+            docking_pose_sdf_file_name = args.output_docking_pose_sdf_file_name
+        else:
+            docking_pose_sdf_file_name = kwargs_docking_pose_sdf_file_name
+
+        docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
         _ = kwargs_dict.pop('output_receptor_dms_file_name', None)
 
         ## Run docking protocol
