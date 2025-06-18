@@ -46,7 +46,7 @@ class CLICommand:
         UnidockReceptorTopologyBuilder,
         )
 
-        ## Read all arguments from user unput YAML first
+        ## Read all arguments from user input YAML first
         kwargs_dict = {}
         if args.configurations:
             extra_params = read_unidock_params_from_yaml(args.configurations)

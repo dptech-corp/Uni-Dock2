@@ -110,7 +110,7 @@ def read_unidock_params_from_yaml(yaml_file: str) -> UnidockConfig:
     Returns:
         UnidockConfig object
     """
-    with open(yaml_file, "r") as f:
+    with open(yaml_file, 'r') as f:
         params = yaml.safe_load(f)
 
     return UnidockConfig.from_dict(params)
