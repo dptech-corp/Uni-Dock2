@@ -4,7 +4,7 @@ import uuid
 import pytest
 import yaml
 
-from unidock_processing.io import read_unidock_params_from_yaml
+from unidock_processing.io.yaml import read_unidock_params_from_yaml
 from unidock_processing.unidocktools.unidock_protocol_runner import (
     UnidockProtocolRunner,
 )

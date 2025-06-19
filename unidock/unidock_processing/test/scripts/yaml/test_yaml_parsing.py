@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from unidock_processing.io import read_unidock_params_from_yaml
+from unidock_processing.io.yaml import read_unidock_params_from_yaml
 
 TEST_DATA_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
