@@ -41,7 +41,8 @@ class CLICommand:
     def run(args):
         import os
         from unidock_processing.io.yaml import read_unidock_params_from_yaml
-        from unidock_processing.io.get_temp_dir_name import get_temp_dir_name
+        from unidock_processing.io.get_temp_dir_prefix import get_temp_dir_prefix
+        from unidock_processing.io.tempfile import TemporaryDirectory
         from unidock_processing.unidocktools.unidock_receptor_topology_builder import (
         UnidockReceptorTopologyBuilder,
         )
@@ -66,13 +67,6 @@ class CLICommand:
         if receptor_file_name is None:
             raise ValueError('Receptor file name not specified !')
 
-        ## Prepare temp dir
-        root_temp_dir_name = os.path.abspath(kwargs_dict.pop('temp_dir_name', None))
-        temp_dir_name = os.path.join(
-            root_temp_dir_name, get_temp_dir_name('docking')
-        )
-        os.makedirs(temp_dir_name, exist_ok=False)
-
         ## Specify receptor DMS file name
         kwargs_receptor_dms_file_name = kwargs_dict.pop('output_receptor_dms_file_name', None)
         if args.output_receptor_dms_file_name != 'receptor_parameterized.dms':
@@ -82,18 +76,25 @@ class CLICommand:
 
         receptor_dms_file_name = os.path.abspath(receptor_dms_file_name)
 
-        ## Run receptor preparation
-        unidock_receptor_topology_builder = UnidockReceptorTopologyBuilder(
-            receptor_file_name,
-            prepared_hydrogen=kwargs_dict['preserve_receptor_hydrogen'],
-            covalent_residue_atom_info_list=kwargs_dict['covalent_residue_atom_info_list'],
-            working_dir_name=temp_dir_name,
+        ## Prepare temp dir
+        root_temp_dir_name = os.path.abspath(kwargs_dict.pop('temp_dir_name', None))
+        temp_dir_prefix = os.path.join(
+            root_temp_dir_name, get_temp_dir_prefix('protein_prep')
         )
 
-        unidock_receptor_topology_builder.generate_receptor_topology()
-
-        os.system(f'cp {unidock_receptor_topology_builder.receptor_parameterized_dms_file_name} {receptor_dms_file_name}')
-
-        ## Remove temp files
         if root_temp_dir_name == '/tmp':
-            os.system(f'rm -rf {temp_dir_name}')
+            remove_temp_dir = True
+        else:
+            remove_temp_dir = False
+
+        ## Run receptor preparation
+        with TemporaryDirectory(prefix=temp_dir_prefix, delete=remove_temp_dir) as temp_dir_name:
+            unidock_receptor_topology_builder = UnidockReceptorTopologyBuilder(
+                receptor_file_name,
+                prepared_hydrogen=kwargs_dict['preserve_receptor_hydrogen'],
+                covalent_residue_atom_info_list=kwargs_dict['covalent_residue_atom_info_list'],
+                working_dir_name=temp_dir_name,
+            )
+
+            unidock_receptor_topology_builder.generate_receptor_topology()
+            os.system(f'cp {unidock_receptor_topology_builder.receptor_parameterized_dms_file_name} {receptor_dms_file_name}')

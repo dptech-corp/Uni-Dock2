@@ -5,14 +5,14 @@ from unidock_processing.io.yaml import read_unidock_params_from_yaml
 
 TEST_DATA_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    "data", "yaml_configurations"
+    'data', 'yaml_configurations'
 )
 
 @pytest.mark.parametrize(
-    "configurations_file",
+    'configurations_file',
     [
         (
-            os.path.join(TEST_DATA_DIR, "unidock_configurations.yaml")
+            os.path.join(TEST_DATA_DIR, 'unidock_configurations.yaml')
         )
     ]
 )
