@@ -2,7 +2,8 @@ class CLICommand:
     """Perform protein preparation only for large batch docking.
 
     Note: Required arguments should be passed by either command line arguments or YAML Required options.
-    If both sides are specified, the values passed in the command line arguments will overide the values passed in YAML file.
+    If both sides are specified,
+    the values passed in the command line arguments will overide the values passed in YAML file.
 
     Example input YAML configurations:
 
@@ -97,4 +98,6 @@ class CLICommand:
             )
 
             unidock_receptor_topology_builder.generate_receptor_topology()
-            os.system(f'cp {unidock_receptor_topology_builder.receptor_parameterized_dms_file_name} {receptor_dms_file_name}')
+            os.system(
+                f'cp {unidock_receptor_topology_builder.receptor_parameterized_dms_file_name} {receptor_dms_file_name}'
+            )

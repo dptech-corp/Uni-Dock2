@@ -22,11 +22,11 @@ def test_yaml_parsing(
 
     assert yaml_params.required.receptor == '1G9V_protein_water_cleaned.pdb'
     assert yaml_params.required.ligand == 'ligand_prepared.sdf'
-    assert yaml_params.required.ligand_batch == None
+    assert yaml_params.required.ligand_batch is None
     assert yaml_params.required.center == [5.122, 18.327, 37.332]
 
     assert yaml_params.advanced.exhaustiveness == 512
-    assert yaml_params.advanced.randomize == True
+    assert yaml_params.advanced.randomize
     assert yaml_params.advanced.mc_steps == 20
     assert yaml_params.advanced.opt_steps == -1
     assert yaml_params.advanced.refine_steps == 5
@@ -34,7 +34,7 @@ def test_yaml_parsing(
     assert yaml_params.advanced.rmsd_limit == 1.0
     assert yaml_params.advanced.energy_range == 3.0
     assert yaml_params.advanced.seed == 12345
-    assert yaml_params.advanced.use_tor_lib == False
+    assert not yaml_params.advanced.use_tor_lib
 
     assert yaml_params.hardware.gpu_device_id == 0
 
@@ -42,12 +42,12 @@ def test_yaml_parsing(
     assert yaml_params.settings.task == 'screen'
     assert yaml_params.settings.search_mode == 'balance'
 
-    assert yaml_params.preprocessing.template_docking == False
-    assert yaml_params.preprocessing.reference_sdf_file_name == None
-    assert yaml_params.preprocessing.core_atom_mapping_dict_list == None
-    assert yaml_params.preprocessing.covalent_ligand == False
-    assert yaml_params.preprocessing.covalent_residue_atom_info_list == None
-    assert yaml_params.preprocessing.preserve_receptor_hydrogen == False
+    assert not yaml_params.preprocessing.template_docking
+    assert yaml_params.preprocessing.reference_sdf_file_name is None
+    assert yaml_params.preprocessing.core_atom_mapping_dict_list is None
+    assert not yaml_params.preprocessing.covalent_ligand
+    assert yaml_params.preprocessing.covalent_residue_atom_info_list is None
+    assert not yaml_params.preprocessing.preserve_receptor_hydrogen
     assert yaml_params.preprocessing.temp_dir_name == '/tmp'
     assert yaml_params.preprocessing.output_receptor_dms_file_name == 'receptor_parameterized.dms'
     assert yaml_params.preprocessing.output_docking_pose_sdf_file_name == 'unidock2_pose.sdf'
@@ -56,7 +56,7 @@ def test_yaml_parsing(
                                  'ligand': 'ligand_prepared.sdf',
                                  'ligand_batch': None,
                                  'center': [5.122, 18.327, 37.332],
-                                 'exhaustiveness': 512,                         
+                                 'exhaustiveness': 512,
                                  'randomize': True,
                                  'mc_steps': 20,
                                  'opt_steps': -1,

@@ -2,7 +2,8 @@ class CLICommand:
     """Perform whole docking protocol.
 
     Note: Required arguments should be passed by either command line arguments or YAML Required options.
-    If both sides are specified, the values passed in the command line arguments will overide the values passed in YAML file.
+    If both sides are specified,
+    the values passed in the command line arguments will overide the values passed in YAML file.
 
     Example input YAML configurations:
 

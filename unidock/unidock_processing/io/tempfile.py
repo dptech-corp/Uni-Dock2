@@ -162,7 +162,8 @@ def _candidate_tempdir_list():
     # First, try the environment.
     for envname in 'TMPDIR', 'TEMP', 'TMP':
         dirname = _os.getenv(envname)
-        if dirname: dirlist.append(dirname)
+        if dirname:
+            dirlist.append(dirname)
 
     # Failing that, try OS-specific locations.
     if _os.name == 'nt':
@@ -670,7 +671,7 @@ else:
             fd, name = _mkstemp_inner(dir, prefix, suffix, flags, output_type)
             try:
                 _os.unlink(name)
-            except BaseException as e:
+            except BaseException:
                 _os.close(fd)
                 raise
             return fd
@@ -709,13 +710,17 @@ class SpooledTemporaryFile(_io.IOBase):
     __class_getitem__ = classmethod(_types.GenericAlias)
 
     def _check(self, file):
-        if self._rolled: return
+        if self._rolled:
+            return
+
         max_size = self._max_size
         if max_size and file.tell() > max_size:
             self.rollover()
 
     def rollover(self):
-        if self._rolled: return
+        if self._rolled:
+            return
+
         file = self._file
         newfile = self._file = TemporaryFile(**self._TemporaryFileArgs)
         del self._TemporaryFileArgs
