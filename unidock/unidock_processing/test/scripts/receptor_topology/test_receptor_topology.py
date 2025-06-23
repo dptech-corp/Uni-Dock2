@@ -1,47 +1,36 @@
 import os
 import pytest
 
+from context import TEST_DATA_DIR
+
 from unidock_processing.io.get_temp_dir_prefix import get_temp_dir_prefix
 from unidock_processing.io.tempfile import TemporaryDirectory
 from unidock_processing.unidocktools.unidock_receptor_topology_builder import (
     UnidockReceptorTopologyBuilder,
 )
 
-@pytest.fixture
-def template_configurations():
-    return os.path.join(
-        os.path.dirname(__file__), '..', '..', '..', '..', 'unidock_configurations.yaml'
-    )
+TEST_RECEPTOR_DATA_DIR = os.path.join(TEST_DATA_DIR, 'receptor_topology')
 
 @pytest.fixture
 def receptor_topology_test_pdb_file():
-    data_file_dir_name = os.path.join(
-        os.path.dirname(__file__), '..', '..', 'data', 'receptor_topology'
-    )
     receptor_pdb_file_name = os.path.join(
-        data_file_dir_name, 'test_receptor_topology_protocol.pdb'
+        TEST_RECEPTOR_DATA_DIR, 'test_receptor_topology_protocol.pdb'
     )
 
     return receptor_pdb_file_name
 
 @pytest.fixture
 def receptor_topology_test_dms_file():
-    data_file_dir_name = os.path.join(
-        os.path.dirname(__file__), '..', '..', 'data', 'receptor_topology'
-    )
     receptor_dms_file_name = os.path.join(
-        data_file_dir_name, 'test_receptor_topology_protocol.dms'
+        TEST_RECEPTOR_DATA_DIR, 'test_receptor_topology_protocol.dms'
     )
 
     return receptor_dms_file_name
 
 @pytest.fixture
 def receptor_topology_RNA_test_pdb_file():
-    data_file_dir_name = os.path.join(
-        os.path.dirname(__file__), '..', '..', 'data', 'receptor_topology'
-    )
     receptor_pdb_file_name = os.path.join(
-        data_file_dir_name, 'test_receptor_topology_RNA.pdb'
+        TEST_RECEPTOR_DATA_DIR, 'test_receptor_topology_RNA.pdb'
     )
 
     return receptor_pdb_file_name

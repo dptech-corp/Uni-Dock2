@@ -1,23 +1,20 @@
 import os
 import pytest
 
+from context import TEST_DATA_DIR
+
 from unidock_processing.io.get_temp_dir_prefix import get_temp_dir_prefix
 from unidock_processing.io.tempfile import TemporaryDirectory
 from unidock_processing.unidocktools.unidock_protocol_runner import (
     UnidockProtocolRunner,
 )
 
-TEST_DATA_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    'data', 'covalent_docking'
-)
-
 @pytest.mark.parametrize(
     'receptor,ligand,covalent_residue_atom_info_list,pocket_center',
     [
         (
-            os.path.join(TEST_DATA_DIR, '1EWL', '1EWL_prepared.pdb'),
-            [os.path.join(TEST_DATA_DIR, '1EWL', 'covalent_mol.sdf')],
+            os.path.join(TEST_DATA_DIR, 'covalent_docking', '1EWL', '1EWL_prepared.pdb'),
+            [os.path.join(TEST_DATA_DIR, 'covalent_docking', '1EWL', 'covalent_mol.sdf')],
             [
                 ['', 'CYX', 25, 'CA'],
                 ['', 'CYX', 25, 'CB'],

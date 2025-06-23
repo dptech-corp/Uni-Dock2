@@ -2,6 +2,8 @@ import os
 import pytest
 import yaml
 
+from context import TEST_DATA_DIR
+
 from unidock_processing.io.yaml import read_unidock_params_from_yaml
 from unidock_processing.io.get_temp_dir_prefix import get_temp_dir_prefix
 from unidock_processing.io.tempfile import TemporaryDirectory
@@ -9,24 +11,19 @@ from unidock_processing.unidocktools.unidock_protocol_runner import (
     UnidockProtocolRunner,
 )
 
-TEST_DATA_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    'data', 'free_docking'
-)
-
 @pytest.mark.parametrize(
     'receptor,ligand,pocket_center',
     [
         (
-            os.path.join(TEST_DATA_DIR, 'molecular_docking',
+            os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking',
                          '1G9V_protein_water_cleaned.pdb'),
-            os.path.join(TEST_DATA_DIR, 'molecular_docking', 'ligand_prepared.sdf'),
+            os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking', 'ligand_prepared.sdf'),
             (5.122, 18.327, 37.332)
         ),
         (
-            os.path.join(TEST_DATA_DIR, 'virtual_screening',
+            os.path.join(TEST_DATA_DIR, 'free_docking', 'virtual_screening',
                          '5WIU_protein_cleaned.pdb'),
-            os.path.join(TEST_DATA_DIR, 'virtual_screening', 'actives_cleaned.sdf'),
+            os.path.join(TEST_DATA_DIR, 'free_docking', 'virtual_screening', 'actives_cleaned.sdf'),
             (-18.0, 15.2, -17.0)
         ),
     ]
@@ -64,11 +61,11 @@ def test_free_docking(
     'receptor,ligand,pocket_center,configurations_file',
     [
         (
-            os.path.join(TEST_DATA_DIR, 'molecular_docking',
+            os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking',
                          '1G9V_protein_water_cleaned.pdb'),
-            os.path.join(TEST_DATA_DIR, 'molecular_docking', 'ligand_prepared.sdf'),
+            os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking', 'ligand_prepared.sdf'),
             (5.122, 18.327, 37.332),
-            os.path.join(TEST_DATA_DIR, 'unidock_configurations.yaml')
+            os.path.join(TEST_DATA_DIR, 'free_docking', 'unidock_configurations.yaml')
         )
     ]
 )

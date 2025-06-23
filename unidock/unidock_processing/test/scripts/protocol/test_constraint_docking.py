@@ -2,31 +2,28 @@ import os
 from glob import glob
 import pytest
 
+from context import TEST_DATA_DIR
+
 from unidock_processing.io.get_temp_dir_prefix import get_temp_dir_prefix
 from unidock_processing.io.tempfile import TemporaryDirectory
 from unidock_processing.unidocktools.unidock_protocol_runner import (
     UnidockProtocolRunner,
 )
 
-TEST_DATA_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    'data', 'constraint_docking'
-)
-
 @pytest.mark.parametrize(
     'receptor,ligand,reference,core_atom_mapping,pocket_center',
     [
         (
-            os.path.join(TEST_DATA_DIR, 'automatic_atom_mapping', 'Bace.pdb'),
-            glob(os.path.join(TEST_DATA_DIR, 'automatic_atom_mapping', 'CAT*.sdf')),
-            os.path.join(TEST_DATA_DIR, 'automatic_atom_mapping', 'reference.sdf'),
+            os.path.join(TEST_DATA_DIR, 'constraint_docking', 'automatic_atom_mapping', 'Bace.pdb'),
+            glob(os.path.join(TEST_DATA_DIR, 'constraint_docking', 'automatic_atom_mapping', 'CAT*.sdf')),
+            os.path.join(TEST_DATA_DIR, 'constraint_docking', 'automatic_atom_mapping', 'reference.sdf'),
             None,
             (14.786, -0.626, -1.088)
         ),
         (
-            os.path.join(TEST_DATA_DIR, 'manual_atom_mapping', 'protein.pdb'),
-            [os.path.join(TEST_DATA_DIR, 'manual_atom_mapping', 'ligand.sdf')],
-            os.path.join(TEST_DATA_DIR, 'manual_atom_mapping', 'reference.sdf'),
+            os.path.join(TEST_DATA_DIR, 'constraint_docking', 'manual_atom_mapping', 'protein.pdb'),
+            [os.path.join(TEST_DATA_DIR, 'constraint_docking', 'manual_atom_mapping', 'ligand.sdf')],
+            os.path.join(TEST_DATA_DIR, 'constraint_docking', 'manual_atom_mapping', 'reference.sdf'),
             [{
                 '0': 14,
                 '1': 15,
@@ -52,9 +49,9 @@ TEST_DATA_DIR = os.path.join(
             (9.028, 0.804, 21.789)
         ),
         (
-            os.path.join(TEST_DATA_DIR, 'RNA_case', 'test_receptor_topology_RNA.pdb'),
-            [os.path.join(TEST_DATA_DIR, 'RNA_case', 'ligand.sdf')],
-            os.path.join(TEST_DATA_DIR, 'RNA_case', 'reference.sdf'),
+            os.path.join(TEST_DATA_DIR, 'constraint_docking', 'RNA_case', 'test_receptor_topology_RNA.pdb'),
+            [os.path.join(TEST_DATA_DIR, 'constraint_docking', 'RNA_case', 'ligand.sdf')],
+            os.path.join(TEST_DATA_DIR, 'constraint_docking', 'RNA_case', 'reference.sdf'),
             None,
             (-12.097, 34.025, 1278.974)
         ),
