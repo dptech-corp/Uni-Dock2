@@ -1,7 +1,15 @@
-from typing import List, Optional, Dict, Any
+from typing import Dict, Any, Optional, ClassVar, List, Tuple, Type
 from dataclasses import dataclass, field
 import yaml
 
+@dataclass
+class RequiredConfig:
+    receptor: str = None
+    ligand: str = None
+    ligand_batch: str = None
+    center: Tuple[float, float, float] = field(
+        default_factory=lambda: (0.0, 0.0, 0.0)
+    )
 
 @dataclass
 class AdvancedConfig:
@@ -16,20 +24,17 @@ class AdvancedConfig:
     seed: int = 1234567
     use_tor_lib: bool = False
 
-
 @dataclass
 class HardwareConfig:
     gpu_device_id: int = 0
 
-
 @dataclass
 class SettingsConfig:
-    size_x: float = 30.0
-    size_y: float = 30.0
-    size_z: float = 30.0
-    task: str = "screen"
-    search_mode: str = "balance"
-
+    box_size: Tuple[float, float, float] = field(
+        default_factory=lambda: (30.0, 30.0, 30.0)
+    )
+    task: str = 'screen'
+    search_mode: str = 'balance'
 
 @dataclass
 class PreprocessingConfig:
@@ -39,66 +44,61 @@ class PreprocessingConfig:
     covalent_ligand: bool = False
     covalent_residue_atom_info_list: Optional[List[Any]] = None
     preserve_receptor_hydrogen: bool = False
-    remove_temp_files: bool = True
-    working_dir_name: str = "./"
+    temp_dir_name: str = '/tmp'
+    output_receptor_dms_file_name: str = 'receptor_parameterized.dms'
+    output_docking_pose_sdf_file_name: str = 'unidock2_pose.sdf'
 
+CONFIG_MAPPING: ClassVar[List[Tuple[str, str, Type, List[str]]]] = [
+    ('Required', 'required', RequiredConfig,
+    ['receptor', 'ligand', 'ligand_batch', 'center']),
+    ('Advanced', 'advanced', AdvancedConfig, [
+    'exhaustiveness', 'randomize', 'mc_steps', 'opt_steps',
+    'refine_steps', 'num_pose', 'rmsd_limit', 'energy_range',
+    'seed', 'use_tor_lib'
+    ]),
+    ('Hardware', 'hardware', HardwareConfig, ['gpu_device_id']),
+    ('Settings', 'settings', SettingsConfig, ['box_size', 'task', 'search_mode']),
+    ('Preprocessing', 'preprocessing', PreprocessingConfig, [
+    'template_docking', 'reference_sdf_file_name',
+    'core_atom_mapping_dict_list', 'covalent_ligand',
+    'covalent_residue_atom_info_list', 'preserve_receptor_hydrogen',
+    'temp_dir_name', 'output_receptor_dms_file_name',
+    'output_docking_pose_sdf_file_name'
+    ])
+]
 
-@dataclass
+def config_sections(cls):
+    """automatically generate config decorators"""
+    for _, attr_name, config_cls, _ in CONFIG_MAPPING:
+        setattr(cls, attr_name, field(default_factory=config_cls))
+
+        if not hasattr(cls, '__annotations__'):
+            cls.__annotations__ = {}
+        cls.__annotations__[attr_name] = config_cls
+
+    return dataclass(cls)
+
+@config_sections
 class UnidockConfig:
-    advanced: AdvancedConfig = field(default_factory=AdvancedConfig)
-    hardware: HardwareConfig = field(default_factory=HardwareConfig)
-    settings: SettingsConfig = field(default_factory=SettingsConfig)
-    preprocessing: PreprocessingConfig = field(default_factory=PreprocessingConfig)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "UnidockConfig":
+    def from_dict(cls, data: Dict[str, Any]) -> 'UnidockConfig':
         """Create UnidockConfig from a dictionary."""
         config = cls()
-
-        if "Advanced" in data:
-            config.advanced = AdvancedConfig(**data["Advanced"])
-
-        if "Hardware" in data:
-            config.hardware = HardwareConfig(**data["Hardware"])
-
-        if "Settings" in data:
-            config.settings = SettingsConfig(**data["Settings"])
-
-        if "Preprocessing" in data:
-            config.preprocessing = PreprocessingConfig(**data["Preprocessing"])
+        for dict_key, attr_name, config_cls, _ in CONFIG_MAPPING:
+            if dict_key in data:
+                setattr(config, attr_name, config_cls(**data[dict_key]))
 
         return config
 
     def to_protocol_kwargs(self) -> Dict[str, Any]:
-        kwargs_dict = {
-            "template_docking": self.preprocessing.template_docking,
-            "reference_sdf_file_name": self.preprocessing.reference_sdf_file_name,
-            "core_atom_mapping_dict_list": \
-                self.preprocessing.core_atom_mapping_dict_list,
-            "covalent_ligand": self.preprocessing.covalent_ligand,
-            "covalent_residue_atom_info_list": \
-                self.preprocessing.covalent_residue_atom_info_list,
-            "preserve_receptor_hydrogen": self.preprocessing.preserve_receptor_hydrogen,
-            "remove_temp_files": self.preprocessing.remove_temp_files,
-            "working_dir_name": self.preprocessing.working_dir_name,
-            "gpu_device_id": self.hardware.gpu_device_id,
-            "box_size": (self.settings.size_x, self.settings.size_y,
-                         self.settings.size_z),
-            "task": self.settings.task,
-            "search_mode": self.settings.search_mode,
-            "exhaustiveness": self.advanced.exhaustiveness,
-            "randomize": self.advanced.randomize,
-            "mc_steps": self.advanced.mc_steps,
-            "opt_steps": self.advanced.opt_steps,
-            "refine_steps": self.advanced.refine_steps,
-            "num_pose": self.advanced.num_pose,
-            "rmsd_limit": self.advanced.rmsd_limit,
-            "energy_range": self.advanced.energy_range,
-            "seed": self.advanced.seed,
-            "use_tor_lib": self.advanced.use_tor_lib,
-        }
-        return kwargs_dict
+        kwargs_dict = {}
+        for _, attr_name, _, field_names in CONFIG_MAPPING:
+            config = getattr(self, attr_name)
+            for field_name in field_names:
+                kwargs_dict[field_name] = getattr(config, field_name)
 
+        return kwargs_dict
 
 def read_unidock_params_from_yaml(yaml_file: str) -> UnidockConfig:
     """
@@ -110,7 +110,7 @@ def read_unidock_params_from_yaml(yaml_file: str) -> UnidockConfig:
     Returns:
         UnidockConfig object
     """
-    with open(yaml_file, "r") as f:
+    with open(yaml_file, 'r') as f:
         params = yaml.safe_load(f)
 
     return UnidockConfig.from_dict(params)

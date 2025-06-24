@@ -1,127 +1,109 @@
-import os
 import sys
+from importlib import import_module
 from importlib.metadata import version
 import argparse
 
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from unidock_processing.io import read_unidock_params_from_yaml
-from unidock_processing.unidocktools.unidock_protocol_runner import (
-    UnidockProtocolRunner,
-)
-
 logo_description = r"""
 
-    ██╗   ██╗██████╗ ██████╗ 
+    ██╗   ██╗██████╗ ██████╗
     ██║   ██║██╔══██╗╚════██╗
     ██║   ██║██║  ██║ █████╔╝
-    ██║   ██║██║  ██║██╔═══╝ 
+    ██║   ██║██║  ██║██╔═══╝
     ╚██████╔╝██████╔╝███████╗
      ╚═════╝ ╚═════╝ ╚══════╝
 
     DP Technology Docking Toolkit
 
-""" # noqa
+"""
 
+available_commands = [
+    ('docking', 'unidock_processing.cli.docking'),
+    ('protein_prep','unidock_processing.cli.protein_prep')
+]
+
+class CLIDriver(object):
+    def __init__(self):
+        self._command_table = None
+        self._argument_table = None
+
+    def run(self,
+             prog='unidock2',
+             commands=available_commands,
+             args=None):
+
+        print(logo_description)
+        parser = argparse.ArgumentParser(prog=prog,
+                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                         add_help=False)
+
+        parser.add_argument(
+        '-h',
+        '--help',
+        action='store_true',
+        help='Show global help message')
+
+        parser.add_argument(
+        '-v',
+        '--version',
+        action='version',
+        version=f"%(prog)s {version('unidock_processing')}",
+        help='Show program version')
+
+        subparsers = parser.add_subparsers(title='Sub-commands',
+                                           dest='command',
+                                           help='Uni-Dock2-related applications',
+                                           required=False)
+
+        help_parser = subparsers.add_parser('help',
+                                            description='Show help for sub-commands',
+                                            help='Detailed help for sub-commands')
+
+        help_parser.add_argument('subcommand',
+                                 nargs='?',
+                                 metavar='SUBCOMMAND',
+                                 help='Name of the subcommand to show help for')
+
+        name_module_dict = {}
+        subparser_dict = {}
+        for command, module_name in commands:
+            module = import_module(module_name).CLICommand
+            docstring = module.__doc__ or ''
+            cmd_parser = subparsers.add_parser(command,
+                                              description=docstring,
+                                              formatter_class=argparse.RawDescriptionHelpFormatter)
+
+            module.add_arguments(cmd_parser)
+            name_module_dict[command] = module
+            subparser_dict[command] = cmd_parser
+
+        args = parser.parse_args()
+
+        if args.help:
+            parser.print_help()
+            sys.exit(0)
+
+        if args.command == 'help':
+            if args.subcommand:
+                if args.subcommand in subparser_dict:
+                    subparser_dict[args.subcommand].print_help()
+                else:
+                    raise ValueError(f'Unknown sub-command: {args.subcommand}')
+
+            else:
+                parser.print_help()
+
+            sys.exit(0)
+
+        if args.command is None:
+            parser.print_help()
+            sys.exit(0)
+
+        name_module_dict[args.command].run(args)
 
 def main():
-    print(logo_description)
-    parser = argparse.ArgumentParser(
-        prog="unidock2", formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
+    driver = CLIDriver()
+    rc = driver.run()
+    return rc
 
-    parser.add_argument(
-        "-r",
-        "--receptor",
-        required=True,
-        help="Receptor structure file in PDB or DMS format",
-    )
-
-    parser.add_argument(
-        "-l",
-        "--ligand",
-        default=None,
-        help="Single ligand structure file in SDF format",
-    )
-
-    parser.add_argument(
-        "-lb",
-        "--ligand_batch",
-        default=None,
-        help="Recorded batch text file of ligand SDF file path",
-    )
-
-    parser.add_argument(
-        "-c",
-        "--center",
-        nargs=3,
-        type=float,
-        metavar=("center_x", "center_y", "center_z"),
-        default=[0.0, 0.0, 0.0],
-        help="Docking box center coordinates",
-    )
-
-    parser.add_argument(
-        "-cf",
-        "--configurations",
-        default=None,
-        help="Uni-Dock2 configuration YAML file recording all other options",
-    )
-
-    parser.add_argument(
-        "-v",
-        "--version",
-        action="version",
-        version=f"%(prog)s {version('unidock_processing')}",
-        help="Show program version",
-    )
-
-    args = parser.parse_args()
-
-    receptor_file_name = os.path.abspath(args.receptor)
-
-    if args.ligand:
-        ligand_sdf_file_name = os.path.abspath(args.ligand)
-    else:
-        ligand_sdf_file_name = None
-
-    if args.ligand_batch:
-        with open(args.ligand_batch, "r") as ligand_batch_file:
-            ligand_batch_line_list = ligand_batch_file.readlines()
-
-        batch_ligand_sdf_file_name_list = []
-        for ligand_batch_line in ligand_batch_line_list:
-            batch_ligand_sdf_file_name = ligand_batch_line.strip()
-            if len(batch_ligand_sdf_file_name) != 0:
-                batch_ligand_sdf_file_name_list.append(
-                    os.path.abspath(batch_ligand_sdf_file_name)
-                )
-    else:
-        batch_ligand_sdf_file_name_list = []
-
-    if ligand_sdf_file_name:
-        total_ligand_sdf_file_name_list = [
-            ligand_sdf_file_name
-        ] + batch_ligand_sdf_file_name_list
-    else:
-        total_ligand_sdf_file_name_list = batch_ligand_sdf_file_name_list
-
-    if len(total_ligand_sdf_file_name_list) == 0:
-        raise ValueError("Ligand SDF file input not found !!")
-
-    kwargs_dict = dict()
-    if args.configurations:
-        extra_params = read_unidock_params_from_yaml(args.configurations)
-        kwargs_dict = extra_params.to_protocol_kwargs()
-    print(kwargs_dict)
-
-    docking_runner = UnidockProtocolRunner(
-        receptor_file_name=receptor_file_name,
-        ligand_sdf_file_name_list=total_ligand_sdf_file_name_list,
-        target_center=tuple(args.center),
-        **kwargs_dict,
-    )
-
-    docking_runner.run_unidock_protocol()
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

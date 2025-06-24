@@ -16,7 +16,6 @@ from unidock_processing.unidocktools.unidock_ligand_pose_writer import (
 )
 from unidock_processing.ligand_topology import utils
 
-
 class UnidockProtocolRunner(object):
     def __init__(
         self,
@@ -30,10 +29,11 @@ class UnidockProtocolRunner(object):
         covalent_ligand: bool = False,
         covalent_residue_atom_info_list: Optional[List[Dict[str, Any]]] = None,
         preserve_receptor_hydrogen: bool = False,
-        working_dir_name: str = "./",
+        working_dir_name: str = '.',
+        docking_pose_sdf_file_name: str = 'unidock2_pose.sdf',
         gpu_device_id: int = 0,
-        task: str = "screen",
-        search_mode: str = "balance",
+        task: str = 'screen',
+        search_mode: str = 'balance',
         exhaustiveness: int = 512,
         randomize: bool = True,
         mc_steps: int = 40,
@@ -43,20 +43,27 @@ class UnidockProtocolRunner(object):
         rmsd_limit: float = 1.0,
         energy_range: float = 5.0,
         seed: int = 1234567,
-        use_tor_lib: bool = False,
-        remove_temp_files: bool = True,
+        use_tor_lib: bool = False
     ) -> None:
-        self.receptor_file_name = receptor_file_name
-        self.ligand_sdf_file_name_list = ligand_sdf_file_name_list
+        self.receptor_file_name = os.path.abspath(receptor_file_name)
+
+        self.ligand_sdf_file_name_list = [
+            os.path.abspath(ligand_sdf_file_name) for ligand_sdf_file_name in ligand_sdf_file_name_list
+            ]
+
         self.target_center = target_center
 
         # Configuration parameters
         self.template_docking = template_docking
-        self.reference_sdf_file_name = reference_sdf_file_name
+
+        if reference_sdf_file_name is not None:
+            self.reference_sdf_file_name = os.path.abspath(reference_sdf_file_name)
+        else:
+            self.reference_sdf_file_name = reference_sdf_file_name
+
         self.covalent_ligand = covalent_ligand
         self.covalent_residue_atom_info_list = covalent_residue_atom_info_list
         self.preserve_receptor_hydrogen = preserve_receptor_hydrogen
-        self.remove_temp_files = remove_temp_files
 
         # Docking parameters
         self.box_size = box_size
@@ -75,12 +82,14 @@ class UnidockProtocolRunner(object):
         self.use_tor_lib = use_tor_lib
 
         self.working_dir_name = os.path.abspath(working_dir_name)
-        self.unidock2_output_working_dir_name = os.path.join(
-            self.working_dir_name, "unidock2_output"
+        self.unidock2_output_dir_name = os.path.join(
+            self.working_dir_name, 'unidock2_output'
         )
-        os.makedirs(self.unidock2_output_working_dir_name, exist_ok=True)
-        self.unidock2_input_json_file_name = ""
-        self.unidock2_pose_sdf_file_name = ""
+
+        self.docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
+        os.makedirs(self.unidock2_output_dir_name, exist_ok=True)
+        self.unidock2_input_json_file_name = ''
+        self.unidock2_pose_sdf_file_name = ''
 
         # Process core atom mapping dict list
         if core_atom_mapping_dict_list is None:
@@ -117,6 +126,7 @@ class UnidockProtocolRunner(object):
         )
 
         unidock_receptor_topology_builder.generate_receptor_topology()
+        unidock_receptor_topology_builder.analyze_receptor_topology()
         unidock_receptor_topology_builder.get_summary_receptor_info_dict()
 
         ## prepare ligands input
@@ -126,7 +136,6 @@ class UnidockProtocolRunner(object):
             template_docking=self.template_docking,
             reference_sdf_file_name=self.reference_sdf_file_name,
             core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
-            remove_temp_files=self.remove_temp_files,
             working_dir_name=self.working_dir_name,
         )
 
@@ -134,7 +143,7 @@ class UnidockProtocolRunner(object):
         unidock_ligand_topology_builder.get_summary_ligand_info_dict()
 
         ## combine inputs into one json file to engine
-        system_info_dict = {"score": ["vina", "gaff2"]}
+        system_info_dict = {'score': ['vina', 'gaff2']}
         system_info_dict.update(
             unidock_receptor_topology_builder.receptor_info_summary_dict
         )
@@ -142,16 +151,16 @@ class UnidockProtocolRunner(object):
             unidock_ligand_topology_builder.total_ligand_info_summary_dict
         )
         self.unidock2_input_json_file_name = os.path.join(
-            self.working_dir_name, "system_inputs_unidock2.json"
+            self.working_dir_name, 'system_inputs_unidock2.json'
         )
 
-        with open(self.unidock2_input_json_file_name, "w") as system_json_file:
+        with open(self.unidock2_input_json_file_name, 'w') as system_json_file:
             json.dump(system_info_dict, system_json_file)
 
         ## run ud2 engine - call the pipeline directly with parameters
         run_docking_pipeline(
             json_file_path=self.unidock2_input_json_file_name,
-            output_dir=self.unidock2_output_working_dir_name,
+            output_dir=self.unidock2_output_dir_name,
             center_x=self.target_center[0],
             center_y=self.target_center[1],
             center_z=self.target_center[2],
@@ -176,11 +185,11 @@ class UnidockProtocolRunner(object):
 
         ## generate output ud2 pose sdf
         unidock2_pose_json_file_name_raw_list = os.listdir(
-            self.unidock2_output_working_dir_name
+            self.unidock2_output_dir_name
         )
         unidock2_pose_json_file_name_list = [
             os.path.join(
-                self.unidock2_output_working_dir_name, unidock2_pose_json_file_name_raw
+                self.unidock2_output_dir_name, unidock2_pose_json_file_name_raw
             )
             for unidock2_pose_json_file_name_raw \
                 in unidock2_pose_json_file_name_raw_list
@@ -189,11 +198,7 @@ class UnidockProtocolRunner(object):
             unidock_ligand_topology_builder.ligand_mol_list,
             unidock2_pose_json_file_name_list,
             covalent_ligand=self.covalent_ligand,
-            working_dir_name=self.working_dir_name,
+            docking_pose_sdf_file_name=self.docking_pose_sdf_file_name,
         )
 
         unidock_pose_writer.generate_docking_pose_sdf()
-
-        self.unidock2_pose_sdf_file_name = (
-            unidock_pose_writer.docking_pose_sdf_file_name
-        )

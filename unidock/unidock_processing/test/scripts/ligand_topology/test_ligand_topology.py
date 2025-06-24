@@ -5,6 +5,8 @@ from rdkit import Chem
 from rdkit.Chem import GetMolFrags, FragmentOnBonds
 from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 
+from context import TEST_DATA_DIR
+
 from unidock_processing.ligand_topology import utils
 from unidock_processing.ligand_topology.generic_rotatable_bond import (
     GenericRotatableBond,
@@ -13,67 +15,47 @@ from unidock_processing.ligand_topology.generic_rotatable_bond import (
 from unidock_processing.unidocktools.vina_atom_type import AtomType
 from unidock_processing.unidocktools.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
 
-
-@pytest.fixture
-def template_configurations():
-    return os.path.join(
-        os.path.dirname(__file__), "..", "..", "..", "..", "unidock_configurations.yaml"
-    )
-
+TEST_LIGAND_DATA_DIR = os.path.join(TEST_DATA_DIR, 'ligand_topology')
 
 @pytest.fixture
 def nonbonded_exclusion_test_molecule():
-    data_file_dir_name = os.path.join(
-        os.path.dirname(__file__), "..", "..", "data", "ligand_topology"
-    )
     ligand_sdf_file_name = os.path.join(
-        data_file_dir_name, "test_nonbonded_exclusion.sdf"
+        TEST_LIGAND_DATA_DIR, 'test_nonbonded_exclusion.sdf'
     )
 
     return ligand_sdf_file_name
-
 
 @pytest.fixture
 def root_finding_test_molecule():
-    data_file_dir_name = os.path.join(
-        os.path.dirname(__file__), "..", "..", "data", "ligand_topology"
-    )
     ligand_sdf_file_name = os.path.join(
-        data_file_dir_name, "test_root_finding_8E77_ligand_prepared.sdf"
+        TEST_LIGAND_DATA_DIR, 'test_root_finding_8E77_ligand_prepared.sdf'
     )
 
     return ligand_sdf_file_name
-
 
 @pytest.fixture
 def vina_atom_type_test_molecule_1():
-    data_file_dir_name = os.path.join(
-        os.path.dirname(__file__), "..", "..", "data", "ligand_topology"
+    ligand_sdf_file_name = os.path.join(
+        TEST_LIGAND_DATA_DIR, 'test_vina_atom_type_1.sdf'
     )
-    ligand_sdf_file_name = os.path.join(data_file_dir_name, "test_vina_atom_type_1.sdf")
 
     return ligand_sdf_file_name
-
 
 @pytest.fixture
 def vina_atom_type_test_molecule_2():
-    data_file_dir_name = os.path.join(
-        os.path.dirname(__file__), "..", "..", "data", "ligand_topology"
+    ligand_sdf_file_name = os.path.join(
+        TEST_LIGAND_DATA_DIR, 'test_vina_atom_type_2.sdf'
     )
-    ligand_sdf_file_name = os.path.join(data_file_dir_name, "test_vina_atom_type_2.sdf")
 
     return ligand_sdf_file_name
-
 
 @pytest.fixture
 def vina_atom_type_test_molecule_3():
-    data_file_dir_name = os.path.join(
-        os.path.dirname(__file__), "..", "..", "data", "ligand_topology"
+    ligand_sdf_file_name = os.path.join(
+        TEST_LIGAND_DATA_DIR, 'test_vina_atom_type_3.sdf'
     )
-    ligand_sdf_file_name = os.path.join(data_file_dir_name, "test_vina_atom_type_3.sdf")
 
     return ligand_sdf_file_name
-
 
 def test_nonbonded_exclusion(nonbonded_exclusion_test_molecule):
     mol = Chem.SDMolSupplier(nonbonded_exclusion_test_molecule, removeHs=False)[0]
@@ -196,7 +178,6 @@ def test_nonbonded_exclusion(nonbonded_exclusion_test_molecule):
     assert atom_pair_12_13_nested_list == valid_atom_pair_12_13_nested_list
     assert atom_pair_14_nested_list == valid_atom_pair_14_nested_list
 
-
 def test_root_finding_strategy(root_finding_test_molecule):
     mol = Chem.SDMolSupplier(root_finding_test_molecule, removeHs=False)[0]
 
@@ -231,7 +212,6 @@ def test_root_finding_strategy(root_finding_test_molecule):
     valid_root_fragment_idx = 5
 
     assert root_fragment_idx == valid_root_fragment_idx
-
 
 def test_vina_atom_typing(
     vina_atom_type_test_molecule_1,
