@@ -45,7 +45,7 @@ class UnidockLigandPoseWriter(object):
                     utils.prepare_covalent_ligand_mol(ligand_mol)
                 )
 
-            ligand_name = ligand_mol.GetProp('_Name')
+            ligand_name = ligand_mol.GetProp('ud2_molecule_name')
             num_ligand_atoms = ligand_mol.GetNumAtoms()
             ligand_unidock2_pose_list = self.unidock2_pose_dict[ligand_name]
             num_poses = len(ligand_unidock2_pose_list)
@@ -53,7 +53,7 @@ class UnidockLigandPoseWriter(object):
             for pose_idx in range(num_poses):
                 ligand_mol_ud2_pose = deepcopy(ligand_mol)
                 ligand_pose_name = f'{ligand_name}_unidock2_pose_{pose_idx}'
-                ligand_mol_ud2_pose.SetProp('_Name', ligand_pose_name)
+                ligand_mol_ud2_pose.SetProp('ud2_molecule_name', ligand_pose_name)
 
                 unidock2_pose_info_dict = ligand_unidock2_pose_list[pose_idx]
                 vina_scoring_list = unidock2_pose_info_dict['energy']

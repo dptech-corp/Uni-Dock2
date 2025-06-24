@@ -45,13 +45,16 @@ class UnidockProtocolRunner(object):
         seed: int = 1234567,
         use_tor_lib: bool = False
     ) -> None:
-        self.receptor_file_name = receptor_file_name
-        self.ligand_sdf_file_name_list = ligand_sdf_file_name_list
+        self.receptor_file_name = os.path.abspath(receptor_file_name)
+        self.ligand_sdf_file_name_list = [
+            os.path.abspath(ligand_sdf_file_name) for ligand_sdf_file_name in ligand_sdf_file_name_list
+            ]
+
         self.target_center = target_center
 
         # Configuration parameters
         self.template_docking = template_docking
-        self.reference_sdf_file_name = reference_sdf_file_name
+        self.reference_sdf_file_name = os.path.abspath(reference_sdf_file_name)
         self.covalent_ligand = covalent_ligand
         self.covalent_residue_atom_info_list = covalent_residue_atom_info_list
         self.preserve_receptor_hydrogen = preserve_receptor_hydrogen
