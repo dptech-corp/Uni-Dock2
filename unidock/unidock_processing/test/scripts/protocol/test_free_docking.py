@@ -65,7 +65,7 @@ def test_free_docking(
                          '1G9V_protein_water_cleaned.pdb'),
             os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking', 'ligand_prepared.sdf'),
             (5.122, 18.327, 37.332),
-            os.path.join(TEST_DATA_DIR, 'free_docking', 'unidock_configurations.yaml')
+            os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking', 'unidock_configurations.yaml')
         )
     ]
 )
