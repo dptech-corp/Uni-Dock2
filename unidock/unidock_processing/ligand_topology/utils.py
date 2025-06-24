@@ -109,7 +109,7 @@ def prepare_covalent_ligand_mol(mol):
         mol,
         remove_indices=removed_atom_idx_list,
         keep_properties=["atom_name", "residue_name", "residue_idx", "chain_idx"],
-        keep_mol_properties=["_Name"],
+        keep_mol_properties=["_Name", "source_sdf_file_name", "source_mol_idx", "ud2_molecule_name"],
     )
 
     num_covalent_atoms = covalent_mol.GetNumAtoms()
