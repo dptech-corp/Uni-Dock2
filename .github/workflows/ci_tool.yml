@@ -11,19 +11,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
           python-version: "3.10"
 
-    - name: Install ruff
-      run: |
-        python -m pip install --upgrade pip
-        pip install ruff
+      - name: Install ruff
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
 
-    - name: Run ruff
-      run: |
-        ruff check
+      - name: Run ruff
+        run: |
+          ruff check
 
   tests:
     if: ${{ always() }}
@@ -32,29 +32,41 @@ jobs:
     container:
       image: dptechnology/unidock2:base-0.0.2
       options: --gpus all
+
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: install unidock2
-      shell: bash
-      run: |
-        eval "$(micromamba shell hook --shell bash)"
-        micromamba activate base
-        cd ./unidock/unidock_engine
-        pip install .
-        cd ../..
-        pip install .
+      - name: compile and run engine unit tests
+        shell: bash
+        run: |
+          eval "$(micromamba shell hook --shell bash)"
+          micromamba activate base
+          cd ./unidock/unidock_engine
+          cmake -B build -S . -DBUILD_TEST=ON
+          cmake --build build --target unit_test
+          ./build/test/unit/unit_test
+          cd ../..
 
-    - name: install test tools
-      shell: bash
-      run: |
-        eval "$(micromamba shell hook --shell bash)"
-        micromamba activate base
-        pip install pytest pytest-cov
+      - name: install unidock2
+        shell: bash
+        run: |
+          eval "$(micromamba shell hook --shell bash)"
+          micromamba activate base
+          cd ./unidock/unidock_engine
+          pip install .
+          cd ../..
+          pip install .
 
-    - name: run processing unit-test
-      shell: bash
-      run: |
-        eval "$(micromamba shell hook --shell bash)"
-        micromamba activate base
-        pytest unidock/unidock_processing/test -vv --cov
+      - name: install test tools
+        shell: bash
+        run: |
+          eval "$(micromamba shell hook --shell bash)"
+          micromamba activate base
+          pip install pytest pytest-cov
+
+      - name: run processing unit-test
+        shell: bash
+        run: |
+          eval "$(micromamba shell hook --shell bash)"
+          micromamba activate base
+          pytest unidock/unidock_processing/test -vv --cov

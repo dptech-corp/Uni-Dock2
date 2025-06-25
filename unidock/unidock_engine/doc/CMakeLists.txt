@@ -1,5 +1,7 @@
 message("   [Section] Building DOC ...")
 
+#sudo apt install doxygen graphviz
+
 # Assure the existence of working directory
 if (EXISTS "${CMAKE_SOURCE_DIR}/doc")
     execute_process(
