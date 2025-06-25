@@ -1,5 +1,5 @@
 [build-system]
-requires = [
+requires = [ # packages
     "scikit-build-core",
     "pybind11",
 ]
@@ -7,20 +7,20 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "unidock_engine"
-description = "Uni-Dock molecular docking engine"
+description = "Uni-Dock2 molecular docking engine"
 readme = "README.md"
 authors = [
-    {name = "DP Uni-Dock Team"}
+    {name = "DP Uni-Dock2 Team"}
 ]
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 classifiers = [
     "Programming Language :: C++",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
 dynamic = ["version"]
 
 [tool.scikit-build]
-cmake.version = ">=3.27"
-build.tool-args = ["-j4"]
-wheel.install-dir = "unidock_engine/api/python"
+cmake.define = {"BUILD_API"="ON"}  # -D
+build.tool-args = ["-j4"] # for make/ninja
+wheel.install-dir = "unidock_engine/api/python" # under site-packages
