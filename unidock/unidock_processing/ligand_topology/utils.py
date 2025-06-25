@@ -519,19 +519,6 @@ def record_gaff2_atom_types_and_parameters(
     )
 
     convert_v3000_mol_to_v2000_sdf(mol_copy_h, temp_ligand_sdf_file_name)
-
-#    writer = Chem.SDWriter(temp_ligand_sdf_file_name)
-#    writer.write(mol_copy_h)
-#    writer.close()
-    ##############################################################################
-    ##############################################################################
-
-    ##############################################################################
-    ##############################################################################
-    ## temporary workaround for rdkit SDWriter's bug (cannot convert V3000 to V2000)
-#    os.system(
-#        f"obabel -i sdf {temp_ligand_sdf_file_name} -O {temp_ligand_sdf_file_name}"
-#    )
     ##############################################################################
     ##############################################################################
 
