@@ -50,7 +50,6 @@ requirements:
     - networkx
     - rdkit
     - mdanalysis
-    - openbabel
     - pdbfixer
     - openmm
     - msys_viparr_lpsolve55

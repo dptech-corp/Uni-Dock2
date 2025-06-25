@@ -36,7 +36,7 @@ cd ../..
 
 #### 2. Build unidock_processing
 ```sh
-conda install pyyaml pathos numpy pandas scipy networkx rdkit mdanalysis openbabel pdbfixer openmm cuda-version=12.0 msys_viparr_lpsolve55 ambertools_stable -c http://quetz.dp.tech:8088/get/baymax -c conda-forge --no-repodata-use-zst
+conda install pyyaml pathos numpy pandas scipy networkx rdkit mdanalysis pdbfixer openmm cuda-version=12.0 msys_viparr_lpsolve55 ambertools_stable -c http://quetz.dp.tech:8088/get/baymax -c conda-forge --no-repodata-use-zst
 
 pip install .
 ```

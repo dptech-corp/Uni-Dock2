@@ -17,6 +17,15 @@ from unidock_processing.utils.molecule_processing import (
     get_mol_with_indices,
 )
 
+def convert_v3000_mol_to_v2000_sdf(v3000_mol, v2000_sdf_file_name):
+    mol_props_dict = v3000_mol.GetPropsAsDict()
+    v2000_str = Chem.MolToV2KMolBlock(v3000_mol)
+    for prop_key, prop_value in mol_props_dict.items():
+        v2000_str += f">  <{prop_key}>  (1) \n"
+        v2000_str += f"{prop_value}\n\n"
+
+    with open(v2000_sdf_file_name, "w") as f:
+        f.write(v2000_str)
 
 def prepare_covalent_ligand_mol(mol):
     covalent_atom_idx_string = mol.GetProp("covalent_atom_indices")
@@ -509,18 +518,20 @@ def record_gaff2_atom_types_and_parameters(
         working_dir_name, "ANTECHAMBER.FRCMOD"
     )
 
-    writer = Chem.SDWriter(temp_ligand_sdf_file_name)
-    writer.write(mol_copy_h)
-    writer.close()
+    convert_v3000_mol_to_v2000_sdf(mol_copy_h, temp_ligand_sdf_file_name)
+
+#    writer = Chem.SDWriter(temp_ligand_sdf_file_name)
+#    writer.write(mol_copy_h)
+#    writer.close()
     ##############################################################################
     ##############################################################################
 
     ##############################################################################
     ##############################################################################
     ## temporary workaround for rdkit SDWriter's bug (cannot convert V3000 to V2000)
-    os.system(
-        f"obabel -i sdf {temp_ligand_sdf_file_name} -O {temp_ligand_sdf_file_name}"
-    )
+#    os.system(
+#        f"obabel -i sdf {temp_ligand_sdf_file_name} -O {temp_ligand_sdf_file_name}"
+#    )
     ##############################################################################
     ##############################################################################
 
