@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.27)
 
 # ------------------------------ Options for Users
-option(BUILD_BIN "build binaries" TRUE)
-option(BUILD_API "build api" TRUE)
-option(BUILD_TEST "build unit tests" TRUE)
-option(BUILD_DOC "build documents" FALSE)
+option(BUILD_BIN "build binaries" ON)
+option(BUILD_API "build api" OFF)
+option(BUILD_TEST "build unit tests" OFF)
+option(BUILD_DOC "build documents" OFF)
 
 # Precision
 option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for the whole project." FALSE)
@@ -59,10 +59,10 @@ endif()
 
 if (USE_DOUBLE)
     add_compile_definitions(Real=double)
-    message("Precision: double")
+    message("  Precision: double")
 else ()
     add_compile_definitions(Real=float)
-    message("Precision: float")
+    message("  Precision: float")
 endif ()
 
 
@@ -97,3 +97,6 @@ endif ()
 if (BUILD_DOC)
     add_subdirectory("doc")
 endif ()
+
+
+
