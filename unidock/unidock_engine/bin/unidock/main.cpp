@@ -197,7 +197,6 @@ int main(int argc, char* argv[])
     }
     dock_param.tor_prec = get_config_with_err<Real>(config, "Advanced", "tor_prec", dock_param.tor_prec);;
     dock_param.box_prec = get_config_with_err<Real>(config, "Advanced", "box_prec", dock_param.box_prec);;
-    dock_param.slope = get_config_with_err<Real>(config, "Advanced", "slope", dock_param.slope);;
 
 
     // todo: write into constants.h

@@ -9,6 +9,8 @@
 #define LINE_SEARCH_C0 0.0001
 #define LINE_SEARCH_MULTIPLIER 0.5
 
+constexpr Real PENALTY_SLOPE = 1e6;
+
 
 const Real VN_VDW_RADII[] = {
     1.1,  // H <from 10.1021/jp8111556>

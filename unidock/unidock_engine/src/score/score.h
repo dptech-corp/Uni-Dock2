@@ -4,11 +4,12 @@
 
 #ifndef SCORE_H
 #define SCORE_H
+
+#include "constants/constants.h"
 #include "myutils/common.h"
 
 
 Real cal_box_penalty_atom(Real x, Real y, Real z, const Box& box){
-    Real penalty_slope = 1e6;
     Real penalty = 0.;
     if (x < box.x_lo){
         penalty += box.x_lo - x;
@@ -31,7 +32,7 @@ Real cal_box_penalty_atom(Real x, Real y, Real z, const Box& box){
         penalty += z - box.z_hi;
     }
 
-    return penalty * penalty_slope;
+    return penalty * PENALTY_SLOPE;
 }
 
 

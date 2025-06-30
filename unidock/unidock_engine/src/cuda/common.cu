@@ -15,7 +15,6 @@ __constant__ Real BOX_Z_HI = 30;
 __constant__ Real BOX_Z_LO = -30;
 __constant__ Real TOR_PREC = 0.3;
 __constant__ Real BOX_PREC = 1.0;
-__constant__ Real PENALTY_SLOPE = 1e6;
 
 
 #if true
@@ -27,7 +26,6 @@ __constant__ Gaff2 Score;
 
 void init_constants(const DockParam& dock_param){
     //======================= constants ======================
-    checkCUDA(cudaMemcpyToSymbol(PENALTY_SLOPE, &dock_param.slope, sizeof(Real)));
     checkCUDA(cudaMemcpyToSymbol(FLAG_CONSTRAINT_DOCK, &dock_param.constraint_docking, sizeof(bool)));
     checkCUDA(cudaMemcpyToSymbol(BOX_X_HI, &dock_param.box.x_hi, sizeof(Real), 0, cudaMemcpyHostToDevice));
     checkCUDA(cudaMemcpyToSymbol(BOX_X_LO, &dock_param.box.x_lo, sizeof(Real), 0, cudaMemcpyHostToDevice));

@@ -22,7 +22,6 @@ extern __constant__ Real BOX_Z_HI;
 extern __constant__ Real BOX_Z_LO;
 extern __constant__ Real TOR_PREC;
 extern __constant__ Real BOX_PREC;
-extern __constant__ Real PENALTY_SLOPE;
 
 #if true
 extern __constant__ Vina Score;
