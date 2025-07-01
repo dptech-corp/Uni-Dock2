@@ -8,6 +8,9 @@ This document serves for Developers, not Users.
 * CUDA 11.8+
 * GLIB 2.31+ (Ubuntu 20.04+); GLIB 2.35+ (Ubuntu 22.04+) for unit tests [todo: re-compile catch2 for 2.31]
 
+>**NOTICE**
+>Third-party `Catch2 v2` and `yaml-cpp 0.8.0` are included. And pre-compiled static libraries can be found inside the folder `lib/`. 
+
 ## Compilation
 There will be a binary `ud2` under `build/bin` and the library it relies on: `build/src/libud_lib.so`.
 
