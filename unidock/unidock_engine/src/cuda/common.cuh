@@ -32,9 +32,6 @@ extern __constant__ Gaff2 Score;
 void init_constants(const DockParam& dock_param);
 
 
-#define SCOPE_KERNEL __launch_bounds__(MAX_THREADS_PER_BLOCK, MIN_BLOCKS_PER_MP)
-#define MAX_THREADS_PER_BLOCK 32
-#define MIN_BLOCKS_PER_MP 32
 #define TILE_SIZE 32
 #define STRIDE_POSE 4
 #define STRIDE_G 6
