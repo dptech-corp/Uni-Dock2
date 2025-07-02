@@ -10,10 +10,11 @@ option(BUILD_DOC "build documents" OFF)
 option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for the whole project." FALSE)
 
 # ------------------------------ Options for Developers
-set(VERSION_NUMBER 0.4)
+set(VERSION_NUMBER 0.4_c)
 
 # For Building Stage
 link_directories(${CMAKE_SOURCE_DIR}/lib)
+add_definitions(-DCATCH_AMALGAMATED_CUSTOM_MAIN)
 include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
 option(ONLY_C "If true, run the whole projects on host to perform tests on C++. " TRUE) # todo
@@ -79,6 +80,7 @@ endif ()
 
 # ------------------------------ Start building
 add_subdirectory("src")
+add_subdirectory("lib")
 
 # python binding
 if (BUILD_API)

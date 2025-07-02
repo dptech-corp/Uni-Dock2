@@ -19,6 +19,6 @@ set(sources unit_test.cpp
 )
 
 add_executable(${TESTS_NAME} ${sources})
-target_link_libraries(${TESTS_NAME} ${LIB_NAME} catch2_3.8.1_focal)
+target_link_libraries(${TESTS_NAME} ${LIB_NAME} catch2)
 
 
