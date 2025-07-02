@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.27)
 # ------------------------------ Options for Users
 option(BUILD_BIN "build binaries" ON)
 option(BUILD_API "build api" OFF)
-option(BUILD_TEST "build unit tests" OFF)
+option(BUILD_TEST "build unit tests" ON)
 option(BUILD_DOC "build documents" OFF)
 
 # Precision
@@ -21,6 +21,8 @@ option(ONLY_C "If true, run the whole projects on host to perform tests on C++. 
 
 set(PRJ_NAME ud2)
 set(LIB_NAME ud_lib)
+set(THIRD_NAME_CATCH2 catch2)
+set(THIRD_NAME_YAML yaml-cpp)
 set(BIN_NAME ud2)
 set(TESTS_NAME unit_test)
 
@@ -48,6 +50,7 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
 project(${PRJ_NAME}
         LANGUAGES CUDA CXX C)
+#set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)
 
@@ -79,8 +82,9 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
 endif ()
 
 # ------------------------------ Start building
-add_subdirectory("src")
 add_subdirectory("lib")
+
+add_subdirectory("src")
 
 # python binding
 if (BUILD_API)
