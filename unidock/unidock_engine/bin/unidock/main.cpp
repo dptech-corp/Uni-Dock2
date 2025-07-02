@@ -234,7 +234,7 @@ int main(int argc, char* argv[])
             max_memory = (float) max_gpu_memory;
         }
 
-    }else{
+    } else{
         spdlog::critical("No CUDA device is found!");
         exit(1);
     }
