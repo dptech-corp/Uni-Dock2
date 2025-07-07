@@ -23,7 +23,6 @@ Advanced:
   tor_prec: !!float 0.3     # sampling precision of angle.
   box_prec: !!float 2.0     # sampling precision of position
 
-  slope: !!float 1000000    # penalty slope
 
 Hardware:
   ncpu: !!int 10            # [Not loaded] the number of CPUs to use (the default is to use all detected CPUs)

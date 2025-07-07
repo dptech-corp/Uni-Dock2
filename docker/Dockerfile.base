@@ -1,4 +1,4 @@
-FROM mambaorg/micromamba:2-ubuntu22.04
+FROM mambaorg/micromamba:2-ubuntu20.04
 
 USER root
 SHELL ["/bin/bash", "-ic"]
@@ -16,4 +16,4 @@ RUN micromamba install -y \
     rdkit mdanalysis pdbfixer openmm \
     msys_viparr_lpsolve55 ambertools_stable && micromamba clean -a
 
-RUN micromamba install -y conda-forge::sysroot_linux-64==2.34
+# RUN micromamba install -y conda-forge::sysroot_linux-64==2.34

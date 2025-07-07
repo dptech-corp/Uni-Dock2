@@ -19,6 +19,6 @@ set(sources unit_test.cpp
 )
 
 add_executable(${TESTS_NAME} ${sources})
-target_link_libraries(${TESTS_NAME} ${LIB_NAME} catch2_3.7) # libcatch2_3.7.a doesn't have main function
+target_link_libraries(${TESTS_NAME} ${LIB_NAME} ${THIRD_NAME_CATCH2})
 
 

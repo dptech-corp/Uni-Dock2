@@ -22,7 +22,7 @@ requirements:
     # - cross-python_{{ target_platform }}
     # - cython                                 # [build_platform != target_platform]
     - {{ compiler('c') }}
-    - {{ stdlib("c") }}
+#    - {{ stdlib("c") }}
     - {{ compiler('cxx') }}
     - {{ compiler('cuda') }} # [(linux or win) and cuda_compiler != "None"]
     - cmake >=3.27

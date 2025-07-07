@@ -1,0 +1,8 @@
+This project includes code from yaml-cpp (https://github.com/jbeder/yaml-cpp),
+which is licensed under the MIT License:
+Copyright (c) 2008-2015 Jesse Beder.
+
+---
+This project includes code from Catch2 (https://github.com/catchorg/Catch2),
+which is licensed under the BSL-1.0 license:
+Boost Software License - Version 1.0 - August 17th, 2003

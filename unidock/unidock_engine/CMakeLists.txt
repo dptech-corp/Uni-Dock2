@@ -3,14 +3,14 @@ cmake_minimum_required(VERSION 3.27)
 # ------------------------------ Options for Users
 option(BUILD_BIN "build binaries" ON)
 option(BUILD_API "build api" OFF)
-option(BUILD_TEST "build unit tests" OFF)
+option(BUILD_TEST "build unit tests" ON)
 option(BUILD_DOC "build documents" OFF)
 
 # Precision
 option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for the whole project." FALSE)
 
 # ------------------------------ Options for Developers
-set(VERSION_NUMBER 0.4)
+set(VERSION_NUMBER 0.4.4)
 
 # For Building Stage
 link_directories(${CMAKE_SOURCE_DIR}/lib)
@@ -20,6 +20,8 @@ option(ONLY_C "If true, run the whole projects on host to perform tests on C++. 
 
 set(PRJ_NAME ud2)
 set(LIB_NAME ud_lib)
+set(THIRD_NAME_CATCH2 catch2)
+set(THIRD_NAME_YAML yaml-cpp)
 set(BIN_NAME ud2)
 set(TESTS_NAME unit_test)
 
@@ -78,6 +80,8 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
 endif ()
 
 # ------------------------------ Start building
+add_subdirectory("lib")
+
 add_subdirectory("src")
 
 # python binding
