@@ -47,6 +47,7 @@ We recommend all users use our command line functionality.
 After installation, there will be a command line tool `unidock2`.
 
 A proper docking inputs should at least contains one receptor file, one or more ligand file, the docking pocket center positions, and the configuration file specifying all the other optional parameters.
+Although all the parameters ni the configuration file has default values, it is still recommend to check and specify the parameters from the YAML file.
 
 ### `unidock2` command line parameters:
 * --receptor (-r): Receptor structure file in PDB or DMS format (default: None)
