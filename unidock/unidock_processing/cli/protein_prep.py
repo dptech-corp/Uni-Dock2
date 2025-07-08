@@ -41,7 +41,7 @@ class CLICommand:
 
     def run(args):
         import os
-        from unidock_processing.io.yaml import read_unidock_params_from_yaml
+        from unidock_processing.io.yaml import UnidockConfig, read_unidock_params_from_yaml
         from unidock_processing.io.get_temp_dir_prefix import get_temp_dir_prefix
         from unidock_processing.io.tempfile import TemporaryDirectory
         from unidock_processing.unidocktools.unidock_receptor_topology_builder import (
@@ -53,6 +53,10 @@ class CLICommand:
         if args.configurations:
             extra_params = read_unidock_params_from_yaml(args.configurations)
             kwargs_dict = extra_params.to_protocol_kwargs()
+        else:
+            config = UnidockConfig()
+            kwargs_dict = config.to_protocol_kwargs()
+
         print(kwargs_dict)
 
         ## Parse receptor input

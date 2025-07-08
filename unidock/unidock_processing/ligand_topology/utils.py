@@ -464,7 +464,7 @@ def calculate_nonbonded_atom_pairs(mol):
 def record_gaff2_atom_types_and_parameters(
     ligand_sdf_file_name, ligand_charge_method, working_dir_name
 ):
-    ## Deal with sulfonamide with negative charge on Nitrogrn atom cases
+    ## Deal with sulfonamide with negative charge on Nitrogen atom cases
     ##############################################################################
     ##############################################################################
     mol = Chem.SDMolSupplier(ligand_sdf_file_name, removeHs=False)[0]
