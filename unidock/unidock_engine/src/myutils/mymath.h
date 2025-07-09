@@ -158,7 +158,7 @@ SCOPE_INLINE Real clamp_by_ranges(Real ang, Real* ranges, int nrange){
 
 /**
  * @brief Generate a real number in [min, max]
- *
+ * @snippet test/unit/myutils/test_math.cpp get_real_within_by_int
  * @param c A random integer within Integer range
  * @param min Minimum value (Real)
  * @param max Maximum value (Real)
@@ -176,6 +176,20 @@ SCOPE_INLINE Real get_real_within_by_int(uint c, Real min, Real max, int n = 31)
         return max;
     }
     return v;
+}
+
+
+/**
+ * @brief Generate a real number in [min, max)
+ * @snippet test/unit/myutils/test_math.cpp get_real_within
+ * @param c A random Real within [0, 1) obeying uniform distribution
+ * @param min Minimum value (Real)
+ * @param max Maximum value (Real)
+ * @return A real number in [min, max)
+ */
+SCOPE_INLINE Real get_real_within(Real c, Real min, Real max){
+    assert(min < max);
+    return min + (max - min) * c;
 }
 
 

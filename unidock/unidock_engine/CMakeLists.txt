@@ -10,7 +10,7 @@ option(BUILD_DOC "build documents" OFF)
 option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for the whole project." FALSE)
 
 # ------------------------------ Options for Developers
-set(VERSION_NUMBER 0.4.4)
+set(VERSION_NUMBER 0.4.p1)
 
 # For Building Stage
 link_directories(${CMAKE_SOURCE_DIR}/lib)
@@ -58,6 +58,8 @@ find_package(CUDAToolkit REQUIRED)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
+
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
 
 if (USE_DOUBLE)
     add_compile_definitions(Real=double)
