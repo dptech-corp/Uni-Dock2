@@ -77,7 +77,7 @@ def build_unidock_model():
     field_definitions = {}
     for _, attr_name, model_cls, _ in CONFIG_MAPPING:
         field_definitions[attr_name] = (model_cls, Field(default_factory=model_cls))
-    
+
     UnidockModel = create_model(
         'UnidockConfig',
         **field_definitions,
@@ -123,7 +123,7 @@ def read_unidock_params_from_yaml(yaml_file: str) -> UnidockConfig:
         params = yaml.safe_load(f)
 
     try: 
-        return UnidockConfig.from_dict(params) 
-    except ValidationError as e: 
-        print(f'Configuration Error:\n{e.json(indent=2)}') 
-        raise 
+        return UnidockConfig.from_dict(params)
+    except ValidationError as e:
+        print(f'Configuration Error:\n{e.json(indent=2)}')
+        raise
