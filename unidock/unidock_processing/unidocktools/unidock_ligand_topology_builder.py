@@ -20,7 +20,6 @@ from unidock_processing.unidocktools.vina_atom_type import AtomType
 from unidock_processing.unidocktools.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
 from unidock_processing.unidocktools.unidock_ff_atom_types import FF_ATOM_TYPE_DICT
 
-
 def build_molecular_graph(
     mol,
     torsion_library_dict,
@@ -379,6 +378,7 @@ class UnidockLigandTopologyBuilder(object):
         template_docking=False,
         reference_sdf_file_name=None,
         core_atom_mapping_dict_list=None,
+        n_cpu=None,
         working_dir_name='.',
     ):
         self.ligand_sdf_file_name_list = ligand_sdf_file_name_list
@@ -447,7 +447,13 @@ class UnidockLigandTopologyBuilder(object):
             self.root_working_dir_name, 'ligands_unidock2.json'
         )
 
-        self.n_cpu = os.cpu_count()
+        max_n_cpu = os.cpu_count()
+        if n_cpu is None:
+            self.n_cpu = max_n_cpu
+        elif n_cpu >= max_n_cpu:
+            self.n_cpu = max_n_cpu
+        else:
+            self.n_cpu = n_cpu
 
     def generate_batch_ligand_topology(self):
         Chem.SetDefaultPickleProperties(Chem.PropertyPickleOptions.AllProps)
