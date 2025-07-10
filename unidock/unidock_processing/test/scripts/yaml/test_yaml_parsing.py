@@ -36,6 +36,7 @@ def test_yaml_parsing(
     assert yaml_params.advanced.seed == 12345
     assert not yaml_params.advanced.use_tor_lib
 
+    assert yaml_params.hardware.n_cpu is None
     assert yaml_params.hardware.gpu_device_id == 0
 
     assert yaml_params.settings.box_size == (30.0, 30.0, 30.0)
