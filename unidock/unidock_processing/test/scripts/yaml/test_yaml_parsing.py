@@ -23,7 +23,7 @@ def test_yaml_parsing(
     assert yaml_params.required.receptor == '1G9V_protein_water_cleaned.pdb'
     assert yaml_params.required.ligand == 'ligand_prepared.sdf'
     assert yaml_params.required.ligand_batch is None
-    assert yaml_params.required.center == [5.122, 18.327, 37.332]
+    assert yaml_params.required.center == (5.122, 18.327, 37.332)
 
     assert yaml_params.advanced.exhaustiveness == 512
     assert yaml_params.advanced.randomize
@@ -38,7 +38,7 @@ def test_yaml_parsing(
 
     assert yaml_params.hardware.gpu_device_id == 0
 
-    assert yaml_params.settings.box_size == [30.0, 30.0, 30.0]
+    assert yaml_params.settings.box_size == (30.0, 30.0, 30.0)
     assert yaml_params.settings.task == 'screen'
     assert yaml_params.settings.search_mode == 'balance'
 
@@ -55,7 +55,7 @@ def test_yaml_parsing(
     valid_configurations_dict = {'receptor': '1G9V_protein_water_cleaned.pdb',
                                  'ligand': 'ligand_prepared.sdf',
                                  'ligand_batch': None,
-                                 'center': [5.122, 18.327, 37.332],
+                                 'center': (5.122, 18.327, 37.332),
                                  'exhaustiveness': 512,
                                  'randomize': True,
                                  'mc_steps': 20,
@@ -67,7 +67,7 @@ def test_yaml_parsing(
                                  'seed': 12345,
                                  'use_tor_lib': False,
                                  'gpu_device_id': 0,
-                                 'box_size': [30.0, 30.0, 30.0],
+                                 'box_size': (30.0, 30.0, 30.0),
                                  'task': 'screen',
                                  'search_mode': 'balance',
                                  'template_docking': False,
