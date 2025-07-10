@@ -15,7 +15,7 @@
 #include "bfgs.cuh"
 
 
-__forceinline__ __device__ void randomize_pose_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                     FlexPose* out_pose, const FlexTopo& flex_topo,
                                                     FlexPoseGradient* aux_g, int idx,
                                                     int n, curandStatePhilox4_32_10_t* state){
@@ -80,7 +80,7 @@ __forceinline__ __device__ void randomize_pose_warp(const cg::thread_block_tile<
     }
     tile.sync();
 
-    apply_grad_update_pose_warp(tile, out_pose, aux_g, flex_topo, 1.);
+    apply_grad_update_pose_tile(tile, out_pose, aux_g, flex_topo, 1.);
 }
 
 __global__ void randomize_pose(FlexPose* out_poses, const FlexTopo* flex_topos, FlexPoseGradient* aux_gradients,
@@ -91,7 +91,7 @@ __global__ void randomize_pose(FlexPose* out_poses, const FlexTopo* flex_topos, 
 
     int id_thread = blockIdx.x * blockDim.x + threadIdx.x; // global idx of the thread
     if (id_thread < max_thread){
-        int id_pose = id_thread / TILE_SIZE; // 一个pose由1个tile处理，也就是包含多个threads
+        int id_pose = id_thread / TILE_SIZE; // one pose per tile
         int id_flex = id_pose / num_pose_per_flex;
 
         // Use alias
@@ -112,7 +112,7 @@ __global__ void randomize_pose(FlexPose* out_poses, const FlexTopo* flex_topos, 
         tile.sync();
 
         int id_pose_per_flex = id_pose % num_pose_per_flex;
-        randomize_pose_warp(tile, &out_pose, flex_topo, &aux_g, id_pose_per_flex, num_pose_per_flex, &state);
+        randomize_pose_tile(tile, &out_pose, flex_topo, &aux_g, id_pose_per_flex, num_pose_per_flex, &state);
     }
 }
 
@@ -126,7 +126,7 @@ __global__ void randomize_pose(FlexPose* out_poses, const FlexTopo* flex_topos, 
  * @param state cuRand state
  * @param amplitude Amplitude of the mutation
  */
-__forceinline__ __device__ void mutate_pose_warp(const cg::thread_block_tile<TILE_SIZE>& tile, FlexPose* out_pose,
+__forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TILE_SIZE>& tile, FlexPose* out_pose,
                                                  const FlexTopo* flex_topo,
                                                  curandStatePhilox4_32_10_t* state, Real amplitude = 1){
     //amplitude:2.0
@@ -237,7 +237,7 @@ __forceinline__ __device__ void mutate_pose_warp(const cg::thread_block_tile<TIL
             // printf("which is %d, a is %f\n", which,  a);
         }
         a = tile.shfl(a, 0); // increment of dihedral value
-        apply_grad_update_dihe_warp(tile, out_pose, flex_topo, which, a);
+        apply_grad_update_dihe_tile(tile, out_pose, flex_topo, which, a);
     }
     else{
         // no mutation
@@ -272,7 +272,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
 
     int id_thread = blockIdx.x * blockDim.x + threadIdx.x; // global idx of the thread
     if (id_thread < max_thread){
-        int id_pose = id_thread / TILE_SIZE; // 一个pose由1个tile处理，也就是包含多个threads
+        int id_pose = id_thread / TILE_SIZE;
         int id_flex = id_pose / num_pose_per_flex;
 
         // Use alias
@@ -312,31 +312,31 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
         Real best_e = 1e9; // large value for finding minimum energy
 
 
-        duplicate_pose_warp(tile, &pose_accepted, &out_pose, dim, flex_topo.natom);
+        duplicate_pose_tile(tile, &pose_accepted, &out_pose, dim, flex_topo.natom);
 
         if (mc_steps == 0){
-            Real energy = cal_e_f_warp(tile, &pose_accepted, flex_topo, fix_mol, flex_param, fix_param, aux_f.f);
+            Real energy = cal_e_f_tile(tile, &pose_accepted, flex_topo, fix_mol, flex_param, fix_param, aux_f.f);
 
             if (tile.thread_rank() == 0){
                 pose_accepted.energy = energy;
             }
-            duplicate_pose_warp(tile, &out_pose, &pose_accepted, dim, flex_topo.natom);
+            duplicate_pose_tile(tile, &out_pose, &pose_accepted, dim, flex_topo.natom);
         }
         else{
             for (int step = 0; step < mc_steps; step++){
                 // 1. mutate conf, PRODUCE a random conf
                 DPrint1("========= MC step %d \n", step);
 
-                duplicate_pose_warp(tile, &pose_candidate, &pose_accepted, dim, flex_topo.natom);
+                duplicate_pose_tile(tile, &pose_candidate, &pose_accepted, dim, flex_topo.natom);
 
-                mutate_pose_warp(tile, &pose_candidate, &flex_topo, &state);
+                mutate_pose_tile(tile, &pose_candidate, &flex_topo, &state);
 
                 // todo: add clash-detection for efficiency
 
                 // Record initial energy and gradient. E_ori is energy, aux_g is set as current gradient
                 // If max_steps == 0, this func only records the energy of original structure.
                 if (opt_steps == 0){
-                    Real energy = cal_e_grad_warp(tile, &pose_candidate, &aux_g, flex_topo, fix_mol,
+                    Real energy = cal_e_grad_tile(tile, &pose_candidate, &aux_g, flex_topo, fix_mol,
                                                   flex_param, fix_param, aux_f.f);
 
                     if (tile.thread_rank() == 0){
@@ -347,7 +347,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
                 else{
                     // essential optimization. only computes the energy of candidate pose for MC task
                     // coords are updated inside bfgs
-                    bfgs_warp(tile,
+                    bfgs_tile(tile,
                               &pose_candidate, flex_topo, fix_mol,
                               flex_param, fix_param,
                               &aux_pose_new, &aux_pose_ori,
@@ -368,11 +368,11 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
                 // if accepted
                 if (step == 0 || accepted){
                     // set accepted pose as this lately accepted candidate
-                    duplicate_pose_warp(tile, &pose_accepted, &pose_candidate, dim, flex_topo.natom);
+                    duplicate_pose_tile(tile, &pose_accepted, &pose_candidate, dim, flex_topo.natom);
 
                     // Possibly the best pose by now
                     if (pose_accepted.energy < best_e){
-                        duplicate_pose_warp(tile, &out_pose, &pose_accepted, dim, flex_topo.natom);
+                        duplicate_pose_tile(tile, &out_pose, &pose_accepted, dim, flex_topo.natom);
                         best_e = pose_accepted.energy;
                     }
                 }
@@ -388,8 +388,9 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
            int mc_steps, int opt_steps, int nflex, int exhuastiveness, int seed, bool randomize){
     //------- perform MC on GPU -------//
 
-    const int block_size = TILE_SIZE; // One block for one tile (for 32, namely one warp per block)
     int npose = nflex * exhuastiveness;
+    int nblock = npose * TILE_SIZE / BLOCK_SIZE;
+    int nthreads = npose * TILE_SIZE;
 
     // initilize curand states
     curandStatePhilox4_32_10_t* states;
@@ -397,16 +398,16 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
 
     // run the kernel
     if (randomize){
-        randomize_pose<<<npose, block_size>>>(out_poses, topos, aux_gradients,
+        randomize_pose<<<nblock, BLOCK_SIZE>>>(out_poses, topos, aux_gradients,
                                               states, seed,
-                                              exhuastiveness, npose * block_size);
+                                              exhuastiveness, nthreads);
     }
 
-    mc_kernel<<<npose, block_size>>>(out_poses, topos, fix_mol,
+    mc_kernel<<<nblock, BLOCK_SIZE>>>(out_poses, topos, fix_mol,
                                      flex_param, fix_param,
                                      aux_poses, aux_gradients, aux_hessians, aux_forces,
                                      states, seed,
-                                     mc_steps, opt_steps, exhuastiveness, npose * block_size);
+                                     mc_steps, opt_steps, exhuastiveness, nthreads);
 
     checkCUDA(cudaDeviceSynchronize());
     spdlog::warn("[Line Search Steps Count]: {}", funcCallCount);

@@ -10,7 +10,11 @@ option(BUILD_DOC "build documents" OFF)
 option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for the whole project." FALSE)
 
 # ------------------------------ Options for Developers
-set(VERSION_NUMBER 0.4.p1)
+set(INPUT_TILE_SIZE 32)
+set(INPUT_BLOCK_SIZE 128)
+add_compile_definitions(TILE_SIZE=${INPUT_TILE_SIZE})
+add_compile_definitions(BLOCK_SIZE=${INPUT_BLOCK_SIZE})
+set(VERSION_NUMBER "0.4.${INPUT_TILE_SIZE}_${INPUT_BLOCK_SIZE}")
 
 # For Building Stage
 link_directories(${CMAKE_SOURCE_DIR}/lib)
@@ -22,7 +26,7 @@ set(PRJ_NAME ud2)
 set(LIB_NAME ud_lib)
 set(THIRD_NAME_CATCH2 catch2)
 set(THIRD_NAME_YAML yaml-cpp)
-set(BIN_NAME ud2)
+set(BIN_NAME "ud2")
 set(TESTS_NAME unit_test)
 
 # install

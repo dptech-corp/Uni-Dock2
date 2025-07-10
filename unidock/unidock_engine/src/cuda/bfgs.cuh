@@ -15,7 +15,7 @@
 namespace cg = cooperative_groups;
 
 
-__device__ __forceinline__ void duplicate_grad_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ void duplicate_grad_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                     FlexPoseGradient* out_g_new, const FlexPoseGradient* g_old,
                                                     int dim){
     for (int i = tile.thread_rank(); i < dim; i += tile.num_threads()){
@@ -33,7 +33,7 @@ __device__ __forceinline__ void duplicate_grad_warp(const cg::thread_block_tile<
 }
 
 
-__device__ __forceinline__ void duplicate_pose_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ void duplicate_pose_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                     FlexPose* out_pose_new, const FlexPose* pose_old, int dim,
                                                     int natom){
     for (int i = tile.thread_rank(); i < dim; i += tile.num_threads()){
@@ -67,7 +67,7 @@ __device__ __forceinline__ void duplicate_pose_warp(const cg::thread_block_tile<
 /**
  * @brief Compute gradient on dihedral, center, and orientation
  */
-__device__ __forceinline__ void cal_grad_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                const Real* aux_f, const FlexTopo& flex_topo,
                                                const FlexPose* pose, FlexPoseGradient* out_g
 ){
@@ -247,7 +247,7 @@ SCOPE_INLINE Real cal_box_penalty_clamp_coord(Real* out_x, Real* out_y, Real* ou
 }
 
 
-__device__ __forceinline__ Real cal_e_f_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                              const FlexPose* pose, const FlexTopo& flex_topo,
                                              const FixMol& fix_mol, const FlexParamVina& flex_param,
                                              const FixParamVina& fix_param,
@@ -375,22 +375,22 @@ __device__ __forceinline__ Real cal_e_f_warp(const cg::thread_block_tile<TILE_SI
 }
 
 
-__device__ __forceinline__ Real cal_e_grad_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ Real cal_e_grad_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                 const FlexPose* pose, FlexPoseGradient* out_g,
                                                 const FlexTopo& flex_topo,
                                                 const FixMol& fix_mol, const FlexParamVina& flex_param,
                                                 const FixParamVina& fix_param,
                                                 Real* aux_f){
     // Total energy
-    Real energy = cal_e_f_warp(tile, pose, flex_topo, fix_mol, flex_param, fix_param, aux_f);
+    Real energy = cal_e_f_tile(tile, pose, flex_topo, fix_mol, flex_param, fix_param, aux_f);
 
     // Compute gradients on -force
-    cal_grad_warp(tile, aux_f, flex_topo, pose, out_g);
+    cal_grad_tile(tile, aux_f, flex_topo, pose, out_g);
     return energy;
 }
 
 
-__device__ __forceinline__ void minus_mat_vec_product_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ void minus_mat_vec_product_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                            FlexPoseGradient* out_p,
                                                            const Real* h, const FlexPoseGradient* g,
                                                            int dim){
@@ -407,7 +407,7 @@ __device__ __forceinline__ void minus_mat_vec_product_warp(const cg::thread_bloc
     tile.sync();
 }
 
-__device__ __forceinline__ Real g_dot_product_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ Real g_dot_product_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                    const FlexPoseGradient* a, const FlexPoseGradient* b,
                                                    int dim){
     Real tmp = 0;
@@ -420,7 +420,7 @@ __device__ __forceinline__ Real g_dot_product_warp(const cg::thread_block_tile<T
 }
 
 
-__device__ __forceinline__ void apply_grad_update_dihe_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ void apply_grad_update_dihe_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                             FlexPose* out_x, const FlexTopo* flex_topo,
                                                             int i_tor, Real dihe_incre_raw){
     int begin = 0;
@@ -539,14 +539,14 @@ __device__ __forceinline__ void apply_grad_update_dihe_warp(const cg::thread_blo
  * @param flex_topo Flex topology
  * @param alpha Step length
  */
-__device__ __forceinline__ void apply_grad_update_pose_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ void apply_grad_update_pose_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                             FlexPose* out_x, const FlexPoseGradient* g,
                                                             const FlexTopo& flex_topo,
                                                             Real alpha){
     // -------------- torsion increment --------------
     for (int i_tor = 0; i_tor < flex_topo.ntorsion; i_tor++){
         DPrint1("dihedral_g[%d] = %f\n", i_tor, g->dihedrals_g[i_tor]);
-        apply_grad_update_dihe_warp(tile, out_x, &flex_topo, i_tor, g->dihedrals_g[i_tor] * alpha);
+        apply_grad_update_dihe_tile(tile, out_x, &flex_topo, i_tor, g->dihedrals_g[i_tor] * alpha);
     }
     tile.sync();
 
@@ -603,7 +603,7 @@ __device__ __forceinline__ void apply_grad_update_pose_warp(const cg::thread_blo
 
 
 
-__device__ __forceinline__ void line_search_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                  const FixMol& fix_mol, const FixParamVina& fix_param,
                                                  const FlexParamVina& flex_param, const FlexPose* x,
                                                  const FlexPoseGradient* g, const FlexTopo& flex_topo,
@@ -614,19 +614,19 @@ __device__ __forceinline__ void line_search_warp(const cg::thread_block_tile<TIL
     Real alpha = 1.0; // step length, which is the target of BLS
     Real e_new = 0.; // energy of tried step
 
-    const Real pg = g_dot_product_warp(tile, p, g, dim_g);
+    const Real pg = g_dot_product_tile(tile, p, g, dim_g);
 
     int trial = 0;
     for (; trial < LINE_SEARCH_STEPS; trial++){
         atomicAdd(&funcCallCount, 1);  // todo: for debug, show call count
 
-        duplicate_pose_warp(tile, out_x_new, x, dim_x, flex_topo.natom); // x_new = x
+        duplicate_pose_tile(tile, out_x_new, x, dim_x, flex_topo.natom); // x_new = x
         // DPrint1("coord_0: %f, %f, %f\n\n", out_x_new->coords[0], out_x_new->coords[1], out_x_new->coords[2]);
 
         // apply alpha * gradient, get new x
-        apply_grad_update_pose_warp(tile, out_x_new, p, flex_topo, alpha); // apply gradient increment
+        apply_grad_update_pose_tile(tile, out_x_new, p, flex_topo, alpha); // apply gradient increment
 
-        e_new = cal_e_grad_warp(tile, out_x_new, out_g_new, flex_topo, fix_mol, flex_param, fix_param, aux_f);
+        e_new = cal_e_grad_tile(tile, out_x_new, out_g_new, flex_topo, fix_mol, flex_param, fix_param, aux_f);
         // DPrint1("\n[LINE SEARCH] coord0_new: %f, %f, %f coord10_new: %f, %f, %f e_new: %f, alpha: %f, p: %f, %f, %f, %f, %f, %f, pg: %f \n",
         //     out_x_new->coords[0], out_x_new->coords[1], out_x_new->coords[2],
         //     out_x_new->coords[30], out_x_new->coords[31], out_x_new->coords[32],
@@ -670,22 +670,22 @@ __device__ __forceinline__ void line_search_warp(const cg::thread_block_tile<TIL
  * @param aux_minus_hy Auxiliary vector -Hy
  * @param alpha Step length
  */
-__forceinline__ __device__ void bfgs_update_hessian_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__forceinline__ __device__ void bfgs_update_hessian_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                          Real* out_h, int dim, const FlexPoseGradient* p,
                                                          const FlexPoseGradient* y,
                                                          FlexPoseGradient* aux_minus_hy, const Real alpha){
     Real yp = 0, yhy = 0;
-    yp = g_dot_product_warp(tile, y, p, dim);
+    yp = g_dot_product_tile(tile, y, p, dim);
     DPrint1("yp is %f\n", yp);
     if (alpha * yp < EPSILON_cu){
         return;
     }
 
     // minus_hy = -hy (dim*1 vector)
-    minus_mat_vec_product_warp(tile, aux_minus_hy, out_h, y, dim);
+    minus_mat_vec_product_tile(tile, aux_minus_hy, out_h, y, dim);
 
     // y^THy
-    yhy = -g_dot_product_warp(tile, y, aux_minus_hy, dim);
+    yhy = -g_dot_product_tile(tile, y, aux_minus_hy, dim);
     Real r = 1 / (alpha * yp); //1 / (s^T * y) , where s = alpha * p
 
     Real tmp = 0;
@@ -734,7 +734,7 @@ SCOPE_INLINE void print_g(const FlexPoseGradient* g, int dim){
 }
 
 
-__forceinline__ __device__ void bfgs_warp(const cg::thread_block_tile<TILE_SIZE>& tile,
+__forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                           FlexPose* out_x, const FlexTopo& flex_topo, const FixMol& fix_mol,
                                           const FlexParamVina& flex_param, const FixParamVina& fix_param,
                                           FlexPose* aux_x_new, FlexPose* aux_x_ori,
@@ -746,7 +746,7 @@ __forceinline__ __device__ void bfgs_warp(const cg::thread_block_tile<TILE_SIZE>
     int dim_g = dof_g + flex_topo.ntorsion;
     int dim_x = dof_x + flex_topo.ntorsion; // center, orientation, torsion
 
-    Real E_ori = cal_e_grad_warp(tile, out_x, aux_g, flex_topo, fix_mol, flex_param, fix_param, aux_f->f);
+    Real E_ori = cal_e_grad_tile(tile, out_x, aux_g, flex_topo, fix_mol, flex_param, fix_param, aux_f->f);
 
     // Record initial energy and gradient. E_ori is energy, aux_g is set as current gradient
     // alpha is step length
@@ -756,33 +756,33 @@ __forceinline__ __device__ void bfgs_warp(const cg::thread_block_tile<TILE_SIZE>
 
 
     // Initialize hessian as Unit Matrix
-    init_tri_mat_warp(tile, aux_h->matrix, dim_g, 0); // set zero
-    set_tri_mat_diagonal_warp(tile, aux_h->matrix, dim_g, 1); // set diagonal to 1
+    init_tri_mat_tile(tile, aux_h->matrix, dim_g, 0); // set zero
+    set_tri_mat_diagonal_tile(tile, aux_h->matrix, dim_g, 1); // set diagonal to 1
 
     // Initialize aux_g_new
-    duplicate_grad_warp(tile, aux_g_new, aux_g, dim_g);
+    duplicate_grad_tile(tile, aux_g_new, aux_g, dim_g);
     // Initialize aux_pose_new
-    duplicate_pose_warp(tile, aux_x_new, out_x, dim_x, flex_topo.natom);
+    duplicate_pose_tile(tile, aux_x_new, out_x, dim_x, flex_topo.natom);
 
     // Record gradient before optimization: aux_g_ori = aux_g
-    duplicate_grad_warp(tile, aux_g_ori, aux_g, dim_g);
+    duplicate_grad_tile(tile, aux_g_ori, aux_g, dim_g);
     // aux_pose_ori := copy of out_pose
-    duplicate_pose_warp(tile, aux_x_ori, out_x, dim_x, flex_topo.natom);
+    duplicate_pose_tile(tile, aux_x_ori, out_x, dim_x, flex_topo.natom);
 
     // aux_p := copy of aux_g, just for initialization
-    duplicate_grad_warp(tile, aux_p, aux_g, dim_g);
+    duplicate_grad_tile(tile, aux_p, aux_g, dim_g);
 
     for (int step = 0; step < max_steps; step++){
         // compute line search direction aux_p = -Hg (dim*1 vector)
-        minus_mat_vec_product_warp(tile, aux_p, aux_h->matrix, aux_g, dim_g);
+        minus_mat_vec_product_tile(tile, aux_p, aux_h->matrix, aux_g, dim_g);
 
         // find the best alpha, and updates x_new & aux_g_new. f1 is the new energy
-        line_search_warp(tile, fix_mol, fix_param, flex_param, out_x, aux_g, flex_topo,
+        line_search_tile(tile, fix_mol, fix_param, flex_param, out_x, aux_g, flex_topo,
                          aux_p, aux_f->f, aux_x_new, aux_g_new, E, dim_g, dim_x, &E1, &alpha);
         DPrint1("Alpha is %f, New Energy is %f\n", alpha, E1);
 
         // aux_y = aux_g_new
-        duplicate_grad_warp(tile, aux_y, aux_g_new, dim_g);
+        duplicate_grad_tile(tile, aux_y, aux_g_new, dim_g);
         if(tile.thread_rank() == 0){
             DPrint1("p is \n", 1);
             print_g(aux_p, dim_g);
@@ -806,24 +806,24 @@ __forceinline__ __device__ void bfgs_warp(const cg::thread_block_tile<TILE_SIZE>
         E = E1;
 
         // out_x := aux_x_new
-        duplicate_pose_warp(tile, out_x, aux_x_new, dim_x, flex_topo.natom);
+        duplicate_pose_tile(tile, out_x, aux_x_new, dim_x, flex_topo.natom);
 
         // Stop criterion: check convergence todo: why not checking g_new?
-        Real gg = g_dot_product_warp(tile, aux_g, aux_g, dim_g);
+        Real gg = g_dot_product_tile(tile, aux_g, aux_g, dim_g);
         if (sqrtf(gg) < 1e-5f){
             break;
         }
 
         // Update aux_g:= aux_g_new
-        duplicate_grad_warp(tile, aux_g, aux_g_new, dim_g);
+        duplicate_grad_tile(tile, aux_g, aux_g_new, dim_g);
 
         // Choose a better initial hessian
         if (step == 0){
-            Real yy = g_dot_product_warp(tile, aux_y, aux_y, dim_g);
+            Real yy = g_dot_product_tile(tile, aux_y, aux_y, dim_g);
             if (fabs(yy) > EPSILON_cu){
                 // yp = aux_y * -Hg
-                Real yp = g_dot_product_warp(tile, aux_y, aux_p, dim_g);
-                set_tri_mat_diagonal_warp(tile, aux_h->matrix, dim_g, alpha * yp / yy); // heuristic value
+                Real yp = g_dot_product_tile(tile, aux_y, aux_p, dim_g);
+                set_tri_mat_diagonal_tile(tile, aux_h->matrix, dim_g, alpha * yp / yy); // heuristic value
 
                 DExec(
                     printf("yy is %f, yp is %f\n", yy, yp);
@@ -838,7 +838,7 @@ __forceinline__ __device__ void bfgs_warp(const cg::thread_block_tile<TILE_SIZE>
 
 
         // aux_minus_hy serves a container rather than a given parameter
-        bfgs_update_hessian_warp(tile, aux_h->matrix, dim_g, aux_p, aux_y, aux_minus_hy, alpha);
+        bfgs_update_hessian_tile(tile, aux_h->matrix, dim_g, aux_p, aux_y, aux_minus_hy, alpha);
 
 
         DExec(
@@ -850,8 +850,8 @@ __forceinline__ __device__ void bfgs_warp(const cg::thread_block_tile<TILE_SIZE>
     // If this optimization fails (a higher energy is found), resume to the original state
     if (E > E_ori){
         E = E_ori;
-        duplicate_pose_warp(tile, out_x, aux_x_ori, dim_x, flex_topo.natom);
-        duplicate_grad_warp(tile, aux_g, aux_g_ori, dim_g);
+        duplicate_pose_tile(tile, out_x, aux_x_ori, dim_x, flex_topo.natom);
+        duplicate_grad_tile(tile, aux_g, aux_g_ori, dim_g);
     }
 
     // write output_type_cuda energy

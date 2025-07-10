@@ -195,9 +195,6 @@ int main(int argc, char* argv[])
     if (not use_tor_lib){
         spdlog::warn("Torsion Library is NOT used.");
     }
-    dock_param.tor_prec = get_config_with_err<Real>(config, "Advanced", "tor_prec", dock_param.tor_prec);;
-    dock_param.box_prec = get_config_with_err<Real>(config, "Advanced", "box_prec", dock_param.box_prec);;
-
 
     // todo: write into constants.h
     Real cutoff = 8.0;

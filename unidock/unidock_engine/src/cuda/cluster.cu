@@ -100,6 +100,7 @@ void cluster_cu(int* out_clustered_pose_inds_cu, int* out_npose_clustered, std::
                 const FlexPose* poses_cu, const FlexTopo* list_flex_topo,
                 Real* aux_list_e_cu, int* aux_list_cluster_cu, int* aux_rmsd_ij_cu,
                 int nflex, int exhaustiveness, Real rmsd_limit){
+
     const int block_size = TILE_SIZE; // One block for one tile (for 32, namely one warp per block)
     int npair_per_flex = exhaustiveness * (exhaustiveness - 1) / 2;
 

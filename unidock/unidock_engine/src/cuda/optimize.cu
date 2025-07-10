@@ -47,7 +47,7 @@ __global__ void opt_kernel(FlexPose* out_poses, const int* pose_inds, const Flex
     auto cta = cg::this_thread_block();
     cg::thread_block_tile<TILE_SIZE> tile = cg::tiled_partition<TILE_SIZE>(cta);
 
-    bfgs_warp(tile,
+    bfgs_tile(tile,
                &out_pose, flex_topo, fix_mol, flex_param, fix_param,
                &aux_pose_new, &aux_pose_ori,
                &aux_g, &aux_g_new, &aux_g_ori,
