@@ -122,7 +122,7 @@ def read_unidock_params_from_yaml(yaml_file: str) -> UnidockConfig:
     with open(yaml_file, 'r') as f:
         params = yaml.safe_load(f)
 
-    try: 
+    try:
         return UnidockConfig.from_dict(params)
     except ValidationError as e:
         print(f'Configuration Error:\n{e.json(indent=2)}')

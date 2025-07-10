@@ -66,6 +66,7 @@ def test_yaml_parsing(
                                  'energy_range': 3.0,
                                  'seed': 12345,
                                  'use_tor_lib': False,
+                                 'n_cpu': None,
                                  'gpu_device_id': 0,
                                  'box_size': (30.0, 30.0, 30.0),
                                  'task': 'screen',
