@@ -15,6 +15,7 @@ Advanced:
   seed: 12345
   use_tor_lib: false
 Hardware:
+  n_cpu: null
   gpu_device_id: 0
 Settings:
   box_size: [30.0, 30.0, 30.0]

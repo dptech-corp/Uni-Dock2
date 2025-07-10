@@ -102,8 +102,8 @@ class CLICommand:
             extra_params = read_unidock_params_from_yaml(args.configurations)
             kwargs_dict = extra_params.to_protocol_kwargs()
         else:
-            config = UnidockConfig()
-            kwargs_dict = config.to_protocol_kwargs()
+            extra_params = UnidockConfig()
+            kwargs_dict = extra_params.to_protocol_kwargs()
 
         print(kwargs_dict)
 

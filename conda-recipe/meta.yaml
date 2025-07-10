@@ -43,6 +43,7 @@ requirements:
     {% endif %}
   run:
     - pyyaml
+    - pydantic
     - pathos
     - numpy
     - scipy
