@@ -176,7 +176,6 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
     mat[6] = cg::reduce(tile, mat[6], cg::plus<Real>());
     mat[7] = cg::reduce(tile, mat[7], cg::plus<Real>());
     mat[8] = cg::reduce(tile, mat[8], cg::plus<Real>());
-    tile.sync();
 
 
     // write gradient of center
@@ -202,7 +201,6 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
             out_g->orientation_g[i] = frobenius_product(mat, dR_dv);
         }
         DPrint("orientation_g: %f, %f, %f\n", out_g->orientation_g[0], out_g->orientation_g[1], out_g->orientation_g[2]);
-
     }
     tile.sync();
 }
