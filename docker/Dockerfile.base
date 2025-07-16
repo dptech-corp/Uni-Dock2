@@ -1,4 +1,4 @@
-FROM mambaorg/micromamba:2-ubuntu20.04
+FROM mambaorg/micromamba:2-ubuntu22.04
 
 USER root
 SHELL ["/bin/bash", "-ic"]
