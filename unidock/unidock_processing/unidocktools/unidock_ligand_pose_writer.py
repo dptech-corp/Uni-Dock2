@@ -57,23 +57,23 @@ class UnidockLigandPoseWriter(object):
 
                 unidock2_pose_info_dict = ligand_unidock2_pose_list[pose_idx]
                 vina_scoring_list = unidock2_pose_info_dict['energy']
-                ligand_mol_ud2_pose.SetDoubleProp(
-                    'vina_binding_free_energy', float(vina_scoring_list[0])
+                ligand_mol_ud2_pose.SetProp(
+                    'vina_binding_free_energy', str(vina_scoring_list[0])
                 )
-                ligand_mol_ud2_pose.SetDoubleProp(
-                    'vina_intra_inter', float(vina_scoring_list[1])
+                ligand_mol_ud2_pose.SetProp(
+                    'vina_intra_inter', str(vina_scoring_list[1])
                 )
-                ligand_mol_ud2_pose.SetDoubleProp(
-                    'vina_intra', float(vina_scoring_list[2])
+                ligand_mol_ud2_pose.SetProp(
+                    'vina_intra', str(vina_scoring_list[2])
                 )
-                ligand_mol_ud2_pose.SetDoubleProp(
-                    'vina_inter', float(vina_scoring_list[3])
+                ligand_mol_ud2_pose.SetProp(
+                    'vina_inter', str(vina_scoring_list[3])
                 )
-                ligand_mol_ud2_pose.SetDoubleProp(
-                    'vina_box_penalty', float(vina_scoring_list[4])
+                ligand_mol_ud2_pose.SetProp(
+                    'vina_box_penalty', str(vina_scoring_list[4])
                 )
-                ligand_mol_ud2_pose.SetDoubleProp(
-                    'vina_torsion_number_energy', float(vina_scoring_list[5])
+                ligand_mol_ud2_pose.SetProp(
+                    'vina_torsion_number_energy', str(vina_scoring_list[5])
                 )
 
                 ligand_mol_ud2_conf = ligand_mol_ud2_pose.GetConformer()

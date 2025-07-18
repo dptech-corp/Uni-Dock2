@@ -74,6 +74,7 @@ Although all the parameters ni the configuration file has default values, it is 
 * use_tor_lib: True to use torsion library. (default: false)
 
 ** Hardware options:
+* n_cpu: Number of maximun CPU cores used in ligand preprocessing. (default: null)
 * gpu_device_id: GPU device ID. (default: 0)
 
 ** Docking Settings options:

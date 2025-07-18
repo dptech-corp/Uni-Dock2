@@ -31,6 +31,7 @@ class UnidockProtocolRunner(object):
         preserve_receptor_hydrogen: bool = False,
         working_dir_name: str = '.',
         docking_pose_sdf_file_name: str = 'unidock2_pose.sdf',
+        n_cpu: Optional[int] = None,
         gpu_device_id: int = 0,
         task: str = 'screen',
         search_mode: str = 'balance',
@@ -67,6 +68,7 @@ class UnidockProtocolRunner(object):
 
         # Docking parameters
         self.box_size = box_size
+        self.n_cpu = n_cpu
         self.gpu_device_id = gpu_device_id
         self.task = task
         self.search_mode = search_mode
@@ -136,6 +138,7 @@ class UnidockProtocolRunner(object):
             template_docking=self.template_docking,
             reference_sdf_file_name=self.reference_sdf_file_name,
             core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
+            n_cpu=self.n_cpu,
             working_dir_name=self.working_dir_name,
         )
 
