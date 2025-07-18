@@ -206,38 +206,32 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 }
 
 
-SCOPE_INLINE Real cal_box_penalty_clamp_coord(Real* out_x, Real* out_y, Real* out_z, Real* out_f){
+SCOPE_INLINE Real cal_box_penalty_clamp_coord(Real* coord, Real* out_f){
     Real penalty = 0.;
-    if (*out_x < BOX_X_LO){
-        penalty += BOX_X_LO - *out_x;
-        *out_x = BOX_X_LO;
+    if (coord[0] < BOX_X_LO){
+        penalty += BOX_X_LO - coord[0];
         out_f[0] += -PENALTY_SLOPE;
     }
-    else if (*out_x > BOX_X_HI){
-        penalty += *out_x - BOX_X_HI;
-        *out_x = BOX_X_HI;
+    else if (coord[0] > BOX_X_HI){
+        penalty += coord[0] - BOX_X_HI;
         out_f[0] -= -PENALTY_SLOPE;
     }
 
-    if (*out_y < BOX_Y_LO){
-        penalty += BOX_Y_LO - *out_y;
-        *out_y = BOX_Y_LO;
+    if (coord[1] < BOX_Y_LO){
+        penalty += BOX_Y_LO - coord[1];
         out_f[1] += -PENALTY_SLOPE;
     }
-    else if (*out_y > BOX_Y_HI){
-        penalty += *out_y - BOX_Y_HI;
-        *out_y = BOX_Y_HI;
+    else if (coord[1] > BOX_Y_HI){
+        penalty += coord[1] - BOX_Y_HI;
         out_f[1] -= -PENALTY_SLOPE;
     }
 
-    if (*out_z < BOX_Z_LO){
-        penalty += BOX_Z_LO - *out_z;
-        *out_z = BOX_Z_LO;
+    if (coord[2] < BOX_Z_LO){
+        penalty += BOX_Z_LO - coord[2];
         out_f[2] += -PENALTY_SLOPE;
     }
-    else if (*out_z > BOX_Z_HI){
-        penalty += *out_z - BOX_Z_HI;
-        *out_z = BOX_Z_HI;
+    else if (coord[2] > BOX_Z_HI){
+        penalty += coord[2] - BOX_Z_HI;
         out_f[2] -= -PENALTY_SLOPE;
     }
 
@@ -274,7 +268,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         coord_adj[0] = pose->coords[i1 * 3];
         coord_adj[1] = pose->coords[i1 * 3 + 1];
         coord_adj[2] = pose->coords[i1 * 3 + 2];
-        cal_box_penalty_clamp_coord(coord_adj, coord_adj + 1, coord_adj + 2, f_tmp);
 
         // Cartesian distances won't be saved
         Real r_vec[3] = {
@@ -290,7 +283,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
                                     fix_param.atom_types[i2], &f_div_r);
             energy += e_tmp;
 
-            if (rr < EPSILON){ // robust
+            if (rr < EPSILON){ // fixme: robust?
                 rr = EPSILON;
                 // CUDA_ERROR("[INTER] Two atoms overlap! i1: %d, i2: %d, r_vec:%f, %f, %f, f: %.10f\n",
                 //            i1, i2, r_vec[0], r_vec[1], r_vec[2], f_div_r);
@@ -304,31 +297,15 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     }
     tile.sync();
 
-
     // -- Compute inter-molecular energy: penalty
     for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
-        f_tmp[0] = 0.;
-        f_tmp[1] = 0.;
-        f_tmp[2] = 0.;
         if (flex_param.atom_types[i] != VN_TYPE_H){
             coord_adj[0] = pose->coords[i * 3];
             coord_adj[1] = pose->coords[i * 3 + 1];
             coord_adj[2] = pose->coords[i * 3 + 2];
-            energy += cal_box_penalty_clamp_coord(coord_adj, coord_adj + 1, coord_adj + 2, f_tmp);
-
-            if (abs(f_tmp[0]) > EPSILON){
-                aux_f[i * 3] += f_tmp[0];
-            }
-            if (abs(f_tmp[1]) > EPSILON){
-                aux_f[i * 3 + 1] += f_tmp[1];
-            }
-            if (abs(f_tmp[2]) > EPSILON){
-                aux_f[i * 3 + 2] += f_tmp[2];
-            }
+            energy += cal_box_penalty_clamp_coord(coord_adj, aux_f + i * 3);
         }
     }
-    tile.sync();
-
 
     // -- Compute intra-molecular energy
     for (int i = tile.thread_rank(); i < flex_param.npair_intra; i += tile.num_threads()){
