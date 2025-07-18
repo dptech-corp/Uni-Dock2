@@ -131,12 +131,12 @@ const std::array<std::string, 2> SCOREFUNC_NAMES = {"vina", "gaff2"};
 struct Box{ 
     // Box is the docking area.
     // Ligand atoms are not allowed to move out of the box.
-    Real x_lo = 0; // low bound of x.
-    Real x_hi = 0; // high bound of x.
-    Real y_lo = 0; // low bound of y
-    Real y_hi = 0; // high bound of y
-    Real z_lo = 0; // low bound of z
-    Real z_hi = 0; // high bound of z
+    Real x_lo = -30; // low bound of x.
+    Real x_hi = 30; // high bound of x.
+    Real y_lo = -30; // low bound of y
+    Real y_hi = 30; // high bound of y
+    Real z_lo = -30; // low bound of z
+    Real z_hi = 30; // high bound of z
     SCOPE_INLINE bool is_inside(Real x, Real y, Real z) const{
         return (x_lo <= x && x <= x_hi) && (y_lo <= y && y <= y_hi) && (z_lo <= z && z <= z_hi);
     }

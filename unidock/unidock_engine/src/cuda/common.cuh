@@ -14,13 +14,8 @@ extern __device__ __managed__ unsigned int funcCallCount;
 
 // -------------- Constants -----------------
 extern __constant__ bool FLAG_CONSTRAINT_DOCK;
-extern __constant__ Real BOX_X_HI;
-extern __constant__ Real BOX_X_LO;
-extern __constant__ Real BOX_Y_HI;
-extern __constant__ Real BOX_Y_LO;
-extern __constant__ Real BOX_Z_HI;
-extern __constant__ Real BOX_Z_LO;
-extern __constant__ Real PENALTY_SLOPE;
+extern __constant__ Box CU_BOX;
+extern __constant__ Real CU_PENALTY_SLOPE;
 
 #if true
 extern __constant__ Vina Score;

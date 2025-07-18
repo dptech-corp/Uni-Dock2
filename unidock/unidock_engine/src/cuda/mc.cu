@@ -36,9 +36,9 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
         else{
             // random center, set gradient
             Real a = gyration_radius(out_pose, &flex_topo);
-            tmp4[0] = get_real_within(rf4.x, BOX_X_LO + a, BOX_X_HI - a);
-            tmp4[1] = get_real_within(rf4.y, BOX_Y_LO + a, BOX_Y_HI - a);
-            tmp4[2] = get_real_within(rf4.z, BOX_Z_LO + a, BOX_Z_HI - a);
+            tmp4[0] = get_real_within(rf4.x, CU_BOX.x_lo + a, CU_BOX.x_hi - a);
+            tmp4[1] = get_real_within(rf4.y, CU_BOX.y_lo + a, CU_BOX.y_hi - a);
+            tmp4[2] = get_real_within(rf4.z, CU_BOX.z_lo + a, CU_BOX.z_hi - a);
 
             aux_g->center_g[0] = tmp4[0] - out_pose->center[0];
             aux_g->center_g[1] = tmp4[1] - out_pose->center[1];
@@ -167,11 +167,11 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
     // 0 for translation
     if (which == 0){
         // compute a translation under box constraint
-        tmp1[0] = clamp_by_range(amplitude * rand_5[0] + out_pose->center[0], BOX_X_HI, BOX_X_LO) - out_pose->center[0];
+        tmp1[0] = clamp_by_range(amplitude * rand_5[0] + out_pose->center[0], CU_BOX.x_hi, CU_BOX.x_lo) - out_pose->center[0];
         //amplitude * rand_5[0];
-        tmp1[1] = clamp_by_range(amplitude * rand_5[1] + out_pose->center[1], BOX_Y_HI, BOX_Y_LO) - out_pose->center[1];
+        tmp1[1] = clamp_by_range(amplitude * rand_5[1] + out_pose->center[1], CU_BOX.y_hi, CU_BOX.y_lo) - out_pose->center[1];
         //amplitude * rand_5[1];
-        tmp1[2] = clamp_by_range(amplitude * rand_5[2] + out_pose->center[2], BOX_Z_HI, BOX_Z_LO) - out_pose->center[2];
+        tmp1[2] = clamp_by_range(amplitude * rand_5[2] + out_pose->center[2], CU_BOX.z_hi, CU_BOX.z_lo) - out_pose->center[2];
         //amplitude * rand_5[2];
 
         for (int i_at = tile.thread_rank(); i_at < flex_topo->natom; i_at += tile.num_threads()){
