@@ -206,28 +206,28 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 }
 
 
-SCOPE_INLINE Real cal_box_penalty(const Real* coord, Box& box, Real& slope, Real* out_f){
+SCOPE_INLINE Real cal_box_penalty(const Real* coord, Box& box, Real* out_f){
     Real penalty = 0.;
 
     penalty += (coord[0] < box.x_lo) * (box.x_lo - coord[0]);
-    out_f[0] += (coord[0] < box.x_lo) * (-slope);
+    out_f[0] += (coord[0] < box.x_lo) * (-PENALTY_SLOPE);
 
     penalty += (coord[0] > box.x_hi) * (coord[0] - box.x_hi);
-    out_f[0] += (coord[0] > box.x_hi) * (slope);
+    out_f[0] += (coord[0] > box.x_hi) * (PENALTY_SLOPE);
 
     penalty += (coord[1] < box.y_lo) * (box.y_lo - coord[1]);
-    out_f[1] += (coord[1] < box.y_lo) * (-slope);
+    out_f[1] += (coord[1] < box.y_lo) * (-PENALTY_SLOPE);
 
     penalty += (coord[1] > box.y_hi) * (coord[1] - box.y_hi);
-    out_f[1] += (coord[1] > box.y_hi) * (slope);
+    out_f[1] += (coord[1] > box.y_hi) * (PENALTY_SLOPE);
 
     penalty += (coord[2] < box.z_lo) * (box.z_lo - coord[2]);
-    out_f[2] += (coord[2] < box.z_lo) * (-slope);
+    out_f[2] += (coord[2] < box.z_lo) * (-PENALTY_SLOPE);
 
     penalty += (coord[2] > box.z_hi) * (coord[2] - box.z_hi);
-    out_f[2] += (coord[2] > box.z_hi) * (slope);
+    out_f[2] += (coord[2] > box.z_hi) * (PENALTY_SLOPE);
 
-    return penalty * slope;
+    return penalty * PENALTY_SLOPE;
 }
 
 
@@ -295,7 +295,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
             coord_adj[0] = pose->coords[i * 3];
             coord_adj[1] = pose->coords[i * 3 + 1];
             coord_adj[2] = pose->coords[i * 3 + 2];
-            energy += cal_box_penalty(coord_adj, CU_BOX, CU_PENALTY_SLOPE, aux_f + i * 3);
+            energy += cal_box_penalty(coord_adj, CU_BOX, aux_f + i * 3);
         }
     }
 

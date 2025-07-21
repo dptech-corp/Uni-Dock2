@@ -8,7 +8,6 @@ __device__ __managed__ unsigned int funcCallCount = 0;
 
 __constant__ bool FLAG_CONSTRAINT_DOCK = false;
 __constant__ Box CU_BOX;
-__constant__ Real CU_PENALTY_SLOPE = 1e6;
 
 
 #if true

@@ -6,7 +6,6 @@
 #define SCORE_H
 #include "myutils/common.h"
 
-const Real PENALTY_SLOPE = 1e6;
 
 SCOPE_INLINE Real cal_box_penalty(const Real* coord, const Box& box, Real* out_f){
     Real penalty = 0.;
