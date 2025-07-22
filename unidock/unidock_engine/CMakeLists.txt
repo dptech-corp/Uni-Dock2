@@ -14,7 +14,7 @@ set(INPUT_TILE_SIZE 32)
 set(INPUT_BLOCK_SIZE 128)
 add_compile_definitions(TILE_SIZE=${INPUT_TILE_SIZE})
 add_compile_definitions(BLOCK_SIZE=${INPUT_BLOCK_SIZE})
-set(VERSION_NUMBER "0.4.2a")
+set(VERSION_NUMBER "0.4.2b")
 
 set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math -maxrregcount=64")
 #set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --ptxas-options=-v -Xptxas --warn-on-spills -lineinfo")

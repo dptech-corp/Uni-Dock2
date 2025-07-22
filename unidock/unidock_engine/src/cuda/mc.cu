@@ -48,7 +48,6 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
             // Alexa, M. (2022). Super-Fibonacci Spirals: Fast, Low-Discrepancy Sampling of SO(3). Proceedings of the
             // IEEE Computer Society Conference on Computer Vision and Pattern Recognition, 2022-June(3), 8281–8290.
             // https://doi.org/10.1109/CVPR52688.2022.00811
-
             Real s = idx + 0.5;
             Real r = sqrt(s / n);
             Real R = sqrt(1.0 - s / n);
@@ -61,27 +60,29 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
             quaternion_to_rotvec(aux_g->orientation_g, tmp4);
             // printf("[RAND] %f, %f, %f\n", aux_g->orientation_g[0], aux_g->orientation_g[1], aux_g->orientation_g[2]);
         }
+    }
 
-        rf4 = curand_uniform4(state);
+    rf4 = curand_uniform4(state);
+    // generate random uints for all torsions // todo: change sampling of torsions
+    for (int i = tile.thread_rank(); i < flex_topo.ntorsion; i += tile.num_threads()){
+        // copy dihedrals
+        tmp4[3] = out_pose->dihedrals[i];
 
-        // generate random uints for all torsions // todo: change sampling of torsions
-        for (int i = 0; i < flex_topo.ntorsion; i++){
-            // copy dihedrals
-            tmp4[3] = out_pose->dihedrals[i];
+        // set gradient
+        int j = rf4.x * flex_topo.range_inds[i * 2 + 1]; // save index of range_list
+        int i_lo = flex_topo.range_inds[i * 2] + j * 2; // save a tmp index
 
-            // set gradient
-            int j = rf4.x * flex_topo.range_inds[i * 2 + 1]; // save index of range_list
-            int i_lo = flex_topo.range_inds[i * 2] + j * 2; // save a tmp index
-
-            tmp4[1] = flex_topo.range_list[i_lo + 1] - flex_topo.range_list[i_lo];
-            tmp4[0] = get_real_within(rf4.y, flex_topo.range_list[i_lo], flex_topo.range_list[i_lo + 1]);
-            aux_g->dihedrals_g[i] = tmp4[0] - tmp4[3];
-        }
+        tmp4[1] = flex_topo.range_list[i_lo + 1] - flex_topo.range_list[i_lo];
+        tmp4[0] = get_real_within(rf4.y, flex_topo.range_list[i_lo], flex_topo.range_list[i_lo + 1]);
+        aux_g->dihedrals_g[i] = tmp4[0] - tmp4[3];
     }
     tile.sync();
 
     apply_grad_update_pose_tile(tile, out_pose, aux_g, flex_topo, 1.);
 }
+
+
+
 
 __global__ void randomize_pose(FlexPose* out_poses, const FlexTopo* flex_topos, FlexPoseGradient* aux_gradients,
                                curandStatePhilox4_32_10_t* states, int seed,
