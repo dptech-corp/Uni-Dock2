@@ -533,20 +533,12 @@ class UnidockLigandTopologyBuilder(object):
                     real total number of input ligands!!'
             )
 
-    def get_summary_ligand_info_dict(self):
-        self.total_ligand_info_summary_dict = {}
-
-        for ligand_idx in range(self.num_ligands):
-            ligand_info_dict = self.total_ligand_info_dict_list[ligand_idx]
-            ligand_name = ligand_info_dict['ligand_name']
-            atom_info_nested_list = ligand_info_dict['atom_info']
-            torsion_info_nested_list = ligand_info_dict['torsion_info']
-            root_atom_idx_list = ligand_info_dict['root_atom_idx']
-            fragment_atom_idx_nested_list = ligand_info_dict['fragment_atom_idx']
-
-            self.total_ligand_info_summary_dict[ligand_name] = {
-                'atoms': atom_info_nested_list,
-                'torsions': torsion_info_nested_list,
-                'root_atoms': root_atom_idx_list,
-                'fragment_atom_idx': fragment_atom_idx_nested_list,
-            }
+    def get_summary_ligand_info_dict(self) -> dict:
+        return {
+            ligand_info_dict['ligand_name']: {
+                'atoms': ligand_info_dict['atom_info'],
+                'torsions': ligand_info_dict['torsion_info'],
+                'root_atoms': ligand_info_dict['root_atom_idx'],
+                'fragment_atom_idx': ligand_info_dict['fragment_atom_idx'],
+            } for ligand_info_dict in self.total_ligand_info_dict_list
+        }

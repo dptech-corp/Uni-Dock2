@@ -220,6 +220,5 @@ class UnidockReceptorTopologyBuilder(object):
                 self.atom_info_nested_list[atom_idx] = atom_info_list
                 atom_idx += 1
 
-    def get_summary_receptor_info_dict(self):
-        self.receptor_info_summary_dict = {}
-        self.receptor_info_summary_dict["receptor"] = self.atom_info_nested_list
+    def get_summary_receptor_info_dict(self) -> list:
+        return self.atom_info_nested_list
