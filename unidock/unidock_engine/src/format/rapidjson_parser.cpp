@@ -186,13 +186,13 @@ void RapidJsonParser::parse_ligands_info(UDFlexMolList& flex_mol_list, std::vect
             }
         }
         
-        // inter pairs: flex v.s. receptor
-        for (int i = 0; i < flex_mol.natom; i++) {
-            if (flex_mol.vina_types[i] == VN_TYPE_H) { // ignore Hydrogen
-                continue;
-            }
-            // Note: This will need receptor info separately
-        }
+        // // inter pairs: flex v.s. receptor
+        // for (int i = 0; i < flex_mol.natom; i++) {
+        //     if (flex_mol.vina_types[i] == VN_TYPE_H) { // ignore Hydrogen
+        //         continue;
+        //     }
+        //     // Note: This will need receptor info separately
+        // }
         
         flex_mol_list.push_back(flex_mol);
     }

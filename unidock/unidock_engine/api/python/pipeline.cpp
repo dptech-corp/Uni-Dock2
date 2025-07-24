@@ -124,8 +124,28 @@ public:
 
     void add_ligands(py::dict ligands_info) {
         // Use PybindParser to parse ligands info
+        if (_fix_mol.natom == 0) {
+            throw std::runtime_error("Receptor has not been set or is empty, You need to set receptor first.");
+        }
         PybindParser parser(py::list(), ligands_info);  // Empty list for receptor, will be set separately
         parser.parse_ligands_info(_flex_mol_list, _fns_flex, _use_tor_lib);
+    
+        // Add inter pairs for each ligand (this needs to be done after receptor is parsed)
+        for (auto& flex_mol : _flex_mol_list) {
+            // inter pairs: flex v.s. receptor
+            for (int i = 0; i < flex_mol.natom; i++) {
+                if (flex_mol.vina_types[i] == VN_TYPE_H) { // ignore Hydrogen on ligand and protein
+                    continue;
+                }
+                for (int j = 0; j < _fix_mol.natom; j++) {
+                    if (_fix_mol.vina_types[j] == VN_TYPE_H) {
+                        continue;
+                    }
+                    flex_mol.inter_pairs.push_back(i);
+                    flex_mol.inter_pairs.push_back(j);
+                }
+            }
+        }
         spdlog::info("Ligands loaded. Total count: {:d}", _flex_mol_list.size());
     }
 
