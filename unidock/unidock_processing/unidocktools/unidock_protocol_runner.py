@@ -93,7 +93,7 @@ class UnidockProtocolRunner(object):
         )
         receptor_builder.generate_receptor_topology()
         receptor_builder.analyze_receptor_topology()
-        receptor_info = receptor_builder.get_summary_receptor_info_dict()
+        receptor_info = receptor_builder.get_summary_receptor_info()
 
         # Prepare ligands
         ligand_builder = UnidockLigandTopologyBuilder(
@@ -149,5 +149,5 @@ class UnidockProtocolRunner(object):
             docking_pose_sdf_file_name=self.docking_pose_sdf_file_name,
         )
         pose_writer.generate_docking_pose_sdf()
-        
+
         return self.docking_pose_sdf_file_name
