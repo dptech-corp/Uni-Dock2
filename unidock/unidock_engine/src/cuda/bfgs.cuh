@@ -239,7 +239,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     Real energy = 0.;
     Real rr = 0.;
     Real f_div_r = 0.;
-    Real f_tmp[3] = {0.};
     Real coord_adj[3] = {0.};
 
 

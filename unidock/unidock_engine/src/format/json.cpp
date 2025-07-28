@@ -324,12 +324,12 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
                 }
             }
             // inter pairs: flex v.s. receptor
-            for (int i = 0; i < flex_mol.natom; i++){
-                if (flex_mol.vina_types[i] == VN_TYPE_H){ //ignore Hydrogen on ligand and protein
+            for (int j = 0; j < out_fix.natom; j++){
+                if (out_fix.vina_types[j] == VN_TYPE_H){
                     continue;
                 }
-                for (int j = 0; j < out_fix.natom; j++){
-                    if (out_fix.vina_types[j] == VN_TYPE_H){
+                for (int i = 0; i < flex_mol.natom; i++){
+                    if (flex_mol.vina_types[i] == VN_TYPE_H){ //ignore Hydrogen on ligand and protein
                         continue;
                     }
                     flex_mol.inter_pairs.push_back(i);

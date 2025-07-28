@@ -16,9 +16,8 @@ add_compile_definitions(TILE_SIZE=${INPUT_TILE_SIZE})
 add_compile_definitions(BLOCK_SIZE=${INPUT_BLOCK_SIZE})
 set(VERSION_NUMBER "0.4.2b")
 
-set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math -maxrregcount=64")
-#set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --ptxas-options=-v -Xptxas --warn-on-spills -lineinfo")
-#message("CMAKE_CUDA_FLAGS_RELEASE is ${CMAKE_CUDA_FLAGS_RELEASE}")
+set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math --maxrregcount 64 --generate-line-info")
+#set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --ptxas-options=-v -Xptxas --warn-on-spills ")
 
 # For Building Stage
 link_directories(${CMAKE_SOURCE_DIR}/lib)
