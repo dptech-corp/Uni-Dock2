@@ -235,7 +235,7 @@ void DockTask::dump_poses(){
     // prepare flex names
 
     write_poses_to_json(fp_json, fns_flex, filtered_pose_inds_list,
-        flex_pose_list_res, flex_pose_list_real_res, list_i_real);
+        flex_pose_list_res, flex_pose_list_real_res, list_i_real, udflex_mols);
 
     // output poses all info to json
 }

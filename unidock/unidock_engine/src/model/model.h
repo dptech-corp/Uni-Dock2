@@ -94,6 +94,7 @@ void free_FlexForce_gpu(FlexForce* flex_force);
  */
 struct FlexTopo{
     int natom = 0;
+    int natom_heavy = 0;
     int ntorsion = 0;
 
     int* vn_types; // size: natom. namely saving all elements
@@ -208,6 +209,7 @@ struct UDFlexMol{
     std::vector<int> inter_pairs; // each in ligand x each in protein (they both count their own atoms from zero)
     std::vector<Real> r1_plus_r2_intra; // vdW radii summations of each pair, intra part
     std::vector<Real> r1_plus_r2_inter; // vdW radii summations of each pair, inter part
+    std::vector<int> order;
 };
 
 typedef std::vector<UDFlexMol> UDFlexMolList;

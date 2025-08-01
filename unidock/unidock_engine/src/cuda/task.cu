@@ -93,6 +93,7 @@ void DockTask::alloc_gpu(){
     int size_inter_all_flex = 0, size_intra_all_flex = 0;
 
     int list_natom_flex[nflex];
+    int list_natom_heavy_flex[nflex];
     int list_ndihe[nflex];
 
     int list_nrange[nflex]; // not used
@@ -106,6 +107,8 @@ void DockTask::alloc_gpu(){
         size_inter_all_flex += m.inter_pairs.size(); // all possible pairs
 
         list_natom_flex[i] = m.natom;
+        list_natom_heavy_flex[i] = m.natom - std::count(m.ff_types.begin(), m.ff_types.end(), VN_TYPE_H);;
+
         list_ndihe[i] = m.dihedrals.size();
         n_atom_all_flex += m.natom;
         n_dihe_all_flex += m.dihedrals.size();
@@ -154,6 +157,7 @@ void DockTask::alloc_gpu(){
 
         // set values
         flex_topo_list[i].natom = list_natom_flex[i];
+        flex_topo_list[i].natom_heavy = list_natom_heavy_flex[i];
         flex_topo_list[i].ntorsion = list_ndihe[i];
 
         // set pointer to GPU

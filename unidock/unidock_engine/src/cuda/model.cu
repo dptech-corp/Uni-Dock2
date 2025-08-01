@@ -149,6 +149,7 @@ FlexTopo* alloccp_FlexTopo_gpu(const FlexTopo& flex_topo){
     
     FlexTopo flex_topo_tmp;
     flex_topo_tmp.natom = flex_topo.natom;
+    flex_topo_tmp.natom_heavy = flex_topo.natom_heavy;
     flex_topo_tmp.ntorsion = flex_topo.ntorsion;
     // Allocate memory for each pointer member on the GPU
     checkCUDA(cudaMalloc(&flex_topo_tmp.vn_types, sizeof(int) * flex_topo.natom));

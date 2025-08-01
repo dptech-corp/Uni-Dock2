@@ -132,6 +132,86 @@ void split_torsions_into_frags(const std::set<int>& root, const std::vector<UDTo
     }
 }
 
+template<typename T>
+void reorder_vector_inplace(T& vec, const std::vector<int> &order){
+    T temp = vec;
+    for (int i = 0; i < order.size(); ++i) {
+        vec[i] = temp[order[i]];
+    }
+}
+
+void replace_vec_by_order(std::vector<int> vec, const std::vector<int> &order, int step=1){
+    for (int i = 0; i < vec.size(); i += step) {
+        vec[i] = order[vec[i]];
+    }
+
+}
+
+void replace_list_by_order(int* vec, const std::vector<int> &order, int size= 0){
+    for (int i = 0; i < size; i ++) {
+        vec[i] = order[vec[i]];
+    }
+}
+
+
+void replace_pairs_by_order(std::set<std::pair<int, int>>& pairs, const std::vector<int>& order) {
+    std::set<std::pair<int, int>> temp;
+    for (const auto& [a, b] : pairs) {
+        temp.emplace(order[a], order[b]);
+    }
+    pairs = std::move(temp);
+}
+
+void reorder_flex_atoms(UDFlexMol &flex_mol){
+    // reorder atoms according to flex_mol.vina_types: keep all flex_mol.vina_types == VN_TYPE_H to the end
+
+    // 1. Generate Order Vector
+    // collect non-H
+    for (int i = 0; i < flex_mol.vina_types.size(); ++i) {
+        if (flex_mol.vina_types[i] != VN_TYPE_H) {
+            flex_mol.order.push_back(i);
+        }
+    }
+    // collect H
+    for (int i = 0; i < flex_mol.vina_types.size(); ++i) {
+        if (flex_mol.vina_types[i] == VN_TYPE_H) {
+            flex_mol.order.push_back(i);
+        }
+    }
+
+    // Reorder Fixed Length
+    reorder_vector_inplace(flex_mol.ff_types, flex_mol.order);
+    reorder_vector_inplace(flex_mol.charges, flex_mol.order);
+
+
+    // Replace each integer `k` by flex_mol.order[k]
+    replace_vec_by_order(flex_mol.intra_pairs, flex_mol.order, 1);
+    replace_vec_by_order(flex_mol.intra_pairs, flex_mol.order, 2);
+
+    // Replace each integer `k` in complicated structure by flex_mol.order[k]
+    replace_pairs_by_order(flex_mol.pairs_1213, flex_mol.order);
+    replace_pairs_by_order(flex_mol.pairs_14, flex_mol.order);
+
+    // Replace torsions
+    for (auto& torsion : flex_mol.torsions){
+        replace_list_by_order(torsion.axis, flex_mol.order, 2);
+        replace_list_by_order(torsion.atoms, flex_mol.order, 4);
+        replace_vec_by_order(torsion.rotated_atoms, flex_mol.order);
+    }
+
+    // Replace coords
+    std::vector<Real> temp;
+    for (int i = 0; i < flex_mol.natom; i++){
+        temp.push_back(flex_mol.coords[flex_mol.order[i] * 3]);
+        temp.push_back(flex_mol.coords[flex_mol.order[i] * 3 + 1]);
+        temp.push_back(flex_mol.coords[flex_mol.order[i] * 3 + 2]);
+    }
+    flex_mol.coords = temp;
+
+}
+
+
+
 
 void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix, UDFlexMolList& out_flex_list,
                        std::vector<std::string>& out_fns_flex, bool use_tor_lib){
@@ -337,24 +417,43 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
                 }
             }
 
+            // reorder atoms to keep coordinates of heavy atoms continuous
+            reorder_flex_atoms(flex_mol);
+
             // add this flex_mol to the list
             out_flex_list.push_back(flex_mol);
+            for (int kk = 0; kk < flex_mol.inter_pairs.size(); kk+=2){
+                printf("[%i, %i] ", flex_mol.inter_pairs[kk], flex_mol.inter_pairs[kk + 1]);
+            }
         }
     }
     spdlog::debug("Json is Done.");
 }
 
+
+std::vector<int> inverse_order(const std::vector<int>& order) {
+    std::vector<int> inverse_order(order.size());
+    for (int i = 0; i < order.size(); ++i) {
+        inverse_order[order[i]] = i;
+    }
+    return inverse_order;
+}
+
+
 void write_poses_to_json(std::string fp_json, const std::vector<std::string>& flex_names,
                          const std::vector<std::vector<int>>& filtered_pose_inds_list,
                          const FlexPose* flex_pose_list_res,
                          const Real* flex_pose_list_real_res,
-                         const std::vector<int>& list_i_real){
+                         const std::vector<int>& list_i_real,
+                         const UDFlexMolList& flex_mols){
     rj::Document doc;
     doc.SetObject();
 
     // add poses
 
     for (int i = 0; i < flex_names.size(); i++){
+        auto natom = flex_mols[i].natom;
+        auto inv_order = inverse_order(flex_mols[i].order);
         auto flex_name = flex_names[i];
         rj::Value flex_data(rj::kArrayType);
 
@@ -372,8 +471,10 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
             pose_obj.AddMember("energy", energy.Move(), doc.GetAllocator());
 
             rj::Value coords(rj::kArrayType);
-            for (int k = list_i_real[j * 2]; k < list_i_real[j * 2 + 1]; k++){
-                coords.PushBack(flex_pose_list_real_res[k], doc.GetAllocator());
+            for (int ia = 0; ia < natom; ia ++){
+                coords.PushBack(flex_pose_list_real_res[list_i_real[j * 2] + inv_order[ia] * 3], doc.GetAllocator());
+                coords.PushBack(flex_pose_list_real_res[list_i_real[j * 2] + inv_order[ia] * 3 + 1], doc.GetAllocator());
+                coords.PushBack(flex_pose_list_real_res[list_i_real[j * 2] + inv_order[ia] * 3 + 2], doc.GetAllocator());
             }
             pose_obj.AddMember("coords", coords.Move(), doc.GetAllocator());
 
