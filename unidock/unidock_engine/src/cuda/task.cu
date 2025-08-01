@@ -107,7 +107,7 @@ void DockTask::alloc_gpu(){
         size_inter_all_flex += m.inter_pairs.size(); // all possible pairs
 
         list_natom_flex[i] = m.natom;
-        list_natom_heavy_flex[i] = m.natom - std::count(m.ff_types.begin(), m.ff_types.end(), VN_TYPE_H);;
+        list_natom_heavy_flex[i] = m.natom - std::count(m.vina_types.begin(), m.vina_types.end(), VN_TYPE_H);
 
         list_ndihe[i] = m.dihedrals.size();
         n_atom_all_flex += m.natom;

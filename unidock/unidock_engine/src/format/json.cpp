@@ -422,9 +422,10 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
 
             // add this flex_mol to the list
             out_flex_list.push_back(flex_mol);
-            for (int kk = 0; kk < flex_mol.inter_pairs.size(); kk+=2){
-                printf("[%i, %i] ", flex_mol.inter_pairs[kk], flex_mol.inter_pairs[kk + 1]);
-            }
+            // printf("npair = %d", flex_mol.inter_pairs.size());
+            // for (int kk = 0; kk < flex_mol.inter_pairs.size(); kk+=2){
+            //     printf("[%i, %i] ", flex_mol.inter_pairs[kk], flex_mol.inter_pairs[kk + 1]);
+            // }
         }
     }
     spdlog::debug("Json is Done.");

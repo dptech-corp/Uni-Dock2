@@ -254,6 +254,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     for (int i = tile.thread_rank(); i < flex_param.npair_inter; i += tile.num_threads()){
         int i1 = i % flex_topo.natom_heavy;
         int i2 = i / flex_topo.natom_heavy;
+        // printf("(%i, %i) ", i1, i2);
         // int i1 = flex_param.pairs_inter[i * 2], i2 = flex_param.pairs_inter[i * 2 + 1];
         // if (flex_param.atom_types[i1] == VN_TYPE_H){
         //     continue;
