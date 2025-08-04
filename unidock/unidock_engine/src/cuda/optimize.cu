@@ -47,7 +47,7 @@ __global__ void opt_kernel(FlexPose* out_poses, const int* pose_inds, const Flex
     auto cta = cg::this_thread_block();
     cg::thread_block_tile<TILE_SIZE> tile = cg::tiled_partition<TILE_SIZE>(cta);
 
-    bfgs_warp(tile,
+    bfgs_tile(tile,
                &out_pose, flex_topo, fix_mol, flex_param, fix_param,
                &aux_pose_new, &aux_pose_ori,
                &aux_g, &aux_g_new, &aux_g_ori,
@@ -63,12 +63,6 @@ void optimize_cu(FlexPose* out_poses, const int* pose_inds, const FlexTopo* flex
                           FlexPose* aux_poses, FlexPoseGradient* aux_gradients, FlexPoseHessian* aux_hessians,
                           FlexForce* aux_forces,
                           int refine_steps, int nblock, int npose_per_flex){
-
-    // todo: quasi_newton_par.max_steps = unsigned((25 + m_model_gpu[l].num_movable_atoms()) / 3);
-    // todo: through refinement, poses outside the box can be purged into the box????
-    Real slope_for_refine = 100;
-    checkCUDA(cudaMemcpyToSymbol(PENALTY_SLOPE, &slope_for_refine, sizeof(Real), 0, cudaMemcpyHostToDevice));
-    checkCUDA(cudaDeviceSynchronize());
 
     opt_kernel<<<nblock, TILE_SIZE>>>(out_poses, pose_inds, flex_topos, fix_mol,
                           flex_params, fix_param,

@@ -131,12 +131,12 @@ const std::array<std::string, 2> SCOREFUNC_NAMES = {"vina", "gaff2"};
 struct Box{ 
     // Box is the docking area.
     // Ligand atoms are not allowed to move out of the box.
-    Real x_lo = 0; // low bound of x.
-    Real x_hi = 0; // high bound of x.
-    Real y_lo = 0; // low bound of y
-    Real y_hi = 0; // high bound of y
-    Real z_lo = 0; // low bound of z
-    Real z_hi = 0; // high bound of z
+    Real x_lo = -30; // low bound of x.
+    Real x_hi = 30; // high bound of x.
+    Real y_lo = -30; // low bound of y
+    Real y_hi = 30; // high bound of y
+    Real z_lo = -30; // low bound of z
+    Real z_hi = 30; // high bound of z
     SCOPE_INLINE bool is_inside(Real x, Real y, Real z) const{
         return (x_lo <= x && x <= x_hi) && (y_lo <= y && y <= y_hi) && (z_lo <= z && z <= z_hi);
     }
@@ -153,8 +153,6 @@ struct DockParam{
     int num_pose = 10;
     Real energy_range = 10.0;
     Real rmsd_limit = 1.0; // a limit to judge whether two poses are the same during clustering
-    Real tor_prec = 0.3; // todo sampling precision for position (Angstrom)
-    Real box_prec = 1.0; // todo sampling precision for dihedral (radian)
 
     ScoreFunc search_score = vina;
     ScoreFunc opt_score = vina;
@@ -166,14 +164,12 @@ struct DockParam{
                      "box: x_lo={} Angstrom, x_hi={} Angstrom, y_lo={} Angstrom, y_hi={} Angstrom, z_lo={} Angstrom, z_hi={} Angstrom, \n"
                      "constraint_docking={}, exhaustiveness={}, \n"
                      "mc_steps={}, opt_steps={}, refine_steps={}, \n"
-                     "num_pose={}, rmsd_limit={} Angstrom, \n"
-                     "tor_prec={}, box_prec={}.",
+                     "num_pose={}, rmsd_limit={} Angstrom, \n",
                      seed, static_cast<int>(search_score), static_cast<int>(opt_score),
                      box.x_lo, box.x_hi, box.y_lo, box.y_hi, box.z_lo, box.z_hi,
                      constraint_docking, exhaustiveness,
                      mc_steps, opt_steps, refine_steps,
-                     num_pose, rmsd_limit,
-                     tor_prec, box_prec);
+                     num_pose, rmsd_limit);
     }
 };
 
