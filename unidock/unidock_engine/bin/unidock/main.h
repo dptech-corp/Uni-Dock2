@@ -8,6 +8,7 @@
 const char* STR_CONFIG_TEMPLATE = R"(
 # For each item with type tag (!!), the value is REQUIRED
 
+
 Advanced:
   seed: !!int 1234567       # explicit random seed
   exhaustiveness: !!int 512 # MC candidates count (roughly proportional to time).
@@ -20,8 +21,6 @@ Advanced:
   num_pose: !!int 10        # number of the finally generated poses to output
   energy_range: !!float 10  # maximum energy difference between output poses and the best pose
   tor_lib: !!bool false     # true to use torsion library (Not recommended)
-  tor_prec: !!float 0.3     # sampling precision of angle.
-  box_prec: !!float 2.0     # sampling precision of position
 
 
 Hardware:
@@ -48,8 +47,10 @@ Settings:
   size_y: !!float 30.0
   size_z: !!float 30
 
+
 Outputs:
   dir: !!str ./res2         # output directory, default is `./res`
+
 
 Inputs:
   json: !!str ./5S8I.json   # Input json file containing receptor & ligands info.

@@ -2,28 +2,26 @@ cmake_minimum_required(VERSION 3.27)
 
 # ------------------------------ Options for Users
 option(BUILD_BIN "build binaries" ON)
-option(BUILD_API "build api" OFF)
+option(BUILD_API "build api" ON)
 option(BUILD_TEST "build unit tests" ON)
 option(BUILD_DOC "build documents" OFF)
 
 # Precision
 option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for the whole project." FALSE)
+# fixme: double seems worse than float
 
 # ------------------------------ Options for Developers
 set(INPUT_TILE_SIZE 32)
 set(INPUT_BLOCK_SIZE 128)
 add_compile_definitions(TILE_SIZE=${INPUT_TILE_SIZE})
 add_compile_definitions(BLOCK_SIZE=${INPUT_BLOCK_SIZE})
-set(VERSION_NUMBER "0.4.2b")
-
-set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math --maxrregcount 64 --generate-line-info")
-#set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --ptxas-options=-v -Xptxas --warn-on-spills ")
+file(STRINGS "${CMAKE_SOURCE_DIR}/../VERSION" VERSION_NUMBER)
+#set(VERSION_NUMBER "0.4.3")
+set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math --maxrregcount 64") #  --generate-line-info
 
 # For Building Stage
 link_directories(${CMAKE_SOURCE_DIR}/lib)
 include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
-
-option(ONLY_C "If true, run the whole projects on host to perform tests on C++. " TRUE) # todo
 
 set(PRJ_NAME ud2)
 set(LIB_NAME ud_lib)
@@ -75,12 +73,6 @@ else ()
 endif ()
 
 
-if (ONLY_C)
-    add_compile_definitions(FuncScope=__hostdevice__)
-else ()
-    add_compile_definitions(FuncScope=__hostdevice__)
-endif ()
-
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
     add_definitions(-DDEBUG)
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G -g")
@@ -100,7 +92,7 @@ if (BUILD_BIN)
     add_subdirectory("bin")
 endif ()
 
-if (BUILD_TEST) # Only support GLIB >= 2.35 (Ubuntu 22.04) todo: GLIB 2.31
+if (BUILD_TEST) # Compile libs on the fly
     add_subdirectory("include")
     add_subdirectory("test")
 endif ()

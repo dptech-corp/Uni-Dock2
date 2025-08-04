@@ -188,7 +188,7 @@ SCOPE_INLINE Real get_real_within_by_int(uint c, Real min, Real max, int n = 31)
  * @return A real number in [min, max)
  */
 SCOPE_INLINE Real get_real_within(Real c, Real min, Real max){
-    assert(min < max);
+    assert(min <= max);
     return min + (max - min) * c;
 }
 
