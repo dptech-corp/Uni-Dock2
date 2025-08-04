@@ -12,18 +12,11 @@
 #include <rapidjson/writer.h>
 #include <sstream>
 #include <iomanip>
-#include <cmath>
-#include <rapidjson/prettywriter.h>
 
 #include "json.h"
 #include "rapidjson_parser.h"
 #include "model/model.h"
 #include "myutils/mymath.h"
-#include "myutils/common.h"
-
-#include <numeric>
-#include <algorithm>
-
 #include "constants/constants.h"
 
 namespace rj = rapidjson;
