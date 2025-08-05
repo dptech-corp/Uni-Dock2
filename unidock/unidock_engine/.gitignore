@@ -2,5 +2,5 @@ cmake-build-debug
 cmake-build-release
 examples
 doc/html
-
+bin/myapp
 

@@ -67,6 +67,18 @@ TEST_CASE("get_real_within_by_int", "[get_real_within_by_int]") {
     //![get_real_within_by_int]
 }
 
+TEST_CASE("get_real_within", "[get_real_within]") {
+    // left, mid, right
+    REQUIRE_THAT(get_real_within(0.0, M_PI, 10.0), Catch::Matchers::WithinAbs(M_PI, 1e-4));
+    REQUIRE_THAT(get_real_within(0.5, 5.0, 10.0), Catch::Matchers::WithinAbs(7.5, 1e-4));
+    REQUIRE_THAT(get_real_within(0.99999, -3.8, -1.02), Catch::Matchers::WithinAbs(-1.02, 1e-4));
+
+    // min == max no error
+    REQUIRE_THAT(get_real_within(0.1234, 2.5, 2.5),
+                Catch::Matchers::WithinAbs(2.5, 1e-4));
+    //![get_real_within]
+}
+
 
 TEST_CASE("compute gaussian", "[gaussian]") {
     Real e, f;

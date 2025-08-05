@@ -14,9 +14,6 @@
 #include "score/vina.h"
 #include "score/score.h"
 
-
-
-
 void DockTask::run(){
     spdlog::debug("All file names of this Task: ");
     for(auto& f : fns_flex){
@@ -93,8 +90,6 @@ void DockTask::run(){
     }
 }
 
-
-
 void DockTask::prepare_vina(){
     // compute r1 + r2 values for acceleration
 
@@ -114,7 +109,6 @@ void DockTask::prepare_vina(){
         }
     }
 }
-
 
 /**
  * One Step of MC to mutate?

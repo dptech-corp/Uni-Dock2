@@ -17,19 +17,19 @@ __global__ void line_search_one_original_kernel(const FixMol* fix_mol, const Fix
                                    Real* out_e, Real* out_alpha) {
     auto tile = cg::tiled_partition<TILE_SIZE>(cg::this_thread_block());
 
-    Real e0 = cal_e_grad_warp(tile, x, aux_g, *flex_topo, *fix_mol, *flex_param, *fix_param, aux_f->f);
+    Real e0 = cal_e_grad_tile(tile, x, aux_g, *flex_topo, *fix_mol, *flex_param, *fix_param, aux_f->f);
     //DOF, the vector x has this dimension
     int dim_g = 3 + 3 + flex_topo->ntorsion; // center, orientation, torsion
     int dim_x = 3 + 4 + flex_topo->ntorsion;
     // Use unit matrix as initial guess for Hessian
-    init_tri_mat_warp(tile, aux_h->matrix, dim_g, 0); // set zero
-    set_tri_mat_diagonal_warp(tile, aux_h->matrix, dim_g, 1); // set diagonal to 1
+    init_tri_mat_tile(tile, aux_h->matrix, dim_g, 0); // set zero
+    set_tri_mat_diagonal_tile(tile, aux_h->matrix, dim_g, 1); // set diagonal to 1
 
     // compute line search direction aux_p = -Hg (dim*1 vector)
-    minus_mat_vec_product_warp(tile, aux_p, aux_h->matrix, aux_g, dim_g);
+    minus_mat_vec_product_tile(tile, aux_p, aux_h->matrix, aux_g, dim_g);
 
     // run the target device function
-    line_search_warp(tile, *fix_mol, *fix_param,
+    line_search_tile(tile, *fix_mol, *fix_param,
         *flex_param, x,
         aux_g, *flex_topo, aux_p,
         aux_f->f,
@@ -45,7 +45,7 @@ __global__ void cal_e_grad_one_kernel(const FixMol* fix_mol, const FixParamVina*
         FlexPoseGradient* out_g, FlexForce* aux_f, Real* out_e) {
 
     auto tile = cg::tiled_partition<TILE_SIZE>(cg::this_thread_block());
-    *out_e = cal_e_grad_warp(tile, x, out_g, *flex_topo, *fix_mol, *flex_param, *fix_param, aux_f->f);
+    *out_e = cal_e_grad_tile(tile, x, out_g, *flex_topo, *fix_mol, *flex_param, *fix_param, aux_f->f);
 }
 
 

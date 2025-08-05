@@ -14,15 +14,7 @@ extern __device__ __managed__ unsigned int funcCallCount;
 
 // -------------- Constants -----------------
 extern __constant__ bool FLAG_CONSTRAINT_DOCK;
-extern __constant__ Real BOX_X_HI;
-extern __constant__ Real BOX_X_LO;
-extern __constant__ Real BOX_Y_HI;
-extern __constant__ Real BOX_Y_LO;
-extern __constant__ Real BOX_Z_HI;
-extern __constant__ Real BOX_Z_LO;
-extern __constant__ Real TOR_PREC;
-extern __constant__ Real BOX_PREC;
-extern __constant__ Real PENALTY_SLOPE;
+extern __constant__ Box CU_BOX;
 
 #if true
 extern __constant__ Vina Score;
@@ -33,7 +25,8 @@ extern __constant__ Gaff2 Score;
 void init_constants(const DockParam& dock_param);
 
 
-#define TILE_SIZE 32
+// #define TILE_SIZE 32
+// #define BLOCK_SIZE 128
 #define STRIDE_POSE 4
 #define STRIDE_G 6
 

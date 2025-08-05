@@ -12,18 +12,11 @@
 #include <rapidjson/writer.h>
 #include <sstream>
 #include <iomanip>
-#include <cmath>
-#include <rapidjson/prettywriter.h>
 
 #include "json.h"
 #include "rapidjson_parser.h"
 #include "model/model.h"
 #include "myutils/mymath.h"
-#include "myutils/common.h"
-
-#include <numeric>
-#include <algorithm>
-
 #include "constants/constants.h"
 
 namespace rj = rapidjson;
@@ -57,22 +50,22 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
 
     // Use RapidJsonParser to parse the data
     RapidJsonParser parser(doc);
-    
+
     // Parse receptor
     parser.parse_receptor_info(box, out_fix);
-    
+
     // Parse ligands
     parser.parse_ligands_info(out_flex_list, out_fns_flex, use_tor_lib);
-    
+
     // Add inter pairs for each ligand (this needs to be done after receptor is parsed)
     for (auto& flex_mol : out_flex_list) {
         // inter pairs: flex v.s. receptor
-        for (int i = 0; i < flex_mol.natom; i++) {
-            if (flex_mol.vina_types[i] == VN_TYPE_H) { // ignore Hydrogen on ligand and protein
+        for (int j = 0; j < out_fix.natom; j++){
+            if (out_fix.vina_types[j] == VN_TYPE_H){
                 continue;
             }
-            for (int j = 0; j < out_fix.natom; j++) {
-                if (out_fix.vina_types[j] == VN_TYPE_H) {
+            for (int i = 0; i < flex_mol.natom; i++){
+                if (flex_mol.vina_types[i] == VN_TYPE_H){ //ignore Hydrogen on ligand and protein
                     continue;
                 }
                 flex_mol.inter_pairs.push_back(i);
@@ -80,7 +73,7 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
             }
         }
     }
-    
+
     spdlog::debug("Json is Done.");
 }
 
