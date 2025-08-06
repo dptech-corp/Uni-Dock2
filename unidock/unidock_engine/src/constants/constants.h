@@ -10,6 +10,8 @@
 #define LINE_SEARCH_MULTIPLIER 0.5
 
 
+#define PENALTY_SLOPE 1e6
+
 const Real VN_VDW_RADII[] = {
     1.1,  // H <from 10.1021/jp8111556>
     1.92, // B <from 10.1021/jp8111556>

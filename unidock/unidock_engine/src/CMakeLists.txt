@@ -15,6 +15,7 @@ set(sources
         constants/constants.h
 
         format/json.cpp         format/json.h
+        format/rapidjson_parser.cpp format/rapidjson_parser.h
 
         geometry/quaternion.h
         geometry/rotation.h

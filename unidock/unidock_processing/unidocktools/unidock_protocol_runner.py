@@ -1,10 +1,9 @@
 from typing import List, Optional, Tuple, Dict, Any
 import os
-import json
 
 from rdkit import Chem
 
-from unidock_engine.api.python.pipeline import run_docking_pipeline
+from unidock_engine.api.python import pipeline
 from unidock_processing.unidocktools.unidock_receptor_topology_builder import (
     UnidockReceptorTopologyBuilder,
 )
@@ -47,26 +46,13 @@ class UnidockProtocolRunner(object):
         use_tor_lib: bool = False
     ) -> None:
         self.receptor_file_name = os.path.abspath(receptor_file_name)
-
-        self.ligand_sdf_file_name_list = [
-            os.path.abspath(ligand_sdf_file_name) for ligand_sdf_file_name in ligand_sdf_file_name_list
-            ]
-
+        self.ligand_sdf_file_name_list = [os.path.abspath(f) for f in ligand_sdf_file_name_list]
         self.target_center = target_center
-
-        # Configuration parameters
         self.template_docking = template_docking
-
-        if reference_sdf_file_name is not None:
-            self.reference_sdf_file_name = os.path.abspath(reference_sdf_file_name)
-        else:
-            self.reference_sdf_file_name = reference_sdf_file_name
-
+        self.reference_sdf_file_name = os.path.abspath(reference_sdf_file_name) if reference_sdf_file_name else None
         self.covalent_ligand = covalent_ligand
         self.covalent_residue_atom_info_list = covalent_residue_atom_info_list
         self.preserve_receptor_hydrogen = preserve_receptor_hydrogen
-
-        # Docking parameters
         self.box_size = box_size
         self.n_cpu = n_cpu
         self.gpu_device_id = gpu_device_id
@@ -82,57 +68,37 @@ class UnidockProtocolRunner(object):
         self.energy_range = energy_range
         self.seed = seed
         self.use_tor_lib = use_tor_lib
-
         self.working_dir_name = os.path.abspath(working_dir_name)
-        self.unidock2_output_dir_name = os.path.join(
-            self.working_dir_name, 'unidock2_output'
-        )
-
+        self.unidock2_output_dir_name = os.path.join(self.working_dir_name, 'unidock2_output')
         self.docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
         os.makedirs(self.unidock2_output_dir_name, exist_ok=True)
-        self.unidock2_input_json_file_name = ''
-        self.unidock2_pose_sdf_file_name = ''
 
-        # Process core atom mapping dict list
         if core_atom_mapping_dict_list is None:
             self.core_atom_mapping_dict_list = None
         else:
-            num_molecules: int = len(core_atom_mapping_dict_list)
-            self.core_atom_mapping_dict_list = [None] * num_molecules
+            self.core_atom_mapping_dict_list = [
+                {int(k): int(v) for k, v in d.items()} if d else None
+                for d in core_atom_mapping_dict_list
+            ]
 
-            for mol_idx in range(num_molecules):
-                raw_core_atom_mapping_dict = core_atom_mapping_dict_list[mol_idx]
-                if raw_core_atom_mapping_dict is None:
-                    self.core_atom_mapping_dict_list[mol_idx] = None
-                else:
-                    core_atom_mapping_dict = {
-                        int(reference_atom_idx): int(query_atom_idx)
-                        for reference_atom_idx, query_atom_idx \
-                            in raw_core_atom_mapping_dict.items()
-                    }
-                    self.core_atom_mapping_dict_list[mol_idx] = core_atom_mapping_dict
-
-        if self.template_docking and self.target_center == (0.0, 0.0, 0.0):
-            reference_mol = Chem.SDMolSupplier(
-                self.reference_sdf_file_name, removeHs=True
-            )[0]
+        if self.template_docking and self.target_center == (0.0, 0.0, 0.0) and self.reference_sdf_file_name:
+            reference_mol = Chem.SDMolSupplier(self.reference_sdf_file_name, removeHs=True)[0]
             self.target_center = tuple(utils.calculate_center_of_mass(reference_mol))
 
     def run_unidock_protocol(self) -> str:
-        ## prepare receptor
-        unidock_receptor_topology_builder = UnidockReceptorTopologyBuilder(
+        # Prepare receptor
+        receptor_builder = UnidockReceptorTopologyBuilder(
             self.receptor_file_name,
             prepared_hydrogen=self.preserve_receptor_hydrogen,
             covalent_residue_atom_info_list=self.covalent_residue_atom_info_list,
             working_dir_name=self.working_dir_name,
         )
+        receptor_builder.generate_receptor_topology()
+        receptor_builder.analyze_receptor_topology()
+        receptor_info = receptor_builder.get_summary_receptor_info()
 
-        unidock_receptor_topology_builder.generate_receptor_topology()
-        unidock_receptor_topology_builder.analyze_receptor_topology()
-        unidock_receptor_topology_builder.get_summary_receptor_info_dict()
-
-        ## prepare ligands input
-        unidock_ligand_topology_builder = UnidockLigandTopologyBuilder(
+        # Prepare ligands
+        ligand_builder = UnidockLigandTopologyBuilder(
             self.ligand_sdf_file_name_list,
             covalent_ligand=self.covalent_ligand,
             template_docking=self.template_docking,
@@ -141,28 +107,11 @@ class UnidockProtocolRunner(object):
             n_cpu=self.n_cpu,
             working_dir_name=self.working_dir_name,
         )
+        ligand_builder.generate_batch_ligand_topology()
+        ligands_info = ligand_builder.get_summary_ligand_info_dict()
 
-        unidock_ligand_topology_builder.generate_batch_ligand_topology()
-        unidock_ligand_topology_builder.get_summary_ligand_info_dict()
-
-        ## combine inputs into one json file to engine
-        system_info_dict = {'score': ['vina', 'gaff2']}
-        system_info_dict.update(
-            unidock_receptor_topology_builder.receptor_info_summary_dict
-        )
-        system_info_dict.update(
-            unidock_ligand_topology_builder.total_ligand_info_summary_dict
-        )
-        self.unidock2_input_json_file_name = os.path.join(
-            self.working_dir_name, 'system_inputs_unidock2.json'
-        )
-
-        with open(self.unidock2_input_json_file_name, 'w') as system_json_file:
-            json.dump(system_info_dict, system_json_file)
-
-        ## run ud2 engine - call the pipeline directly with parameters
-        run_docking_pipeline(
-            json_file_path=self.unidock2_input_json_file_name,
+        # Instantiate and configure the docking pipeline
+        docking_pipeline = pipeline.DockingPipeline(
             output_dir=self.unidock2_output_dir_name,
             center_x=self.target_center[0],
             center_y=self.target_center[1],
@@ -186,22 +135,22 @@ class UnidockProtocolRunner(object):
             gpu_device_id=self.gpu_device_id
         )
 
-        ## generate output ud2 pose sdf
-        unidock2_pose_json_file_name_raw_list = os.listdir(
-            self.unidock2_output_dir_name
-        )
-        unidock2_pose_json_file_name_list = [
-            os.path.join(
-                self.unidock2_output_dir_name, unidock2_pose_json_file_name_raw
-            )
-            for unidock2_pose_json_file_name_raw \
-                in unidock2_pose_json_file_name_raw_list
+        docking_pipeline.set_receptor(receptor_info)
+        docking_pipeline.add_ligands(ligands_info)
+
+        docking_pipeline.run()
+
+        # Process and write output poses
+        pose_json_files = [
+            os.path.join(self.unidock2_output_dir_name, f)
+            for f in os.listdir(self.unidock2_output_dir_name) if f.endswith('.json')
         ]
-        unidock_pose_writer = UnidockLigandPoseWriter(
-            unidock_ligand_topology_builder.ligand_mol_list,
-            unidock2_pose_json_file_name_list,
+        pose_writer = UnidockLigandPoseWriter(
+            ligand_builder.ligand_mol_list,
+            pose_json_files,
             covalent_ligand=self.covalent_ligand,
             docking_pose_sdf_file_name=self.docking_pose_sdf_file_name,
         )
+        pose_writer.generate_docking_pose_sdf()
 
-        unidock_pose_writer.generate_docking_pose_sdf()
+        return self.docking_pose_sdf_file_name

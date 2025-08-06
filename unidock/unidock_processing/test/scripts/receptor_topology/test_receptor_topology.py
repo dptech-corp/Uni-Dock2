@@ -51,11 +51,10 @@ def test_receptor_topology_pdb(receptor_topology_test_pdb_file):
 
         unidock_receptor_topology_builder.generate_receptor_topology()
         unidock_receptor_topology_builder.analyze_receptor_topology()
-        unidock_receptor_topology_builder.get_summary_receptor_info_dict()
 
-        assert hasattr(unidock_receptor_topology_builder, 'receptor_info_summary_dict')
+        assert hasattr(unidock_receptor_topology_builder, 'atom_info_nested_list')
         assert (
-            len(unidock_receptor_topology_builder.receptor_info_summary_dict['receptor'])
+            len(unidock_receptor_topology_builder.get_summary_receptor_info())
             > 0
         )
 
@@ -75,11 +74,10 @@ def test_receptor_topology_dms(receptor_topology_test_dms_file):
 
         unidock_receptor_topology_builder.generate_receptor_topology()
         unidock_receptor_topology_builder.analyze_receptor_topology()
-        unidock_receptor_topology_builder.get_summary_receptor_info_dict()
 
-        assert hasattr(unidock_receptor_topology_builder, 'receptor_info_summary_dict')
+        assert hasattr(unidock_receptor_topology_builder, 'atom_info_nested_list')
         assert (
-            len(unidock_receptor_topology_builder.receptor_info_summary_dict['receptor'])
+            len(unidock_receptor_topology_builder.get_summary_receptor_info())
             > 0
         )
 
@@ -99,10 +97,9 @@ def test_receptor_topology_RNA_pdb(receptor_topology_RNA_test_pdb_file):
 
         unidock_receptor_topology_builder.generate_receptor_topology()
         unidock_receptor_topology_builder.analyze_receptor_topology()
-        unidock_receptor_topology_builder.get_summary_receptor_info_dict()
 
-        assert hasattr(unidock_receptor_topology_builder, 'receptor_info_summary_dict')
+        assert hasattr(unidock_receptor_topology_builder, 'atom_info_nested_list')
         assert (
-            len(unidock_receptor_topology_builder.receptor_info_summary_dict['receptor'])
+            len(unidock_receptor_topology_builder.get_summary_receptor_info())
             > 0
         )
