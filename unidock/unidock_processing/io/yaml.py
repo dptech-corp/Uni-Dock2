@@ -48,6 +48,7 @@ class SettingsConfig(BaseModel):
 class PreprocessingConfig(BaseModel):
     template_docking: bool = False
     reference_sdf_file_name: Optional[str] = None
+    compute_center: bool = True
     core_atom_mapping_dict_list: Optional[List[Dict[str, Any]]] = None
     covalent_ligand: bool = False
     covalent_residue_atom_info_list: Optional[List[Any]] = None
@@ -66,7 +67,7 @@ CONFIG_MAPPING: ClassVar[List[Tuple[str, str, Type[BaseModel], List[str]]]] = [
     ('Hardware', 'hardware', HardwareConfig, ['n_cpu', 'gpu_device_id']),
     ('Settings', 'settings', SettingsConfig, ['box_size', 'task', 'search_mode']),
     ('Preprocessing', 'preprocessing', PreprocessingConfig, [
-     'template_docking', 'reference_sdf_file_name',
+     'template_docking', 'reference_sdf_file_name', 'compute_center',
      'core_atom_mapping_dict_list', 'covalent_ligand',
      'covalent_residue_atom_info_list', 'preserve_receptor_hydrogen',
      'temp_dir_name', 'output_receptor_dms_file_name',
@@ -81,7 +82,7 @@ def build_unidock_model():
     UnidockModel = create_model(
         'UnidockConfig',
         **field_definitions,
-        __base__=BaseModel
+        __base__= BaseModel
     )
 
     class UnidockConfig(UnidockModel):

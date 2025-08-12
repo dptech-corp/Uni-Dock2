@@ -1,6 +1,8 @@
 from typing import List, Optional, Tuple, Dict, Any
 import os
 
+import numpy as np
+
 from rdkit import Chem
 
 from unidock_engine.api.python import pipeline
@@ -24,6 +26,7 @@ class UnidockProtocolRunner(object):
         box_size: Tuple[float, float, float] = (30.0, 30.0, 30.0),
         template_docking: bool = False,
         reference_sdf_file_name: Optional[str] = None,
+        compute_center: bool = True,
         core_atom_mapping_dict_list: Optional[List[Optional[Dict[int, int]]]] = None,
         covalent_ligand: bool = False,
         covalent_residue_atom_info_list: Optional[List[Dict[str, Any]]] = None,
@@ -50,6 +53,7 @@ class UnidockProtocolRunner(object):
         self.target_center = target_center
         self.template_docking = template_docking
         self.reference_sdf_file_name = os.path.abspath(reference_sdf_file_name) if reference_sdf_file_name else None
+        self.compute_center = compute_center
         self.covalent_ligand = covalent_ligand
         self.covalent_residue_atom_info_list = covalent_residue_atom_info_list
         self.preserve_receptor_hydrogen = preserve_receptor_hydrogen
@@ -81,9 +85,13 @@ class UnidockProtocolRunner(object):
                 for d in core_atom_mapping_dict_list
             ]
 
-        if self.template_docking and self.target_center == (0.0, 0.0, 0.0) and self.reference_sdf_file_name:
+        if self.template_docking and self.reference_sdf_file_name and self.compute_center:
             reference_mol = Chem.SDMolSupplier(self.reference_sdf_file_name, removeHs=True)[0]
             self.target_center = tuple(utils.calculate_center_of_mass(reference_mol))
+
+        if self.covalent_ligand and self.compute_center:
+            ligand_mol = Chem.SDMolSupplier(self.ligand_sdf_file_name_list[0], removeHs=True)[0]
+            self.target_center = tuple(utils.calculate_center_of_mass(ligand_mol))
 
     def run_unidock_protocol(self) -> str:
         # Prepare receptor

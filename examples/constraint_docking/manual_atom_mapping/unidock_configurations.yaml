@@ -23,6 +23,7 @@ Settings:
 Preprocessing:
   template_docking: true
   reference_sdf_file_name: reference.sdf
+  compute_center: true
   core_atom_mapping_dict_list: [{'0': 14,
     '1': 15,
     '10': 11,
