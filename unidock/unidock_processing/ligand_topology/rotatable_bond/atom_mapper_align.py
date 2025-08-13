@@ -6,7 +6,6 @@ class AlignRotatableBond(BaseRotatableBond):
     name = 'atom_mapper_align'
 
     def __init__(self):
-        print("Using AlignRotatableBond")
         self.rotatable_bond_smarts = (
             "[!$(*#*)&!D1&!$([CH3])&!$(C(F)(F)F)&!$(C(Cl)(Cl)Cl)&!$(C(Br)(Br)Br)&!$"
             "(C([CH3])([CH3])[CH3])]-!@[!$(*#*)&!D1&!$([CH3])&!$(C(F)(F)F)&!$"

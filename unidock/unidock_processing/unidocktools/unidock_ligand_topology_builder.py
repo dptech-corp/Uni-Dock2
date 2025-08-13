@@ -48,7 +48,7 @@ def batch_topology_builder_process(
         ligand_name = ligand_mol.GetProp('ud2_molecule_name')
         core_atom_mapping_dict = core_atom_mapping_dict_list[ligand_idx]
         mol_graph_builder = BaseMolGraph.create(
-            mol_graph_type, 
+            mol_graph_type,
             mol=ligand_mol,
             torsion_library_dict=torsion_library_dict,
             reference_mol=reference_mol,
@@ -147,7 +147,7 @@ class UnidockLigandTopologyBuilder(object):
         self.n_cpu = os.cpu_count()
         if n_cpu:
             self.n_cpu = min(n_cpu, self.n_cpu)
-        
+
         self.atom_mapper_align = atom_mapper_align
 
     def generate_batch_ligand_topology(self):

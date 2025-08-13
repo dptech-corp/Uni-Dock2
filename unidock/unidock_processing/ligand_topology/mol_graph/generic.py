@@ -12,43 +12,28 @@ from .base import BaseMolGraph
 
 
 class GenericMolGraph(BaseMolGraph):
-    """
-    A class to represent a generic molecular graph.
-    
-    This class is used to handle the molecular graph representation of ligands
-    in the Uni-Dock processing pipeline. It provides methods for manipulating
-    and analyzing the molecular structure.
-    """
-
     name = 'generic'
 
     def __init__(
-        self, 
+        self,
         mol:Chem.Mol,
         torsion_library_dict:dict,
         working_dir_name:str='.',
         **kwargs
     ):
-        """
-        Initialize the GenericMolGraph with a given RDKit molecule.
-        
-        Parameters:
-        mol (rdkit.Chem.Mol): The RDKit molecule object to be represented.
-        """
-        print("this is generic mol graph __init__")
         self.mol = mol
         self.torsion_library_dict = torsion_library_dict
         self.working_dir_name = working_dir_name
 
-    def __preprocess_mol(self):
+    def _preprocess_mol(self):
         mol = self.mol
         atom_typer = AtomType()
         atom_typer.assign_atom_types(mol)
         ComputeGasteigerCharges(mol)
         utils.assign_atom_properties(mol)
         self.mol = mol
-    
-    def __get_rotatable_bond_info(self) -> list[tuple[int,...]]:
+
+    def _get_rotatable_bond_info(self) -> list[tuple[int,...]]:
         rotatable_bond_finder = BaseRotatableBond.create('generic')
         return rotatable_bond_finder.identify_rotatable_bonds(self.mol)
 
@@ -58,16 +43,16 @@ class GenericMolGraph(BaseMolGraph):
             writer.write(self.mol)
 
         (
-            atom_type_list, 
-            partial_charge_list, 
-            atom_parameter_dict, 
+            atom_type_list,
+            partial_charge_list,
+            atom_parameter_dict,
             torsion_parameter_nested_dict
         ) = utils.record_gaff2_atom_types_and_parameters(
             temp_ligand_sdf_file_name, 'gas', self.working_dir_name
         )
         return atom_type_list, partial_charge_list, torsion_parameter_nested_dict
-    
-    def __freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
+
+    def _freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
         mol = self.mol
         rotatable_bond_idx_list = []
         for bond in mol.GetBonds():
@@ -84,7 +69,7 @@ class GenericMolGraph(BaseMolGraph):
 
         return splitted_mol_list
 
-    def __get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol], 
+    def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                           rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
         root_fragment_idx = utils.root_finding_strategy(splitted_mol_list, rotatable_bond_info_list)
         return [atom.GetIntProp('internal_atom_idx') for atom in splitted_mol_list[root_fragment_idx].GetAtoms()]
@@ -93,9 +78,9 @@ class GenericMolGraph(BaseMolGraph):
         return [[atom.GetIntProp('internal_atom_idx') for atom in fragment_mol.GetAtoms()] \
                 for fragment_mol in splitted_mol_list]
 
-    def __get_atoms_info(self, atom_type_list:list[str], 
-                      partial_charge_list:list[float], 
-                      atom_pair_12_13_nested_list:list[list[int]], 
+    def __get_atoms_info(self, atom_type_list:list[str],
+                      partial_charge_list:list[float],
+                      atom_pair_12_13_nested_list:list[list[int]],
                       atom_pair_14_nested_list:list[list[int]]
         ) -> list[tuple[float, float, float, int, int, float, list[int], list[int]]]:
         mol = self.mol
@@ -117,11 +102,11 @@ class GenericMolGraph(BaseMolGraph):
             )
 
             atom_info_nested_list.append(atom_info)
-        
+
         return atom_info_nested_list
 
-    def __get_torsions_info(self, 
-                          rotatable_bond_info_list:list[tuple[int,...]], 
+    def __get_torsions_info(self,
+                          rotatable_bond_info_list:list[tuple[int,...]],
                           root_atom_idx_first:int,
                           atom_type_list:list[int],
                           torsion_parameter_nested_dict,
@@ -161,35 +146,35 @@ class GenericMolGraph(BaseMolGraph):
             ]
 
             torsion_info_nested_list[torsion_idx] = torsion_info_list
-        
+
         return torsion_info_nested_list
 
     def build_graph(self):
         """
         Build the molecular graph representation.
-        
+
         This method constructs the graph structure from the RDKit molecule,
         including atoms and bonds.
         """
-        self.__preprocess_mol()
+        self._preprocess_mol()
 
-        rotatable_bond_info_list = self.__get_rotatable_bond_info()
+        rotatable_bond_info_list = self._get_rotatable_bond_info()
 
         atom_pair_12_13_nested_list, atom_pair_14_nested_list = utils.calculate_nonbonded_atom_pairs(self.mol)
 
         atom_type_list, partial_charge_list, torsion_parameter_nested_dict = self.__construct_gaff2()
 
-        splitted_mol_list = self.__freeze_bond(rotatable_bond_info_list)
+        splitted_mol_list = self._freeze_bond(rotatable_bond_info_list)
 
-        root_atom_idx_list = self.__get_root_atom_ids(splitted_mol_list, rotatable_bond_info_list)
+        root_atom_idx_list = self._get_root_atom_ids(splitted_mol_list, rotatable_bond_info_list)
 
         fragment_atom_idx_nested_list = self.__get_frags_atom_ids(splitted_mol_list)
 
-        atom_info_nested_list = self.__get_atoms_info(atom_type_list, partial_charge_list, 
-                                                      atom_pair_12_13_nested_list, 
+        atom_info_nested_list = self.__get_atoms_info(atom_type_list, partial_charge_list,
+                                                      atom_pair_12_13_nested_list,
                                                       atom_pair_14_nested_list)
 
-        torsion_info_nested_list = self.__get_torsions_info(rotatable_bond_info_list, root_atom_idx_list[0], 
+        torsion_info_nested_list = self.__get_torsions_info(rotatable_bond_info_list, root_atom_idx_list[0],
                                                             atom_type_list, torsion_parameter_nested_dict)
 
         return (

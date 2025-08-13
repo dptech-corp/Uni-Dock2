@@ -14,15 +14,15 @@ class RotatableBondMeta(ABCMeta):
 
 class BaseRotatableBond(ABC, metaclass=RotatableBondMeta):
     """Abstract base class for rotatable bond identification."""
-    
+
     @abstractmethod
     def identify_rotatable_bonds(self, mol:Chem.Mol):
         """
         Identify rotatable bonds in a molecule.
-        
+
         Args:
             mol: RDKit molecule object
-            
+
         Returns:
             list: List of tuples containing atom indices of rotatable bonds
         """

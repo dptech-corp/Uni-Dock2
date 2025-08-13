@@ -18,20 +18,17 @@ class CovalentMolGraph(GenericMolGraph):
         working_dir_name:str='.',
         **kwargs
     ):
-        print("this is covalent mol graph __init__")
         super().__init__(mol, torsion_library_dict, working_dir_name)
         self.covalent_anchor_atom_info = tuple()
-    
-    def __preprocess_mol(self):
-        print("this is covalent mol graph __preprocess_mol")
+
+    def _preprocess_mol(self):
         self.mol, self.covalent_anchor_atom_info, _ = (
             utils.prepare_covalent_ligand_mol(self.mol)
         )
-        super().__preprocess_mol()
+        super()._preprocess_mol()
 
-    def __get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol], 
+    def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
-        print("this is covalent mol graph __get_root_atom_ids")
         root_fragment_idx = None
         for fragment_idx, fragment in enumerate(splitted_mol_list):
             for atom in fragment.GetAtoms():

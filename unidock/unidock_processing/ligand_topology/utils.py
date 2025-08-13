@@ -742,26 +742,26 @@ def root_finding_strategy(fragment_mol_list, rotatable_bond_info_list):
 
 def get_full_ring_core_atoms(mol, core_atom_idx_list):
     # only works for hydrogens not in the core_atom_idx_list
-    
+
     # Convert input list to set for faster lookup
     core_atom_idx_set = set(core_atom_idx_list)
     full_core_atom_idx_set = set(core_atom_idx_list)
-    
+
     # Get all rings in the molecule
     rings = Chem.GetSymmSSSR(mol)
-    
+
     # For each ring, check if any atom is in core_atom_idx_list
     for ring in rings:
         ring_atoms = set(ring)
         intersection = ring_atoms.intersection(core_atom_idx_set)
-        
+
         if len(intersection) == 1:
             # If only one atom in the ring belongs to core, remove it
-            full_core_atom_idx_set.difference_update(intersection) 
+            full_core_atom_idx_set.difference_update(intersection)
         elif len(intersection) > 1 and len(intersection) < len(ring_atoms):
             # If partial ring (more than 1 but not complete), add all ring atoms
             full_core_atom_idx_set.update(ring_atoms)
-    
+
     # # Add hydrogen atoms connected to ring atoms
     # for atom_idx in list(full_core_atom_idx_set):
     #     atom = mol.GetAtomWithIdx(atom_idx)
@@ -770,7 +770,7 @@ def get_full_ring_core_atoms(mol, core_atom_idx_list):
     #         # If neighbor is hydrogen, add it, perfect initial alignment should be done first
     #         if neighbor.GetAtomicNum() == 1:
     #             full_core_atom_idx_set.add(neighbor.GetIdx())
-    
+
     final_count = len(full_core_atom_idx_set)
     initial_count = len(core_atom_idx_list)
     print(f'initial_count: {initial_count}, final_count: {final_count}')

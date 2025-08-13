@@ -1,4 +1,3 @@
-import os
 import re
 from rdkit import Chem
 from unidock_processing.ligand_topology import utils
@@ -21,19 +20,16 @@ class AlignMolGraph(GenericMolGraph):
         core_atom_mapping_dict:dict=None,
         working_dir_name:str='.',
     ):
-        print("this is align mol graph __init__")
         super().__init__(mol, torsion_library_dict, working_dir_name)
         self.reference_mol = reference_mol
         self.core_atom_mapping_dict = core_atom_mapping_dict
         self.core_atom_idx_list = []
 
-    def __get_rotatable_bond_info(self) -> list[tuple[int,...]]:
-        print("this is align mol graph __get_rotatable_bond_info")
+    def _get_rotatable_bond_info(self) -> list[tuple[int,...]]:
         rotatable_bond_finder = BaseRotatableBond.create('atom_mapper_align')
         return rotatable_bond_finder.identify_rotatable_bonds(self.mol)
 
-    def __preprocess_mol(self):
-        print("this is align mol graph __preprocess_mol")
+    def _preprocess_mol(self):
         mol = self.mol
         reference_mol = self.reference_mol
         core_atom_mapping_dict = self.core_atom_mapping_dict
@@ -45,11 +41,10 @@ class AlignMolGraph(GenericMolGraph):
 
         core_atom_idx_list = utils.get_full_ring_core_atoms(mol, list(core_atom_mapping_dict.values()))
 
-        super().__preprocess_mol()
+        super()._preprocess_mol()
         self.core_atom_idx_list = core_atom_idx_list
 
-    def __freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
-        print("this is align mol graph __freeze_bond")
+    def _freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
         mol = self.mol
         core_atom_idx_list = self.core_atom_idx_list
         filtered_rotatable_bond_info_list = []
@@ -60,9 +55,9 @@ class AlignMolGraph(GenericMolGraph):
                 rotatable_begin_atom_idx in core_atom_idx_list
                 and rotatable_end_atom_idx in core_atom_idx_list
             ):
-                begin_neighbors = [nbr.GetIdx() for nbr in mol.GetAtomWithIdx(rotatable_begin_atom_idx).GetNeighbors() 
+                begin_neighbors = [nbr.GetIdx() for nbr in mol.GetAtomWithIdx(rotatable_begin_atom_idx).GetNeighbors()
                                    if nbr.GetIdx() != rotatable_end_atom_idx and nbr.GetAtomicNum() > 1]
-                end_neighbors = [nbr.GetIdx() for nbr in mol.GetAtomWithIdx(rotatable_end_atom_idx).GetNeighbors() 
+                end_neighbors = [nbr.GetIdx() for nbr in mol.GetAtomWithIdx(rotatable_end_atom_idx).GetNeighbors()
                                    if nbr.GetIdx() != rotatable_begin_atom_idx and nbr.GetAtomicNum() > 1]
                 if not begin_neighbors or not end_neighbors:
                     continue
@@ -73,11 +68,11 @@ class AlignMolGraph(GenericMolGraph):
                     for end_neighbor in end_neighbors:
                         # Form torsion: begin_neighbor - begin_idx - end_idx - end_neighbor
                         torsion_atoms = {
-                            begin_neighbor, rotatable_begin_atom_idx, 
+                            begin_neighbor, rotatable_begin_atom_idx,
                             rotatable_end_atom_idx, end_neighbor
                         }
                         mapped_torsion_atoms = len(torsion_atoms.intersection(core_atom_idx_list))
-                    
+
                         # If this torsion has all 4 atoms mapped, we found a fully constrained torsion
                         if mapped_torsion_atoms == 4:
                             has_fully_mapped_torsion = True
@@ -92,11 +87,10 @@ class AlignMolGraph(GenericMolGraph):
             else:
                 filtered_rotatable_bond_info_list.append(rotatable_bond_info)
 
-        return super().__freeze_bond(filtered_rotatable_bond_info_list)
+        return super()._freeze_bond(filtered_rotatable_bond_info_list)
 
-    def __get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol], 
+    def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
-        print("this is align mol graph __get_root_atom_ids")
         core_atom_idx_list = self.core_atom_idx_list
         root_fragment_idx = None
         for fragment_idx, fragment in enumerate(splitted_mol_list):
@@ -114,7 +108,7 @@ class AlignMolGraph(GenericMolGraph):
                                for nbr_heavy_atom_idx in nbr_heavy_atom_idx_list):
                             root_fragment_idx = fragment_idx
                             break
-                            
+
             if root_fragment_idx is not None:
                 break
 

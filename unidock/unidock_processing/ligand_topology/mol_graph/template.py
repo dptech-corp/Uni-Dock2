@@ -20,14 +20,12 @@ class TemplateMolGraph(GenericMolGraph):
         core_atom_mapping_dict:dict=None,
         working_dir_name:str='.',
     ):
-        print("this is template mol graph __init__")
         super().__init__(mol, torsion_library_dict, working_dir_name)
         self.reference_mol = reference_mol
         self.core_atom_mapping_dict = core_atom_mapping_dict
         self.core_atom_idx_list = []
-    
-    def __preprocess_mol(self):
-        print("this is template mol graph __preprocess_mol")
+
+    def _preprocess_mol(self):
         mol = self.mol
         reference_mol = self.reference_mol
         core_atom_mapping_dict = self.core_atom_mapping_dict
@@ -52,19 +50,17 @@ class TemplateMolGraph(GenericMolGraph):
         with Chem.SDWriter(os.path.join(self.working_dir_name, 'ligand_template_aligned.sdf')) as writer:
             writer.write(mol)
 
-        super().__preprocess_mol()
+        super()._preprocess_mol()
         self.core_atom_idx_list = core_atom_idx_list
 
-    def __freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
-        print("this is template mol graph __freeze_bond")
+    def _freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
         rotatable_bond_info_list = [bond_info for bond_info in rotatable_bond_info_list \
                                     if bond_info[0] in self.core_atom_idx_list \
                                         and bond_info[1] in self.core_atom_idx_list]
-        return super().__freeze_bond(rotatable_bond_info_list)
+        return super()._freeze_bond(rotatable_bond_info_list)
 
-    def __get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol], 
+    def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
-        print("this is template mol graph __get_root_atom_ids")
         root_fragment_idx = None
         for fragment_idx, fragment in enumerate(splitted_mol_list):
             for atom in fragment.GetAtoms():

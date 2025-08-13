@@ -7,7 +7,7 @@ from unidock_processing.utils.molecule_processing import (
     get_mol_with_indices,
     get_mol_without_indices,
 )
-from unidock_processing.unidocktools.vina_atom_type import AtomType
+from unidock_processing.atom_types.vina_atom_type import AtomType
 from unidock_processing.unidocktools.supported_protein_residue_name import (
     PROTEIN_RESIUDE_NAME_LIST,
 )
