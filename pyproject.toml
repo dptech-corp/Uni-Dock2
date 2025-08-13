@@ -1,7 +1,7 @@
 [build-system]
 requires = [
     "setuptools>=64",
-    "setuptools-scm>=8",
+    # "setuptools-scm>=8",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -21,7 +21,10 @@ classifiers = [
 ]
 dynamic = ["version"]
 
-[tool.setuptools_scm]
+# [tool.setuptools_scm]
+
+[tool.setuptools.dynamic]
+version = { file = "unidock/VERSION" }
 
 [project.scripts]
 unidock2 = "unidock_processing.main:main"

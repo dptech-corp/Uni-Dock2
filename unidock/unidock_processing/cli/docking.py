@@ -87,6 +87,12 @@ class CLICommand:
             help='Uni-Dock2 configuration YAML file recording all other options',
         )
 
+        parser.add_argument(
+            '--debug',
+            action='store_true',
+            help='Enable debug mode for detailed logging and keep more temporary files',
+        )
+
     def run(args):
         import os
         from unidock_processing.io.yaml import UnidockConfig, read_unidock_params_from_yaml
@@ -187,6 +193,7 @@ class CLICommand:
 
         ## Prepare temp dir
         root_temp_dir_name = os.path.abspath(kwargs_dict.pop('temp_dir_name', None))
+        os.makedirs(root_temp_dir_name, exist_ok=True)
         temp_dir_prefix = os.path.join(
             root_temp_dir_name, get_temp_dir_prefix('docking')
         )
@@ -205,6 +212,7 @@ class CLICommand:
                 working_dir_name=temp_dir_name,
                 docking_pose_sdf_file_name=docking_pose_sdf_file_name,
                 **kwargs_dict,
+                debug=args.debug,
             )
 
             docking_runner.run_unidock_protocol()
