@@ -1,8 +1,6 @@
 from typing import List, Optional, Tuple, Dict, Any
 import os
 
-import numpy as np
-
 from rdkit import Chem
 
 from unidock_engine.api.python import pipeline
@@ -92,6 +90,8 @@ class UnidockProtocolRunner(object):
         if self.covalent_ligand and self.compute_center:
             ligand_mol = Chem.SDMolSupplier(self.ligand_sdf_file_name_list[0], removeHs=True)[0]
             self.target_center = tuple(utils.calculate_center_of_mass(ligand_mol))
+
+        print(f'Target Center for Current Docking: {self.target_center}')
 
     def run_unidock_protocol(self) -> str:
         # Prepare receptor

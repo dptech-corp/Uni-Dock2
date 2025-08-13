@@ -6,8 +6,8 @@ class RequiredConfig(BaseModel):
     receptor: Optional[str] = None
     ligand: Optional[str] = None
     ligand_batch: Optional[str] = None
-    center: Tuple[float, float, float] = Field(
-        default_factory=lambda: (0.0, 0.0, 0.0)
+    center: List[float, float, float] = Field(
+        default_factory=lambda: [0.0, 0.0, 0.0]
     )
 
     @field_validator('center')
@@ -33,8 +33,8 @@ class HardwareConfig(BaseModel):
     gpu_device_id: int = 0
 
 class SettingsConfig(BaseModel):
-    box_size: Tuple[float, float, float] = Field(
-        default_factory=lambda: (30.0, 30.0, 30.0)
+    box_size: List[float, float, float] = Field(
+        default_factory=lambda: [30.0, 30.0, 30.0]
     )
     task: str = 'screen'
     search_mode: str = 'balance'
