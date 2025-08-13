@@ -1,8 +1,12 @@
 from rdkit import Chem
+from .base import BaseRotatableBond
 
 
-class GenericRotatableBond(object):
+class GenericRotatableBond(BaseRotatableBond):
+    name = 'generic'
+
     def __init__(self):
+        print("Using GenericRotatableBond")
         self.rotatable_bond_smarts = (
             "[!$(*#*)&!D1&!$([CH3])&!$(C(F)(F)F)&!$(C(Cl)(Cl)Cl)&!$(C(Br)(Br)Br)&!$"
             "(C([CH3])([CH3])[CH3])]-!@[!$(*#*)&!D1&!$([CH3])&!$(C(F)(F)F)&!$"
@@ -41,7 +45,7 @@ class GenericRotatableBond(object):
 
         self.conjugate_bond_pattern = Chem.MolFromSmarts(self.conjugate_bond_smarts)
 
-    def identify_rotatable_bonds(self, mol):
+    def identify_rotatable_bonds(self, mol:Chem.Mol):
         default_rotatable_bond_info_list = list(
             mol.GetSubstructMatches(self.rotatable_bond_pattern)
         )

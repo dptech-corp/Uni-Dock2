@@ -78,13 +78,10 @@ class UnidockProtocolRunner(object):
         self.docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
         os.makedirs(self.unidock2_output_dir_name, exist_ok=True)
 
-        if core_atom_mapping_dict_list is None:
-            self.core_atom_mapping_dict_list = None
-        else:
-            self.core_atom_mapping_dict_list = [
-                {int(k): int(v) for k, v in d.items()} if d else None
-                for d in core_atom_mapping_dict_list
-            ]
+        self.core_atom_mapping_dict_list = [
+            {int(k): int(v) for k, v in d.items()} if d else None
+            for d in core_atom_mapping_dict_list
+        ] if core_atom_mapping_dict_list else None
 
         if self.template_docking and self.reference_sdf_file_name and self.compute_center:
             reference_mol = Chem.SDMolSupplier(self.reference_sdf_file_name, removeHs=True)[0]
