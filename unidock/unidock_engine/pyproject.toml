@@ -1,5 +1,5 @@
 [build-system]
-requires = [ # packages
+requires = [
     "scikit-build-core",
     "pybind11",
 ]

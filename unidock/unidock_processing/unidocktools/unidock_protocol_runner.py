@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple, Dict, Any
 import os
+import json
 
 from rdkit import Chem
 
@@ -44,7 +45,8 @@ class UnidockProtocolRunner(object):
         rmsd_limit: float = 1.0,
         energy_range: float = 5.0,
         seed: int = 1234567,
-        use_tor_lib: bool = False
+        use_tor_lib: bool = False,
+        debug: bool = False,
     ) -> None:
         self.receptor_file_name = os.path.abspath(receptor_file_name)
         self.ligand_sdf_file_name_list = [os.path.abspath(f) for f in ligand_sdf_file_name_list]
@@ -70,6 +72,7 @@ class UnidockProtocolRunner(object):
         self.energy_range = energy_range
         self.seed = seed
         self.use_tor_lib = use_tor_lib
+        self.debug = debug
         self.working_dir_name = os.path.abspath(working_dir_name)
         self.unidock2_output_dir_name = os.path.join(self.working_dir_name, 'unidock2_output')
         self.docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
@@ -118,6 +121,12 @@ class UnidockProtocolRunner(object):
         ligand_builder.generate_batch_ligand_topology()
         ligands_info = ligand_builder.get_summary_ligand_info_dict()
 
+        if self.debug:
+            with open(os.path.join(self.working_dir_name, 'ud2_engine_inputs.json'), 'w') as f:
+                json.dump({
+                    "receptor": receptor_info,
+                    **ligands_info
+                }, f)
         # Instantiate and configure the docking pipeline
         docking_pipeline = pipeline.DockingPipeline(
             output_dir=self.unidock2_output_dir_name,
