@@ -6,7 +6,7 @@ class RequiredConfig(BaseModel):
     receptor: Optional[str] = None
     ligand: Optional[str] = None
     ligand_batch: Optional[str] = None
-    center: List[float, float, float] = Field(
+    center: List[float] = Field(
         default_factory=lambda: [0.0, 0.0, 0.0]
     )
 
@@ -33,7 +33,7 @@ class HardwareConfig(BaseModel):
     gpu_device_id: int = 0
 
 class SettingsConfig(BaseModel):
-    box_size: List[float, float, float] = Field(
+    box_size: List[float] = Field(
         default_factory=lambda: [30.0, 30.0, 30.0]
     )
     task: str = 'screen'
