@@ -170,7 +170,7 @@ class CLICommand:
 
         ## Parse docking center input
         kwargs_center = kwargs_dict.pop('center', None)
-        if args.center != (0.0, 0.0, 0.0):
+        if args.center != [0.0, 0.0, 0.0]:
             docking_center = args.center
         else:
             docking_center = kwargs_center

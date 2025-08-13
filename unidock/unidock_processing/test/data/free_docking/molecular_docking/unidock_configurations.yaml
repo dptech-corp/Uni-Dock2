@@ -24,6 +24,7 @@ Settings:
 Preprocessing:
   template_docking: false
   reference_sdf_file_name: null
+  compute_center: true
   core_atom_mapping_dict_list: null
   covalent_ligand: false
   covalent_residue_atom_info_list: null
