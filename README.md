@@ -17,7 +17,7 @@ conda install unidock2 cuda-version=12.0 -c http://quetz.dp.tech:8088/get/baymax
 
 ## Manual Build
 ```sh
-git clone https://github.com/dptech-corp/Uni-Dock.git
+git clone https://github.com/dptech-corp/Uni-Dock2.git
 ```
 
 ### Step 1. Build unidock_engine
