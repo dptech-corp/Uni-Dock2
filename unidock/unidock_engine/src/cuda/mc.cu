@@ -309,11 +309,11 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
         }
         tile.sync();
 
-        int dim = 3 + 4 + flex_topo.ntorsion;
+        int dim_x = dof_x + flex_topo.ntorsion;
         Real best_e = 1e9; // large value for finding minimum energy
 
 
-        duplicate_pose_tile(tile, &pose_accepted, &out_pose, dim, flex_topo.natom);
+        duplicate_pose_tile(tile, &pose_accepted, &out_pose, dim_x, flex_topo.natom);
 
         if (mc_steps == 0){
             Real energy = cal_e_f_tile(tile, &pose_accepted, flex_topo, fix_mol, flex_param, fix_param, aux_f.f);
@@ -321,14 +321,14 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
             if (tile.thread_rank() == 0){
                 pose_accepted.energy = energy;
             }
-            duplicate_pose_tile(tile, &out_pose, &pose_accepted, dim, flex_topo.natom);
+            duplicate_pose_tile(tile, &out_pose, &pose_accepted, dim_x, flex_topo.natom);
         }
         else{
             for (int step = 0; step < mc_steps; step++){
                 // 1. mutate conf, PRODUCE a random conf
                 DPrint1("========= MC step %d \n", step);
 
-                duplicate_pose_tile(tile, &pose_candidate, &pose_accepted, dim, flex_topo.natom);
+                duplicate_pose_tile(tile, &pose_candidate, &pose_accepted, dim_x, flex_topo.natom);
 
                 mutate_pose_tile(tile, &pose_candidate, &flex_topo, &state);
 
@@ -369,11 +369,11 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
                 // if accepted
                 if (step == 0 || accepted){
                     // set accepted pose as this lately accepted candidate
-                    duplicate_pose_tile(tile, &pose_accepted, &pose_candidate, dim, flex_topo.natom);
+                    duplicate_pose_tile(tile, &pose_accepted, &pose_candidate, dim_x, flex_topo.natom);
 
                     // Possibly the best pose by now
                     if (pose_accepted.energy < best_e){
-                        duplicate_pose_tile(tile, &out_pose, &pose_accepted, dim, flex_topo.natom);
+                        duplicate_pose_tile(tile, &out_pose, &pose_accepted, dim_x, flex_topo.natom);
                         best_e = pose_accepted.energy;
                     }
                 }

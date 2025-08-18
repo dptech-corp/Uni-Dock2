@@ -214,7 +214,7 @@ void DockTask::run_score(){
             Real e_inter = flex_pose_list_res[j].rot_vec[1] - e_intra_rank1; // Real adopted inter
             // Free Energy of Binding
             flex_pose_list_res[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors);  // Affinity
-            flex_pose_list_res[j].rot_vec[3] = flex_pose_list_res[j].rot_vec[0] - e_inter;  // Conf-Independent
+            flex_pose_list_res[j].rot_vec[2] = flex_pose_list_res[j].rot_vec[0] - e_inter;  // Conf-Independent
 
             pose_num ++;
             if(show_score){

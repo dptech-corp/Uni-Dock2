@@ -14,14 +14,16 @@
 
 #include "myutils/common.h"
 #include "myutils/errors.h"
+
 // ==================  For a single flexible molecule ==================
 struct FlexPose{
     Real energy = 999;
-    Real center[3]={0.};
-    Real rot_vec[4]={0.}; // # record the rot_vec of last rotation todo: move to FlexPoseGradient
+    Real center[3] = {0.};
+    Real rot_vec[3] = {0.}; // # record the rot_vec of last rotation todo: move to FlexPoseGradient
     Real* coords; // size: natom * 3
     Real* dihedrals; // size: ntorsion. Unit: radian (not degree)
 };
+# define dof_x 6 // DOF of pose: 3 + 3
 FlexPose* alloccp_FlexPose_gpu(const FlexPose& flex_pose, int natom, int ntorsion);
 void free_FlexPose_gpu(FlexPose* flex_pose_cu);
 void freecp_FlexPose_gpu(FlexPose* flex_pose_cu, FlexPose* out_flex_pose, int natom, int ntorsion);
@@ -31,16 +33,16 @@ void freecp_FlexPose_gpu(FlexPose* flex_pose_cu, FlexPose* out_flex_pose, int na
  * @brief Gradient.
  */
 struct FlexPoseGradient{
-    Real center_g[3] = {0}; // translation gradient (dx, dy, dz)
-    Real orientation_g[4] = {0.}; // Only the top 3 are used (-torque) todo: size from 4 to 3
+    Real center_g[3] = {0.}; // translation gradient (dx, dy, dz)
+    Real orientation_g[3] = {0.}; // Only the top 3 are used (-torque) todo: size from 4 to 3
     Real* dihedrals_g; // size: ntorsion. dihedrals_g
 };
+# define dof_g  6 // DOF of grad: 3 + 3(-torque)
 FlexPoseGradient* alloccp_FlexPoseGradient_gpu(const FlexPoseGradient& flex_pose_gradient, int ntorsion);
 void free_FlexPoseGradient_gpu(FlexPoseGradient* flex_pose_gradient);
 void freecp_FlexPoseGradient_gpu(FlexPoseGradient* flex_pose_gradient_cu, FlexPoseGradient* out_flex_pose_gradient, int ntorsion);
 
-# define dof_g  6 // DOF of grad: 3 + 3(-torque)
-# define dof_x  7 // DOF of pose: 3 + 4(quaternion)
+
 
 SCOPE_INLINE void grad_index_write(FlexPoseGradient* out_g, int index, Real value){
     if (index < 3){

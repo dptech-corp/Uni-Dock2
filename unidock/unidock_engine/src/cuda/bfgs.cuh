@@ -36,6 +36,12 @@ __device__ __forceinline__ void duplicate_grad_tile(const cg::thread_block_tile<
 __device__ __forceinline__ void duplicate_pose_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                     FlexPose* out_pose_new, const FlexPose* pose_old, int dim,
                                                     int natom){
+
+    // copy cartesian coordinates
+    for (int i = tile.thread_rank(); i < natom * 3; i += tile.num_threads()){
+        out_pose_new->coords[i] = pose_old->coords[i];
+    }
+
     for (int i = tile.thread_rank(); i < dim; i += tile.num_threads()){
         if (i < 3){
             out_pose_new->center[i] = pose_old->center[i];
@@ -47,13 +53,6 @@ __device__ __forceinline__ void duplicate_pose_tile(const cg::thread_block_tile<
             out_pose_new->dihedrals[i - dof_x] = pose_old->dihedrals[i - dof_x];
         }
     }
-    tile.sync();
-
-    // copy cartesian coordinates
-    for (int i = tile.thread_rank(); i < natom * 3; i += tile.num_threads()){
-        out_pose_new->coords[i] = pose_old->coords[i];
-    }
-    tile.sync();
 
     // set energy
     if (tile.thread_rank() == 0){
