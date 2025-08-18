@@ -56,7 +56,7 @@ private:
     int n_atom_all_flex = 0;
     int n_dihe_all_flex = 0;
     std::vector<int> list_i_real; // record indices/ranges of coords & dihedrals in Real data, size: nflex * exhaustiveness
-    FlexPose* flex_pose_list_res; // size: nflex * exhaustiveness todo: add a member score instead of these usurpers
+    FlexPose* flex_pose_list_res; // size: nflex * exhaustiveness
     // Finally, use center[3] to record intra, inter, penalty
     // then use orientation[4] to record Predicted Free Energy of Binding, Total score, inter(contains penalty) score, conf_independent part
 
@@ -112,7 +112,7 @@ private:
     void dump_poses();
 
     void alloc_gpu();
-    void cp_to_cpu();
+    void copy_all_to_cpu();
     void free_gpu();
     void free_gpu_mc();
 };

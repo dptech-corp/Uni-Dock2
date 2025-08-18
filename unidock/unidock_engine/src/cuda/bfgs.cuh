@@ -250,7 +250,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
 
 
     // 1. Compute Pairwise energy and forces
-    // -- Compute inter-molecular energy: flex-protein
+    // 1.1. Compute inter-molecular energy: flex-protein todo: here is the hotspot
     for (int i = tile.thread_rank(); i < flex_param.npair_inter; i += tile.num_threads()){
         int i1 = flex_param.pairs_inter[i * 2], i2 = flex_param.pairs_inter[i * 2 + 1];
         assert(i1 < flex_topo.natom && i2 < fix_mol.natom);
@@ -288,7 +288,8 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     }
     tile.sync();
 
-    // -- Compute inter-molecular energy: penalty
+
+    // 1.2. Compute inter-molecular energy: penalty
     for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
         if (flex_param.atom_types[i] != VN_TYPE_H){
             coord_adj[0] = pose->coords[i * 3];
@@ -298,7 +299,8 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         }
     }
 
-    // -- Compute intra-molecular energy
+
+    // 1.3. Compute intra-molecular energy
     for (int i = tile.thread_rank(); i < flex_param.npair_intra; i += tile.num_threads()){
         int i1 = flex_param.pairs_intra[i * 2], i2 = flex_param.pairs_intra[i * 2 + 1];
         // DPrint1("i1:%d, i2:%d\n", i1, i2);
@@ -330,6 +332,44 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         }
     }
     tile.sync();
+
+
+    // // 1.4. Compute position-bias
+    // for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
+    //     int i1 = flex_param.inds_bias[i * 2];
+    //     int i2 = flex_param.inds_bias[i * 2 + 1];
+    //
+    //     if (i1 >= 0){
+    //         Real e_bias = 0.;
+    //         Real f_bias[3] = {0.};
+    //
+    //         coord_adj[0] = pose->coords[i];
+    //         coord_adj[1] = pose->coords[i * 3 + 1];
+    //         coord_adj[2] = pose->coords[i * 3 + 2];
+    //
+    //         for (int j = i1; j < i2; j++){
+    //             Real r_[3] = {
+    //                 flex_param.params_bias[j * 5 + 0] -  coord_adj[0],
+    //                 flex_param.params_bias[j * 5 + 1] -  coord_adj[1],
+    //                 flex_param.params_bias[j * 5 + 2] -  coord_adj[2]
+    //             };
+    //             rr = r_[0] * r_[0] + r_[1] * r_[1] + r_[2] * r_[2];
+    //
+    //             e_bias = flex_param.params_bias[j * 5 + 3] * expf(- rr / flex_param.params_bias[j * 5 + 4]);
+    //             energy += e_bias;
+    //
+    //             f_bias[0] += e_bias * (coord_adj[0] - flex_param.params_bias[j * 5]) / flex_param.params_bias[j * 5 + 4];
+    //             f_bias[1] += e_bias * (coord_adj[1] - flex_param.params_bias[j * 5 + 1]) / flex_param.params_bias[j * 5 + 4];
+    //             f_bias[2] += e_bias * (coord_adj[2] - flex_param.params_bias[j * 5 + 2]) / flex_param.params_bias[j * 5 + 4];
+    //         }
+    //
+    //         aux_f[i * 3] += f_bias[0];
+    //         aux_f[i * 3 + 1] += f_bias[1];
+    //         aux_f[i * 3 + 2] += f_bias[2];
+    //     }
+    // }
+    // tile.sync();
+
 
     // 2. Compute energy and forces by dihedral
     //bla bla...

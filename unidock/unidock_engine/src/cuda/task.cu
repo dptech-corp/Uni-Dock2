@@ -6,16 +6,37 @@
 #include "task/DockTask.h"
 #include "myutils/errors.h"
 
+
+template <typename T>
+void cp_to_device(T* device_ptr, const T* host_ptr, size_t count) {
+    checkCUDA(cudaMemcpy(device_ptr, host_ptr, count * sizeof(T), cudaMemcpyHostToDevice));
+}
+
+template <typename T>
+void cp_to_host(T* host_ptr, const T* device_ptr, size_t count) {
+    checkCUDA(cudaMemcpy(host_ptr, device_ptr, count * sizeof(T), cudaMemcpyDeviceToHost));
+}
+
+template <typename T>
+void alloc_device(T** device_ptr, size_t count) {
+    checkCUDA(cudaMalloc(device_ptr, count * sizeof(T)));
+}
+
+template <typename T>
+void alloc_host(T** host_ptr, size_t count) {
+    checkCUDA(cudaMallocHost(host_ptr, count * sizeof(T)));
+}
+
+
 void alloc_cu_flex_pose_list(FlexPose** flex_pose_list_cu, Real** flex_pose_list_real_cu, std::vector<int>* list_i_real,
                              const UDFlexMolList& udflex_mols, int npose, int nflex, int exhaustiveness,
                              int* list_natom_flex, int n_atom_all_flex, int* list_ndihe, int n_dihe_all_flex){
     // GPU Cost: npose * sizeof(FlexPose) + exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real)))
 
-    checkCUDA(cudaMalloc(flex_pose_list_cu, npose * sizeof(FlexPose)));
-    checkCUDA(cudaMalloc(flex_pose_list_real_cu,
-        exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real)));
+    alloc_device(flex_pose_list_cu, npose);
+    alloc_device(flex_pose_list_real_cu,exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex));
     FlexPose* flex_pose_list; // for transferring to GPU
-    checkCUDA(cudaMallocHost(&flex_pose_list, npose * sizeof(FlexPose)));
+    alloc_host(&flex_pose_list, npose);
     // set the value of flex_pose_list
     Real* p_real_cu = *flex_pose_list_real_cu;
 
@@ -40,37 +61,25 @@ void alloc_cu_flex_pose_list(FlexPose** flex_pose_list_cu, Real** flex_pose_list
             list_i_real->push_back(list_i_real->back() + list_ndihe[i]);
 
             // copy the coords and dihedrals to the GPU
-            checkCUDA(
-                cudaMemcpy(flex_pose_list[i * exhaustiveness + j].coords, m.coords.data(), m.coords.size() * sizeof(Real
-                    ),
-                    cudaMemcpyHostToDevice));
-            checkCUDA(
-                cudaMemcpy(flex_pose_list[i * exhaustiveness + j].dihedrals, m.dihedrals.data(), m.dihedrals.size() *
-                    sizeof(Real),
-                    cudaMemcpyHostToDevice));
+            cp_to_device(flex_pose_list[i * exhaustiveness + j].coords, m.coords.data(), m.coords.size());
+            cp_to_device(flex_pose_list[i * exhaustiveness + j].dihedrals, m.dihedrals.data(), m.dihedrals.size());
 
             // update the pointer
             p_real_cu += list_ndihe[i];
         }
     }
-    checkCUDA(cudaMemcpy(*flex_pose_list_cu, flex_pose_list, npose * sizeof(FlexPose),
-        cudaMemcpyHostToDevice));
+    cp_to_device(*flex_pose_list_cu, flex_pose_list, npose);
     checkCUDA(cudaFreeHost(flex_pose_list));
 }
 
 
-void DockTask::cp_to_cpu(){
-    checkCUDA(cudaMallocHost(&flex_pose_list_res, nflex * dock_param.exhaustiveness * sizeof(FlexPose)));
-    checkCUDA(
-        cudaMallocHost(&flex_pose_list_real_res, dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) *
-            sizeof(Real)));
+void DockTask::copy_all_to_cpu(){
+    alloc_host(&flex_pose_list_res, nflex * dock_param.exhaustiveness);
+    alloc_host(&flex_pose_list_real_res, dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex));
 
-    checkCUDA(cudaMemcpy(flex_pose_list_res, flex_pose_list_cu, nflex * dock_param.exhaustiveness * sizeof(FlexPose),
-        cudaMemcpyDeviceToHost));
-    checkCUDA(
-        cudaMemcpy(flex_pose_list_real_res, flex_pose_list_real_cu, dock_param.exhaustiveness * (n_atom_all_flex * 3 +
-                n_dihe_all_flex) * sizeof(Real),
-            cudaMemcpyDeviceToHost));
+    cp_to_host(flex_pose_list_res, flex_pose_list_cu, nflex * dock_param.exhaustiveness);
+    cp_to_host(flex_pose_list_real_res, flex_pose_list_real_cu,
+        dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex));
 }
 
 
@@ -137,14 +146,13 @@ void DockTask::alloc_gpu(){
     // GPU cost: nflex * sizeof(FlexTopo) + (n_atom_all_flex + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 +
     // n_dihe_all_flex * 2 + n_rotated_atoms_all_flex) * sizeof(int) +
     // (n_range_all_flex) * 2 * sizeof(Real)
-    checkCUDA(cudaMalloc(&flex_topo_list_cu, nflex * sizeof(FlexTopo)));
-    checkCUDA( // vn_types, axis_atoms, range_inds, rotated_inds, rotated_atoms
-        cudaMalloc(&flex_topo_list_int_cu, (n_atom_all_flex + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 +
-            n_dihe_all_flex * 2 +
-            n_rotated_atoms_all_flex) * sizeof(int)));
-    checkCUDA(cudaMalloc(&flex_topo_list_real_cu, (n_range_all_flex) * 2 * sizeof(Real))); //range_list
+    alloc_device(&flex_topo_list_cu, nflex);
+    // vn_types, axis_atoms, range_inds, rotated_inds, rotated_atoms
+    alloc_device(&flex_topo_list_int_cu,
+        n_atom_all_flex + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 + n_rotated_atoms_all_flex);
+    alloc_device(&flex_topo_list_real_cu, (n_range_all_flex) * 2); //range_list
     FlexTopo* flex_topo_list;
-    checkCUDA(cudaMallocHost(&flex_topo_list, nflex * sizeof(FlexTopo)));
+    alloc_host(&flex_topo_list, nflex);
 
     p_int_cu = flex_topo_list_int_cu;
     p_real_cu = flex_topo_list_real_cu;
@@ -171,76 +179,62 @@ void DockTask::alloc_gpu(){
         flex_topo_list[i].range_list = p_real_cu;
 
         // copy values to GPU
-        checkCUDA(
-            cudaMemcpy(flex_topo_list[i].vn_types, m.vina_types.data(), m.natom * sizeof(int), cudaMemcpyHostToDevice));
+        cp_to_device(flex_topo_list[i].vn_types, m.vina_types.data(), m.natom);
 
         for (int j = 0; j < m.torsions.size(); j++){
             // todo: optimize memcpy by putting these to udmol
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].axis_atoms + j * 2, m.torsions[j].axis, 2 * sizeof(int),
-                    cudaMemcpyHostToDevice));
+            cp_to_device(flex_topo_list[i].axis_atoms + j * 2, m.torsions[j].axis, 2);
 
             // range_inds end
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].range_inds + j * 2, &ind_range, sizeof(int), cudaMemcpyHostToDevice));
+            cp_to_device(flex_topo_list[i].range_inds + j * 2, &ind_range, 1);
             int n = m.torsions[j].range_list.size();
             // range list
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].range_list + ind_range, m.torsions[j].range_list.data(), n * sizeof(int),
-                    cudaMemcpyHostToDevice));
+            cp_to_device(flex_topo_list[i].range_list + ind_range, m.torsions[j].range_list.data(), n);
             // update pointer
             p_real_cu += n;
             // range_inds end
             ind_range += n;
             int nrange = n / 2;
-            checkCUDA(cudaMemcpy(flex_topo_list[i].range_inds + j * 2 + 1, &nrange, sizeof(int), cudaMemcpyHostToDevice));
+            cp_to_device(flex_topo_list[i].range_inds + j * 2 + 1, &nrange, 1);
 
 
             // rotated_inds start
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].rotated_inds + j * 2, &ind_rotated, sizeof(int), cudaMemcpyHostToDevice));
+            cp_to_device(flex_topo_list[i].rotated_inds + j * 2, &ind_rotated, 1);
             // rotated_atoms
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].rotated_atoms + ind_rotated, m.torsions[j].rotated_atoms.data(), m.torsions
-                    [j].rotated_atoms.size() * sizeof(int), cudaMemcpyHostToDevice));
+            cp_to_device(flex_topo_list[i].rotated_atoms + ind_rotated, m.torsions[j].rotated_atoms.data(),
+                m.torsions[j].rotated_atoms.size());
 
             // rotated_inds end
             ind_rotated += m.torsions[j].rotated_atoms.size() - 1;
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].rotated_inds + j * 2 + 1, &ind_rotated, sizeof(int), cudaMemcpyHostToDevice
-                ));
+            cp_to_device(flex_topo_list[i].rotated_inds + j * 2 + 1, &ind_rotated, 1);
             ind_rotated += 1;
         }
     }
 
-    checkCUDA(cudaMemcpy(flex_topo_list_cu, flex_topo_list, nflex * sizeof(FlexTopo), cudaMemcpyHostToDevice));
+    cp_to_device(flex_topo_list_cu, flex_topo_list, nflex);
     checkCUDA(cudaFreeHost(flex_topo_list));
 
 
     //----- fix_mol -----
     // GPU cost: sizeof(FixMol) + udfix_mol.coords.size() * sizeof(Real)
-    checkCUDA(cudaMalloc(&fix_mol_cu, sizeof(FixMol)));
-    checkCUDA(cudaMalloc(&fix_mol_real_cu, udfix_mol.coords.size() * sizeof(Real)));
+    alloc_device(&fix_mol_cu, 1);
+    alloc_device(&fix_mol_real_cu, udfix_mol.coords.size());
     FixMol fix_mol;
     fix_mol.natom = udfix_mol.natom;
     fix_mol.coords = fix_mol_real_cu;
-    checkCUDA(
-        cudaMemcpy(fix_mol.coords, udfix_mol.coords.data(), udfix_mol.coords.size() * sizeof(Real),
-            cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(fix_mol_cu, &fix_mol, sizeof(FixMol), cudaMemcpyHostToDevice));
+    cp_to_device(fix_mol.coords, udfix_mol.coords.data(), udfix_mol.coords.size());
+    cp_to_device(fix_mol_cu, &fix_mol, 1);
 
 
     //----- flex_param_list_cu -----
     // GPU cost: nflex * sizeof(FlexParamVina) +
     // (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex) * sizeof(int) +
     // (size_intra_all_flex + size_inter_all_flex) / 2 * sizeof(Real))
-    checkCUDA(cudaMalloc(&flex_param_list_cu, nflex * sizeof(FlexParamVina)));
-    checkCUDA(
-        cudaMalloc(&flex_param_list_int_cu, (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex) * sizeof(int)
-        ));
-    checkCUDA(cudaMalloc(&flex_param_list_real_cu, (size_intra_all_flex + size_inter_all_flex) / 2 * sizeof(Real)));
+    alloc_device(&flex_param_list_cu, nflex);
+    alloc_device(&flex_param_list_int_cu, (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex));
+    alloc_device(&flex_param_list_real_cu, (size_intra_all_flex + size_inter_all_flex) / 2);
     FlexParamVina* flex_param_list;
-    checkCUDA(cudaMallocHost(&flex_param_list, nflex * sizeof(FlexParamVina)));
+    alloc_host(&flex_param_list, nflex);
 
     p_int_cu = flex_param_list_int_cu;
     p_real_cu = flex_param_list_real_cu;
@@ -257,42 +251,30 @@ void DockTask::alloc_gpu(){
         flex_param_list[i].atom_types = flex_param_list[i].pairs_inter + flex_param_list[i].npair_inter * 2;
 
         // copy pairs_intra to cuda
-        checkCUDA(
-            cudaMemcpy(flex_param_list[i].pairs_intra, m.intra_pairs.data(), m.intra_pairs.size() * sizeof(int),
-                cudaMemcpyHostToDevice));
+        cp_to_device(flex_param_list[i].pairs_intra, m.intra_pairs.data(), m.intra_pairs.size());
         // copy pairs_inter to cuda
-        checkCUDA(
-            cudaMemcpy(flex_param_list[i].pairs_inter, m.inter_pairs.data(), m.inter_pairs.size() * sizeof(int),
-                cudaMemcpyHostToDevice));
+        cp_to_device(flex_param_list[i].pairs_inter, m.inter_pairs.data(), m.inter_pairs.size());
         // copy atom_types to cuda
-        checkCUDA(
-            cudaMemcpy(flex_param_list[i].atom_types, m.vina_types.data(), m.natom * sizeof(int), cudaMemcpyHostToDevice
-            ));
+        cp_to_device(flex_param_list[i].atom_types, m.vina_types.data(), m.natom);
         p_int_cu = flex_param_list[i].atom_types + m.natom;
         // copy r1_plus_r2_intra to cuda
-        checkCUDA(
-            cudaMemcpy(flex_param_list[i].r1_plus_r2_intra, m.r1_plus_r2_intra.data(), m.r1_plus_r2_intra.size() *
-                sizeof(Real), cudaMemcpyHostToDevice));
+        cp_to_device(flex_param_list[i].r1_plus_r2_intra, m.r1_plus_r2_intra.data(), m.r1_plus_r2_intra.size());
         // copy r1_plus_r2_inter to cuda
-        checkCUDA(
-            cudaMemcpy(flex_param_list[i].r1_plus_r2_inter, m.r1_plus_r2_inter.data(), m.r1_plus_r2_inter.size() *
-                sizeof(Real), cudaMemcpyHostToDevice));
+        cp_to_device(flex_param_list[i].r1_plus_r2_inter, m.r1_plus_r2_inter.data(), m.r1_plus_r2_inter.size());
         p_real_cu = flex_param_list[i].r1_plus_r2_inter + m.r1_plus_r2_inter.size();
     }
-    checkCUDA(cudaMemcpy(flex_param_list_cu, flex_param_list, nflex * sizeof(FlexParamVina), cudaMemcpyHostToDevice));
+    cp_to_device(flex_param_list_cu, flex_param_list, nflex);
     checkCUDA(cudaFreeHost(flex_param_list));
 
 
     //----- fix_param_cu -----
     // GPU cost: sizeof(FixParamVina) + udfix_mol.natom * sizeof(int)
-    checkCUDA(cudaMalloc(&fix_param_cu, sizeof(FixParamVina)));
-    checkCUDA(cudaMalloc(&fix_param_int_cu, udfix_mol.natom * sizeof(int)));
+    alloc_device(&fix_param_cu, 1);
+    alloc_device(&fix_param_int_cu, udfix_mol.natom);
     FixParamVina fix_param;
     fix_param.atom_types = fix_param_int_cu;
-    checkCUDA(
-        cudaMemcpy(fix_param.atom_types, udfix_mol.vina_types.data(), udfix_mol.natom * sizeof(int),
-            cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(fix_param_cu, &fix_param, sizeof(FixParamVina), cudaMemcpyHostToDevice));
+    cp_to_device(fix_param.atom_types, udfix_mol.vina_types.data(), udfix_mol.natom);
+    cp_to_device(fix_param_cu, &fix_param, 1);
 
 
     //----- aux_pose_cu -----
@@ -300,12 +282,10 @@ void DockTask::alloc_gpu(){
     // TRIDE_POSE * dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex)
     //        * sizeof(Real))
     //
-    checkCUDA(cudaMalloc(&aux_poses_cu, STRIDE_POSE * npose * sizeof(FlexPose)));
-    checkCUDA(
-        cudaMalloc(&aux_poses_real_cu, STRIDE_POSE * dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex)
-            * sizeof(Real)));
+    alloc_device(&aux_poses_cu, STRIDE_POSE * npose);
+    alloc_device(&aux_poses_real_cu, STRIDE_POSE * dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex));
     FlexPose* aux_poses;
-    checkCUDA(cudaMallocHost(&aux_poses, STRIDE_POSE * npose * sizeof(FlexPose)));
+    alloc_host(&aux_poses, STRIDE_POSE * npose);
     p_real_cu = aux_poses_real_cu;
     for (int i = 0; i < nflex; i++){
         for (int j = 0; j < dock_param.exhaustiveness; j++){
@@ -317,17 +297,17 @@ void DockTask::alloc_gpu(){
             }
         }
     }
-    checkCUDA(cudaMemcpy(aux_poses_cu, aux_poses, STRIDE_POSE * npose * sizeof(FlexPose), cudaMemcpyHostToDevice));
+    cp_to_device(aux_poses_cu, aux_poses, STRIDE_POSE * npose);
     checkCUDA(cudaFreeHost(aux_poses));
 
 
     //----- aux_grads_cu -----
     // GPU cost: STRIDE_G * npose * sizeof(FlexPoseGradient) +
     // STRIDE_G * dock_param.exhaustiveness * n_dihe_all_flex * sizeof(Real)
-    checkCUDA(cudaMalloc(&aux_grads_cu, STRIDE_G * npose * sizeof(FlexPoseGradient)));
-    checkCUDA(cudaMalloc(&aux_grads_real_cu, STRIDE_G * dock_param.exhaustiveness * n_dihe_all_flex * sizeof(Real)));
+    alloc_device(&aux_grads_cu, STRIDE_G * npose);
+    alloc_device(&aux_grads_real_cu, STRIDE_G * dock_param.exhaustiveness * n_dihe_all_flex);
     FlexPoseGradient* aux_grads;
-    checkCUDA(cudaMallocHost(&aux_grads, STRIDE_G * npose * sizeof(FlexPoseGradient)));
+    alloc_host(&aux_grads, STRIDE_G * npose);
     p_real_cu = aux_grads_real_cu;
     for (int i = 0; i < nflex; i++){
         for (int j = 0; j < dock_param.exhaustiveness; j++){
@@ -337,7 +317,7 @@ void DockTask::alloc_gpu(){
             }
         }
     }
-    checkCUDA(cudaMemcpy(aux_grads_cu, aux_grads, STRIDE_G * npose * sizeof(FlexPoseGradient), cudaMemcpyHostToDevice));
+    cp_to_device(aux_grads_cu, aux_grads, STRIDE_G * npose);
     checkCUDA(cudaFreeHost(aux_grads));
 
 
@@ -345,10 +325,10 @@ void DockTask::alloc_gpu(){
     // GPU cost:  npose * sizeof(FlexPoseHessian) +
     // dock_param.exhaustiveness * n_dim_tri_mat_all_flex * sizeof(Real)
 
-    checkCUDA(cudaMalloc(&aux_hessians_cu, npose * sizeof(FlexPoseHessian)));
-    checkCUDA(cudaMalloc(&aux_hessians_real_cu, dock_param.exhaustiveness * n_dim_tri_mat_all_flex * sizeof(Real)));
+    alloc_device(&aux_hessians_cu, npose);
+    alloc_device(&aux_hessians_real_cu, dock_param.exhaustiveness * n_dim_tri_mat_all_flex);
     FlexPoseHessian* aux_hessians;
-    checkCUDA(cudaMallocHost(&aux_hessians, npose * sizeof(FlexPoseHessian)));
+    alloc_host(&aux_hessians, npose);
     p_real_cu = aux_hessians_real_cu;
     for (int i = 0; i < nflex; i++){
         for (int j = 0; j < dock_param.exhaustiveness; j++){
@@ -356,7 +336,7 @@ void DockTask::alloc_gpu(){
             p_real_cu += list_ndim_trimat[i];
         }
     }
-    checkCUDA(cudaMemcpy(aux_hessians_cu, aux_hessians, npose * sizeof(FlexPoseHessian), cudaMemcpyHostToDevice));
+    cp_to_device(aux_hessians_cu, aux_hessians, npose);
     checkCUDA(cudaFreeHost(aux_hessians));
 
 
@@ -364,10 +344,10 @@ void DockTask::alloc_gpu(){
     // GPU cost: npose * sizeof(FlexForce) +
     // dock_param.exhaustiveness * n_atom_all_flex * 3 * sizeof(Real)
 
-    checkCUDA(cudaMalloc(&aux_forces_cu, npose * sizeof(FlexForce)));
-    checkCUDA(cudaMalloc(&aux_forces_real_cu, dock_param.exhaustiveness * n_atom_all_flex * 3 * sizeof(Real)));
+    alloc_device(&aux_forces_cu, npose);
+    alloc_device(&aux_forces_real_cu, dock_param.exhaustiveness * n_atom_all_flex * 3);
     FlexForce* aux_forces;
-    checkCUDA(cudaMallocHost(&aux_forces, npose * sizeof(FlexForce)));
+    alloc_host(&aux_forces, npose);
     p_real_cu = aux_forces_real_cu;
     for (int i = 0; i < nflex; i++){
         for (int j = 0; j < dock_param.exhaustiveness; j++){
@@ -375,16 +355,16 @@ void DockTask::alloc_gpu(){
             p_real_cu += list_natom_flex[i] * 3;
         }
     }
-    checkCUDA(cudaMemcpy(aux_forces_cu, aux_forces, npose * sizeof(FlexForce), cudaMemcpyHostToDevice));
+    cp_to_device(aux_forces_cu, aux_forces, npose);
     checkCUDA(cudaFreeHost(aux_forces));
 
 
     //----- Clustering -----
     int npair = dock_param.exhaustiveness * (dock_param.exhaustiveness - 1) / 2; // tri-mat with diagonal
-    checkCUDA(cudaMalloc(&aux_list_e_cu, npose * sizeof(Real)));
-    checkCUDA(cudaMalloc(&aux_list_cluster_cu, nflex * dock_param.exhaustiveness * sizeof(int)));
-    checkCUDA(cudaMalloc(&aux_rmsd_ij_cu, nflex * npair * 2 * sizeof(int)));
-    checkCUDA(cudaMalloc(&clustered_pose_inds_cu, nflex * dock_param.exhaustiveness * sizeof(int)));
+    alloc_device(&aux_list_e_cu, npose);
+    alloc_device(&aux_list_cluster_cu, nflex * dock_param.exhaustiveness);
+    alloc_device(&aux_rmsd_ij_cu, nflex * npair * 2);
+    alloc_device(&clustered_pose_inds_cu, nflex * dock_param.exhaustiveness);
 
     //so large ...
     std::vector<int> aux_rmsd_ij(nflex * npair * 2, 0); // excluding diagonal line
@@ -399,13 +379,11 @@ void DockTask::alloc_gpu(){
             }
         }
     }
-    checkCUDA(cudaMemcpy(aux_rmsd_ij_cu, aux_rmsd_ij.data(), nflex * npair * 2 * sizeof(int), cudaMemcpyHostToDevice));
+    cp_to_device(aux_rmsd_ij_cu, aux_rmsd_ij.data(), nflex * npair * 2);
 
     // set diagonal to 1 for aux_list_cluster_cu
     std::vector<int> aux_cluster_mat(nflex * dock_param.exhaustiveness, 1);
-    checkCUDA(
-        cudaMemcpy(aux_list_cluster_cu, aux_cluster_mat.data(), nflex * dock_param.exhaustiveness * sizeof(int),
-            cudaMemcpyHostToDevice));
+    cp_to_device(aux_list_cluster_cu, aux_cluster_mat.data(), nflex * dock_param.exhaustiveness);
 
 
     //----- Wait for cudaMemcpy -----

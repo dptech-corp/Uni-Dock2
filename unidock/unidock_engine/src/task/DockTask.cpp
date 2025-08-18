@@ -151,7 +151,7 @@ void DockTask::run_filter(){
     spdlog::info("Filtering by num_pose & energy_range...");
 
     // copy results to cpu
-    cp_to_cpu();
+    copy_all_to_cpu();
 
     // Object: all clutered poses
     for (int i = 0; i < nflex; i ++){ // for each flex

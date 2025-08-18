@@ -15,4 +15,4 @@ install(
 )
 message("   [Section Done]  BIN !")
 
-#add_subdirectory(myapp)
+add_subdirectory(myapp)

@@ -188,6 +188,11 @@ struct UDTorsion{
 };
 
 
+struct Bias{
+    int i;
+    float param[5];
+};
+
 /**
  * @brief Redundant Data Model for flexible molecule, including the ligand and those flexible chains connected to it.
  * Molecule is a natural physical concept. so interactions should not be saved here.
@@ -208,6 +213,7 @@ struct UDFlexMol{
     std::vector<int> inter_pairs; // each in ligand x each in protein (they both count their own atoms from zero)
     std::vector<Real> r1_plus_r2_intra; // vdW radii summations of each pair, intra part
     std::vector<Real> r1_plus_r2_inter; // vdW radii summations of each pair, inter part
+    std::vector<Bias> biases;
 };
 
 typedef std::vector<UDFlexMol> UDFlexMolList;
