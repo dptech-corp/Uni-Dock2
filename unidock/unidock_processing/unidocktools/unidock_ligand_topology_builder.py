@@ -2,12 +2,12 @@ from typing import Optional
 import os
 import math
 import logging
-import dill as pickle
-from multiprocess.pool import Pool
 
+from multiprocess.pool import Pool
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
+from unidock_processing.torsion_library.utils import get_torsion_lib_dict
 from unidock_processing.ligand_topology.mol_graph import BaseMolGraph
 
 
@@ -20,15 +20,7 @@ def batch_topology_builder_process(
     working_dir_name: str,
     atom_mapper_align: bool = False,
 ):
-    torsion_library_pkl_file_name = os.path.join(
-        os.path.dirname(__file__),
-        '..',
-        'torsion_library',
-        'data',
-        'torsion_library.pkl',
-    )
-    with open(torsion_library_pkl_file_name, 'rb') as torsion_library_pkl_file:
-        torsion_library_dict = pickle.load(torsion_library_pkl_file)
+    torsion_library_dict = get_torsion_lib_dict()
 
     batch_ligand_mol_list = list(Chem.SDMolSupplier(ligand_sdf_file_name, removeHs=False))
 
