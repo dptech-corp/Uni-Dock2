@@ -66,10 +66,10 @@ endif()
 
 if (USE_DOUBLE)
     add_compile_definitions(Real=double)
-    message("  Precision: double")
+    message("   <Precision>: double")
 else ()
     add_compile_definitions(Real=float)
-    message("  Precision: float")
+    message("   <Precision>: float")
 endif ()
 
 
@@ -92,8 +92,9 @@ if (BUILD_BIN)
     add_subdirectory("bin")
 endif ()
 
-if (BUILD_TEST) # Compile libs on the fly
+if (BUILD_TEST) # Compile tests
     add_subdirectory("include")
+    enable_testing()
     add_subdirectory("test")
 endif ()
 

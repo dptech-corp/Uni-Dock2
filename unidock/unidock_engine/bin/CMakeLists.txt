@@ -13,6 +13,6 @@ install(
         TARGETS ${BIN_NAME}
         RUNTIME DESTINATION bin
 )
-message("   [Section Done]  BIN !")
+message("   [Section Done] BIN !\n")
 
 add_subdirectory(myapp)

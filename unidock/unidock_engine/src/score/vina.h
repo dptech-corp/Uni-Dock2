@@ -26,7 +26,7 @@ struct FlexParamVina{
     int* pairs_inter; // size: npair_inter * 2. each two is a pair: (index_flex, index_protein)
     Real* r1_plus_r2_inter; // size: npair_inter. vdW radii summations of each pair, intra part + inter part
 
-    int* inds_bias; // size: natom * 2. each is [start index in bias, end index in bias]
+    int* inds_bias; // size: natom * 2. each is [start index in bias, end index in bias], [0, 0] for no bias
     Real* params_bias; // size: nbias * 5. each is [x, y, z, V_set, r^2]
 };
 FlexParamVina* alloccp_FlexParamVina_gpu(const FlexParamVina& flex_param_vina, int natom);

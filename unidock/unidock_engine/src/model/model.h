@@ -17,7 +17,7 @@
 
 // ==================  For a single flexible molecule ==================
 struct FlexPose{
-    Real energy = 999;
+    Real energy = 999.;
     Real center[3] = {0.};
     Real rot_vec[3] = {0.}; // # record the rot_vec of last rotation todo: move to FlexPoseGradient
     Real* coords; // size: natom * 3
@@ -192,7 +192,7 @@ struct UDTorsion{
 
 struct Bias{
     int i;
-    float param[5];
+    float param[5]; // [x, y, z, V_set, r]
 };
 
 /**

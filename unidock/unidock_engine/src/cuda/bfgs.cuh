@@ -333,41 +333,44 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     tile.sync();
 
 
-    // // 1.4. Compute position-bias
-    // for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
-    //     int i1 = flex_param.inds_bias[i * 2];
-    //     int i2 = flex_param.inds_bias[i * 2 + 1];
-    //
-    //     if (i1 >= 0){
-    //         Real e_bias = 0.;
-    //         Real f_bias[3] = {0.};
-    //
-    //         coord_adj[0] = pose->coords[i];
-    //         coord_adj[1] = pose->coords[i * 3 + 1];
-    //         coord_adj[2] = pose->coords[i * 3 + 2];
-    //
-    //         for (int j = i1; j < i2; j++){
-    //             Real r_[3] = {
-    //                 flex_param.params_bias[j * 5 + 0] -  coord_adj[0],
-    //                 flex_param.params_bias[j * 5 + 1] -  coord_adj[1],
-    //                 flex_param.params_bias[j * 5 + 2] -  coord_adj[2]
-    //             };
-    //             rr = r_[0] * r_[0] + r_[1] * r_[1] + r_[2] * r_[2];
-    //
-    //             e_bias = flex_param.params_bias[j * 5 + 3] * expf(- rr / flex_param.params_bias[j * 5 + 4]);
-    //             energy += e_bias;
-    //
-    //             f_bias[0] += e_bias * (coord_adj[0] - flex_param.params_bias[j * 5]) / flex_param.params_bias[j * 5 + 4];
-    //             f_bias[1] += e_bias * (coord_adj[1] - flex_param.params_bias[j * 5 + 1]) / flex_param.params_bias[j * 5 + 4];
-    //             f_bias[2] += e_bias * (coord_adj[2] - flex_param.params_bias[j * 5 + 2]) / flex_param.params_bias[j * 5 + 4];
-    //         }
-    //
-    //         aux_f[i * 3] += f_bias[0];
-    //         aux_f[i * 3 + 1] += f_bias[1];
-    //         aux_f[i * 3 + 2] += f_bias[2];
-    //     }
-    // }
-    // tile.sync();
+    // 1.4. Compute position-bias
+    for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
+        int i1 = flex_param.inds_bias[i * 2]; // get bias for each atom
+        int i2 = flex_param.inds_bias[i * 2 + 1];
+
+        if (i1 < i2){
+            // if (blockIdx.x == 0){
+            //     printf("\n-----------------\ni = %i, i1 = %i, i2 = %i, I am HERE!!!!!!!!!!!\n-----------------\n", i, i1, i2);
+            // }
+            Real e_bias = 0.;
+            Real f_bias[3] = {0.};
+
+            coord_adj[0] = pose->coords[i * 3];
+            coord_adj[1] = pose->coords[i * 3 + 1];
+            coord_adj[2] = pose->coords[i * 3 + 2];
+
+            for (int j = i1; j < i2; j += 5){
+                Real r_[3] = {
+                    flex_param.params_bias[j] -  coord_adj[0],
+                    flex_param.params_bias[j + 1] -  coord_adj[1],
+                    flex_param.params_bias[j + 2] -  coord_adj[2]
+                };
+                rr = r_[0] * r_[0] + r_[1] * r_[1] + r_[2] * r_[2];
+
+                e_bias = flex_param.params_bias[j + 3] * expf(- rr / flex_param.params_bias[j + 4]);
+                energy += e_bias;
+
+                f_bias[0] += e_bias * 2 * r_[0] / flex_param.params_bias[j + 4];
+                f_bias[1] += e_bias * 2 * r_[1] / flex_param.params_bias[j + 4];
+                f_bias[2] += e_bias * 2 * r_[2] / flex_param.params_bias[j + 4];
+            }
+
+            aux_f[i * 3] += f_bias[0];
+            aux_f[i * 3 + 1] += f_bias[1];
+            aux_f[i * 3 + 2] += f_bias[2];
+        }
+    }
+    tile.sync();
 
 
     // 2. Compute energy and forces by dihedral

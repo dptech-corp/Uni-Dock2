@@ -8,6 +8,5 @@ file(GLOB_RECURSE YAML_SOURCES yaml-cpp/*)
 add_library(${THIRD_NAME_YAML} OBJECT ${YAML_SOURCES})
 target_include_directories(${THIRD_NAME_CATCH2} PUBLIC .)
 
-message("   [Section Done] lib (3rd Party) !")
-
+message("   [Section Done] lib (3rd Party) !\n")
 

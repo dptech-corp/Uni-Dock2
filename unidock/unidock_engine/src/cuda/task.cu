@@ -8,22 +8,22 @@
 
 
 template <typename T>
-void cp_to_device(T* device_ptr, const T* host_ptr, size_t count) {
+void cp_to_device(T* device_ptr, const T* host_ptr, size_t count){
     checkCUDA(cudaMemcpy(device_ptr, host_ptr, count * sizeof(T), cudaMemcpyHostToDevice));
 }
 
 template <typename T>
-void cp_to_host(T* host_ptr, const T* device_ptr, size_t count) {
+void cp_to_host(T* host_ptr, const T* device_ptr, size_t count){
     checkCUDA(cudaMemcpy(host_ptr, device_ptr, count * sizeof(T), cudaMemcpyDeviceToHost));
 }
 
 template <typename T>
-void alloc_device(T** device_ptr, size_t count) {
+void alloc_device(T** device_ptr, size_t count){
     checkCUDA(cudaMalloc(device_ptr, count * sizeof(T)));
 }
 
 template <typename T>
-void alloc_host(T** host_ptr, size_t count) {
+void alloc_host(T** host_ptr, size_t count){
     checkCUDA(cudaMallocHost(host_ptr, count * sizeof(T)));
 }
 
@@ -34,7 +34,7 @@ void alloc_cu_flex_pose_list(FlexPose** flex_pose_list_cu, Real** flex_pose_list
     // GPU Cost: npose * sizeof(FlexPose) + exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real)))
 
     alloc_device(flex_pose_list_cu, npose);
-    alloc_device(flex_pose_list_real_cu,exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex));
+    alloc_device(flex_pose_list_real_cu, exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex));
     FlexPose* flex_pose_list; // for transferring to GPU
     alloc_host(&flex_pose_list, npose);
     // set the value of flex_pose_list
@@ -48,10 +48,6 @@ void alloc_cu_flex_pose_list(FlexPose** flex_pose_list_cu, Real** flex_pose_list
             flex_pose_list[i * exhaustiveness + j].center[0] = m.center[0];
             flex_pose_list[i * exhaustiveness + j].center[1] = m.center[1];
             flex_pose_list[i * exhaustiveness + j].center[2] = m.center[2];
-            flex_pose_list[i * exhaustiveness + j].rot_vec[0] = 0;
-            flex_pose_list[i * exhaustiveness + j].rot_vec[1] = 0;
-            flex_pose_list[i * exhaustiveness + j].rot_vec[2] = 0;
-            flex_pose_list[i * exhaustiveness + j].energy = 999;
 
             flex_pose_list[i * exhaustiveness + j].coords = p_real_cu;
             list_i_real->push_back(list_i_real->back() + list_natom_flex[i] * 3);
@@ -79,10 +75,8 @@ void DockTask::copy_all_to_cpu(){
 
     cp_to_host(flex_pose_list_res, flex_pose_list_cu, nflex * dock_param.exhaustiveness);
     cp_to_host(flex_pose_list_real_res, flex_pose_list_real_cu,
-        dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex));
+               dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex));
 }
-
-
 
 
 void DockTask::alloc_gpu(){
@@ -100,6 +94,7 @@ void DockTask::alloc_gpu(){
     int n_range_all_flex = 0, n_rotated_atoms_all_flex = 0;
     int n_dim_all_flex = 0, n_dim_tri_mat_all_flex = 0;
     int size_inter_all_flex = 0, size_intra_all_flex = 0;
+    int size_bias_param_all_flex = 0;
 
     int list_natom_flex[nflex];
     int list_ndihe[nflex];
@@ -131,9 +126,12 @@ void DockTask::alloc_gpu(){
         }
         n_rotated_atoms_all_flex += list_nrotated_atoms[i];
         n_range_all_flex += list_nrange[i];
+
+        size_bias_param_all_flex += m.biases.size() * 5;
     }
+
     // prepare pointers to CUDA continuous large memory
-    Real* p_real_cu;
+    Real* p_real_cu; //todo: Aiming to reduce page waste. However, maybe it is not necessary.
     int* p_int_cu;
 
     //----- flex_pose_list -----
@@ -149,7 +147,8 @@ void DockTask::alloc_gpu(){
     alloc_device(&flex_topo_list_cu, nflex);
     // vn_types, axis_atoms, range_inds, rotated_inds, rotated_atoms
     alloc_device(&flex_topo_list_int_cu,
-        n_atom_all_flex + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 + n_rotated_atoms_all_flex);
+                 n_atom_all_flex + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 +
+                 n_rotated_atoms_all_flex);
     alloc_device(&flex_topo_list_real_cu, (n_range_all_flex) * 2); //range_list
     FlexTopo* flex_topo_list;
     alloc_host(&flex_topo_list, nflex);
@@ -202,7 +201,7 @@ void DockTask::alloc_gpu(){
             cp_to_device(flex_topo_list[i].rotated_inds + j * 2, &ind_rotated, 1);
             // rotated_atoms
             cp_to_device(flex_topo_list[i].rotated_atoms + ind_rotated, m.torsions[j].rotated_atoms.data(),
-                m.torsions[j].rotated_atoms.size());
+                         m.torsions[j].rotated_atoms.size());
 
             // rotated_inds end
             ind_rotated += m.torsions[j].rotated_atoms.size() - 1;
@@ -231,8 +230,8 @@ void DockTask::alloc_gpu(){
     // (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex) * sizeof(int) +
     // (size_intra_all_flex + size_inter_all_flex) / 2 * sizeof(Real))
     alloc_device(&flex_param_list_cu, nflex);
-    alloc_device(&flex_param_list_int_cu, (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex));
-    alloc_device(&flex_param_list_real_cu, (size_intra_all_flex + size_inter_all_flex) / 2);
+    alloc_device(&flex_param_list_int_cu, (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex + n_atom_all_flex * 2));
+    alloc_device(&flex_param_list_real_cu, (size_intra_all_flex + size_inter_all_flex) / 2 + size_bias_param_all_flex);
     FlexParamVina* flex_param_list;
     alloc_host(&flex_param_list, nflex);
 
@@ -250,18 +249,39 @@ void DockTask::alloc_gpu(){
 
         flex_param_list[i].atom_types = flex_param_list[i].pairs_inter + flex_param_list[i].npair_inter * 2;
 
+        flex_param_list[i].inds_bias = flex_param_list[i].atom_types + m.natom;
+
+        flex_param_list[i].params_bias = flex_param_list[i].r1_plus_r2_inter + flex_param_list[i].npair_inter;
+
         // copy pairs_intra to cuda
         cp_to_device(flex_param_list[i].pairs_intra, m.intra_pairs.data(), m.intra_pairs.size());
         // copy pairs_inter to cuda
         cp_to_device(flex_param_list[i].pairs_inter, m.inter_pairs.data(), m.inter_pairs.size());
         // copy atom_types to cuda
         cp_to_device(flex_param_list[i].atom_types, m.vina_types.data(), m.natom);
-        p_int_cu = flex_param_list[i].atom_types + m.natom;
+
+        // copy inds_bias to cuda
+        int inds_bias[m.natom * 2] = {0};
+        std::vector<Real> params_bias;
+        int last_i = -1;
+        for (auto b : m.biases){
+            if (b.i != last_i){
+                inds_bias[b.i * 2] = params_bias.size();
+            }
+            params_bias.insert(params_bias.end(), b.param, b.param + 5);
+            inds_bias[b.i * 2 + 1] = params_bias.size();
+        }
+        cp_to_device(flex_param_list[i].inds_bias, inds_bias, m.natom * 2);
+        p_int_cu = flex_param_list[i].inds_bias + m.natom * 2;
+
         // copy r1_plus_r2_intra to cuda
         cp_to_device(flex_param_list[i].r1_plus_r2_intra, m.r1_plus_r2_intra.data(), m.r1_plus_r2_intra.size());
         // copy r1_plus_r2_inter to cuda
         cp_to_device(flex_param_list[i].r1_plus_r2_inter, m.r1_plus_r2_inter.data(), m.r1_plus_r2_inter.size());
-        p_real_cu = flex_param_list[i].r1_plus_r2_inter + m.r1_plus_r2_inter.size();
+        // copy bias_param to cuda
+        cp_to_device(flex_param_list[i].params_bias, params_bias.data(), params_bias.size());
+
+        p_real_cu = flex_param_list[i].params_bias + params_bias.size();
     }
     cp_to_device(flex_param_list_cu, flex_param_list, nflex);
     checkCUDA(cudaFreeHost(flex_param_list));
