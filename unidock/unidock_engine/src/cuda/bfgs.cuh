@@ -355,14 +355,9 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
                     flex_param.params_bias[j + 1] -  coord_adj[1],
                     flex_param.params_bias[j + 2] -  coord_adj[2]
                 };
-                rr = r_[0] * r_[0] + r_[1] * r_[1] + r_[2] * r_[2];
 
-                e_bias = flex_param.params_bias[j + 3] * expf(- rr / flex_param.params_bias[j + 4]);
-                energy += e_bias;
-
-                f_bias[0] += e_bias * 2 * r_[0] / flex_param.params_bias[j + 4];
-                f_bias[1] += e_bias * 2 * r_[1] / flex_param.params_bias[j + 4];
-                f_bias[2] += e_bias * 2 * r_[2] / flex_param.params_bias[j + 4];
+                // energy += Score.eval_ef_pos(r_, flex_param.params_bias[j + 3], flex_param.params_bias[j + 4], f_bias);
+                energy += Score.eval_ef_zalign(r_, flex_param.params_bias[j + 3], flex_param.atom_types[i], f_bias);
             }
 
             aux_f[i * 3] += f_bias[0];

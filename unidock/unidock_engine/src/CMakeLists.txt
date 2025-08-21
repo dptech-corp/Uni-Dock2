@@ -41,6 +41,7 @@ set(sources
         score/vina.h
 
         task/DockTask.cpp       task/DockTask.h
+        score/bias.h
 )
 
 # compile lib for the bin to link to

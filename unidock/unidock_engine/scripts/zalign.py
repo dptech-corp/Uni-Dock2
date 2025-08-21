@@ -114,8 +114,8 @@ class ZScore:
         return (q_types[:, np.newaxis] == t_types[np.newaxis, :])
 
     def score_charge(self):
-        q_charges = np.array(self.at_q.get_atom_charge_types(ff=True))
-        t_charges = np.array(self.at_t.get_atom_charge_types(ff=True))
+        q_charges = np.array(self.at_q.get_atom_charge_types())
+        t_charges = np.array(self.at_t.get_atom_charge_types())
         charges_diff = np.abs(q_charges[:, np.newaxis] - t_charges[np.newaxis, :])
         y = 10 * charges_diff - 1
         
