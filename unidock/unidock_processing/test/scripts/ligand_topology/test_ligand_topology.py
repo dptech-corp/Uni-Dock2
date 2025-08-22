@@ -8,12 +8,10 @@ from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from context import TEST_DATA_DIR
 
 from unidock_processing.ligand_topology import utils
-from unidock_processing.ligand_topology.generic_rotatable_bond import (
-    GenericRotatableBond,
-)
+from unidock_processing.ligand_topology.rotatable_bond import BaseRotatableBond
 
-from unidock_processing.unidocktools.vina_atom_type import AtomType
-from unidock_processing.unidocktools.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
+from unidock_processing.atom_types.vina_atom_type import AtomType
+from unidock_processing.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
 
 TEST_LIGAND_DATA_DIR = os.path.join(TEST_DATA_DIR, 'ligand_topology')
 
@@ -184,7 +182,7 @@ def test_root_finding_strategy(root_finding_test_molecule):
     ComputeGasteigerCharges(mol)
     utils.assign_atom_properties(mol)
 
-    rotatable_bond_finder = GenericRotatableBond()
+    rotatable_bond_finder = BaseRotatableBond.create('generic')
     rotatable_bond_info_list = rotatable_bond_finder.identify_rotatable_bonds(mol)
 
     bond_list = list(mol.GetBonds())

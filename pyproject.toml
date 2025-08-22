@@ -83,7 +83,7 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E1", "E4", "E5", "E7", "E9", "F", "W"]
-ignore = []
+ignore = ["E722"]
 
 fixable = ["ALL"]
 unfixable = []
@@ -102,3 +102,12 @@ line-ending = "auto"
 docstring-code-format = false
 
 docstring-code-line-length = "dynamic"
+
+[tool.pytest.ini_options]
+pythonpath = "."
+verbosity_assertions = 2
+verbosity_test_cases = 2
+addopts = "-s --cov=unidock/unidock_processing/test"
+testpaths = [
+    "unidock/unidock_processing/test",
+]

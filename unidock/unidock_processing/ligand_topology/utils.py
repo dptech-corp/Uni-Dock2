@@ -17,6 +17,7 @@ from unidock_processing.utils.molecule_processing import (
     get_mol_with_indices,
 )
 
+
 def convert_v3000_mol_to_v2000_sdf(v3000_mol, v2000_sdf_file_name):
     mol_props_dict = v3000_mol.GetPropsAsDict()
     v2000_str = Chem.MolToV2KMolBlock(v3000_mol)
@@ -26,6 +27,7 @@ def convert_v3000_mol_to_v2000_sdf(v3000_mol, v2000_sdf_file_name):
 
     with open(v2000_sdf_file_name, "w") as f:
         f.write(v2000_str)
+
 
 def prepare_covalent_ligand_mol(mol):
     covalent_atom_idx_string = mol.GetProp("covalent_atom_indices")
@@ -341,12 +343,12 @@ def check_manual_atom_mapping_connection(
 
     try:
         Chem.SanitizeMol(reference_core_mol)
-    except Chem.KekulizeException:
+    except:
         return False
 
     try:
         Chem.SanitizeMol(query_core_mol)
-    except Chem.KekulizeException:
+    except:
         return False
 
     largest_fragment_chooser = rdMolStandardize.LargestFragmentChooser()
@@ -736,3 +738,42 @@ def root_finding_strategy(fragment_mol_list, rotatable_bond_info_list):
     ]
 
     return min_level_top_size_selected_fragment_idx
+
+
+def get_full_ring_core_atoms(mol, core_atom_idx_list):
+    # only works for hydrogens not in the core_atom_idx_list
+
+    # Convert input list to set for faster lookup
+    core_atom_idx_set = set(core_atom_idx_list)
+    full_core_atom_idx_set = set(core_atom_idx_list)
+
+    # Get all rings in the molecule
+    rings = Chem.GetSymmSSSR(mol)
+
+    # For each ring, check if any atom is in core_atom_idx_list
+    for ring in rings:
+        ring_atoms = set(ring)
+        intersection = ring_atoms.intersection(core_atom_idx_set)
+
+        if len(intersection) == 1:
+            # If only one atom in the ring belongs to core, remove it
+            full_core_atom_idx_set.difference_update(intersection)
+        elif len(intersection) > 1 and len(intersection) < len(ring_atoms):
+            # If partial ring (more than 1 but not complete), add all ring atoms
+            full_core_atom_idx_set.update(ring_atoms)
+
+    # # Add hydrogen atoms connected to ring atoms
+    # for atom_idx in list(full_core_atom_idx_set):
+    #     atom = mol.GetAtomWithIdx(atom_idx)
+    #     # Iterate through neighbors
+    #     for neighbor in atom.GetNeighbors():
+    #         # If neighbor is hydrogen, add it, perfect initial alignment should be done first
+    #         if neighbor.GetAtomicNum() == 1:
+    #             full_core_atom_idx_set.add(neighbor.GetIdx())
+
+    final_count = len(full_core_atom_idx_set)
+    initial_count = len(core_atom_idx_list)
+    print(f'initial_count: {initial_count}, final_count: {final_count}')
+    if final_count != initial_count:
+        print(f' changing the core atom numbers from {initial_count} to {final_count}')
+    return list(full_core_atom_idx_set)

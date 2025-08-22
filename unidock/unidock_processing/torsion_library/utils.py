@@ -1,8 +1,8 @@
+import os
+import dill as pickle
 import numpy as np
-
 from MDAnalysis.lib.transformations import rotation_matrix as get_rotation_matrix
 from MDAnalysis.lib.distances import calc_dihedrals
-
 from rdkit import Chem
 from rdkit.Chem import GetMolFrags, FragmentOnBonds
 from rdkit.Geometry.rdGeometry import Point3D
@@ -292,3 +292,10 @@ def rotate_torsion_angle(
             atom_positions[0], atom_positions[1], atom_positions[2]
         )
         conformer.SetAtomPosition(atom_idx, atom_coord_point_3D)
+
+
+def get_torsion_lib_dict() -> dict:
+    tor_lib_pkl_path = os.path.join(os.path.dirname(__file__), 'data', 'torsion_library.pkl')
+    with open(tor_lib_pkl_path, 'rb') as f:
+        tor_lib_dict = pickle.load(f)
+    return tor_lib_dict

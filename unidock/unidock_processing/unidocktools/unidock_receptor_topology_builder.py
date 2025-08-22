@@ -9,8 +9,8 @@ from unidock_processing.unidocktools.protein_topology import (
 from unidock_processing.unidocktools.receptor_topology_preparation import (
     ReceptorTopologyPreparation,
 )
-from unidock_processing.unidocktools.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
-from unidock_processing.unidocktools.unidock_ff_atom_types import FF_ATOM_TYPE_DICT
+from unidock_processing.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
+from unidock_processing.atom_types.unidock_ff_atom_types import FF_ATOM_TYPE_DICT
 
 class UnidockReceptorTopologyBuilder(object):
     def __init__(

@@ -29,6 +29,7 @@ class UnidockProtocolRunner(object):
         core_atom_mapping_dict_list: Optional[List[Optional[Dict[int, int]]]] = None,
         covalent_ligand: bool = False,
         covalent_residue_atom_info_list: Optional[List[Dict[str, Any]]] = None,
+        atom_mapper_align: bool = False,
         preserve_receptor_hydrogen: bool = False,
         working_dir_name: str = '.',
         docking_pose_sdf_file_name: str = 'unidock2_pose.sdf',
@@ -46,6 +47,8 @@ class UnidockProtocolRunner(object):
         energy_range: float = 5.0,
         seed: int = 1234567,
         use_tor_lib: bool = False,
+        existing_receptor_info: Optional[list] = None,
+        existing_ligands_info: Optional[dict] = None,
         debug: bool = False,
     ) -> None:
         self.receptor_file_name = os.path.abspath(receptor_file_name)
@@ -56,6 +59,7 @@ class UnidockProtocolRunner(object):
         self.compute_center = compute_center
         self.covalent_ligand = covalent_ligand
         self.covalent_residue_atom_info_list = covalent_residue_atom_info_list
+        self.atom_mapper_align = atom_mapper_align
         self.preserve_receptor_hydrogen = preserve_receptor_hydrogen
         self.box_size = box_size
         self.n_cpu = n_cpu
@@ -72,19 +76,18 @@ class UnidockProtocolRunner(object):
         self.energy_range = energy_range
         self.seed = seed
         self.use_tor_lib = use_tor_lib
+        self.existing_receptor_info = existing_receptor_info
+        self.existing_ligands_info = existing_ligands_info
         self.debug = debug
         self.working_dir_name = os.path.abspath(working_dir_name)
         self.unidock2_output_dir_name = os.path.join(self.working_dir_name, 'unidock2_output')
         self.docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
         os.makedirs(self.unidock2_output_dir_name, exist_ok=True)
 
-        if core_atom_mapping_dict_list is None:
-            self.core_atom_mapping_dict_list = None
-        else:
-            self.core_atom_mapping_dict_list = [
-                {int(k): int(v) for k, v in d.items()} if d else None
-                for d in core_atom_mapping_dict_list
-            ]
+        self.core_atom_mapping_dict_list = [
+            {int(k): int(v) for k, v in d.items()} if d else None
+            for d in core_atom_mapping_dict_list
+        ] if core_atom_mapping_dict_list else None
 
         if self.template_docking and self.reference_sdf_file_name and self.compute_center:
             reference_mol = Chem.SDMolSupplier(self.reference_sdf_file_name, removeHs=True)[0]
@@ -98,28 +101,37 @@ class UnidockProtocolRunner(object):
 
     def run_unidock_protocol(self) -> str:
         # Prepare receptor
-        receptor_builder = UnidockReceptorTopologyBuilder(
-            self.receptor_file_name,
-            prepared_hydrogen=self.preserve_receptor_hydrogen,
-            covalent_residue_atom_info_list=self.covalent_residue_atom_info_list,
-            working_dir_name=self.working_dir_name,
-        )
-        receptor_builder.generate_receptor_topology()
-        receptor_builder.analyze_receptor_topology()
-        receptor_info = receptor_builder.get_summary_receptor_info()
+        if self.existing_receptor_info:
+            print("Using existing receptor info.")
+            receptor_info = self.existing_receptor_info
+        else:
+            receptor_builder = UnidockReceptorTopologyBuilder(
+                self.receptor_file_name,
+                prepared_hydrogen=self.preserve_receptor_hydrogen,
+                covalent_residue_atom_info_list=self.covalent_residue_atom_info_list,
+                working_dir_name=self.working_dir_name,
+            )
+            receptor_builder.generate_receptor_topology()
+            receptor_builder.analyze_receptor_topology()
+            receptor_info = receptor_builder.get_summary_receptor_info()
 
         # Prepare ligands
-        ligand_builder = UnidockLigandTopologyBuilder(
-            self.ligand_sdf_file_name_list,
-            covalent_ligand=self.covalent_ligand,
-            template_docking=self.template_docking,
-            reference_sdf_file_name=self.reference_sdf_file_name,
-            core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
-            n_cpu=self.n_cpu,
-            working_dir_name=self.working_dir_name,
-        )
-        ligand_builder.generate_batch_ligand_topology()
-        ligands_info = ligand_builder.get_summary_ligand_info_dict()
+        if self.existing_ligands_info:
+            print("Using existing ligands info.")
+            ligands_info = self.existing_ligands_info
+        else:
+            ligand_builder = UnidockLigandTopologyBuilder(
+                self.ligand_sdf_file_name_list,
+                covalent_ligand=self.covalent_ligand,
+                template_docking=self.template_docking,
+                reference_sdf_file_name=self.reference_sdf_file_name,
+                core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
+                n_cpu=self.n_cpu,
+                working_dir_name=self.working_dir_name,
+                atom_mapper_align=self.atom_mapper_align,
+            )
+            ligand_builder.generate_batch_ligand_topology()
+            ligands_info = ligand_builder.get_summary_ligand_info_dict()
 
         if self.debug:
             with open(os.path.join(self.working_dir_name, 'ud2_engine_inputs.json'), 'w') as f:

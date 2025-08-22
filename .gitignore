@@ -4,6 +4,7 @@ build/
 cmake-build-release/
 cmake-build-debug/
 .cache
+.coverage
 test/ligands
 test/results
 .vscode
