@@ -339,10 +339,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         int i2 = flex_param.inds_bias[i * 2 + 1];
 
         if (i1 < i2){
-            // if (blockIdx.x == 0){
-            //     printf("\n-----------------\ni = %i, i1 = %i, i2 = %i, I am HERE!!!!!!!!!!!\n-----------------\n", i, i1, i2);
-            // }
-            Real e_bias = 0.;
             Real f_bias[3] = {0.};
 
             coord_adj[0] = pose->coords[i * 3];

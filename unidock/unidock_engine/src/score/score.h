@@ -119,6 +119,23 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
         e_penalty += cal_box_penalty(flex_coords + i * 3, box, tmp3);;
     }
     out_pose->center[2] = e_penalty;
+
+    // 1.4. Compute position-bias
+    Real e_bias = 0.;
+    for (auto & b: udflex_mol.biases){
+        Real f_bias[3] = {0.};
+        Real coord_adj[3] = {udflex_mol.coords[b.i * 3], udflex_mol.coords[b.i * 3 + 1], udflex_mol.coords[b.i * 3 + 2]};
+
+        Real r_[3] = {
+            b.param[0] -  coord_adj[0],
+            b.param[1] -  coord_adj[1],
+            b.param[2] -  coord_adj[2]
+        };
+
+        // energy += Score.eval_ef_pos(r_, flex_param.params_bias[j + 3], flex_param.params_bias[j + 4], f_bias);
+        e_bias += SF.eval_ef_zalign(r_, b.param[3], udflex_mol.vina_types[b.i], f_bias);
+    }
+    out_pose->center[1] += e_bias;
 }
 
 

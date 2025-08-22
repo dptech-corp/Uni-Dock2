@@ -285,9 +285,21 @@ public:
 
         // attractive
 
-        const Real s_a = 30.;
+        const Real s_a = 3.;
         const Real c_a = 1.;
-        Real k_a = vn_type == VN_TYPE_H ? 0.1 : 30.;
+        Real k_a = vn_type == VN_TYPE_H ? 0.1 : 30.; // Hydrogen 0.1
+
+        // Param 3: remove effects of hydrogen
+        // Real k_a = vn_type == VN_TYPE_H ? 0 : 30.; // Hydrogen 0.1
+
+        // Param 1: increase the amplitude
+        // k_a *= 3.; //fixme: experimental
+
+        // // Param 2: expand the cutoff to 3 Angstrom.
+        // k_a *= 1.5;
+        // const Real s_a = 2.;
+        // const Real c_a = 1.5;
+
         Real r = cal_norm(r_);
 
         Real e_item = exp(s_a * (c_a - r));
@@ -301,7 +313,27 @@ public:
         return e_bias;
     }
 
+    SCOPE_INLINE Real eval_ef_zalign_close(Real* r_, Real a_qt, int vn_type, Real* out_f){
 
+        // attractive
+
+        const Real s_a = 100;
+        const Real c_a = 0.1;
+        Real k_a = vn_type == VN_TYPE_H ? 0.1 : 30.; // Hydrogen 0.1
+        k_a /= 30;
+
+        Real r = cal_norm(r_);
+
+        Real e_item = exp(s_a * (c_a - r));
+        Real e_bias = a_qt * k_a / (1 + e_item);
+        Real f = e_bias * e_item * (1 + e_item) * s_a;
+
+        out_f[0] += f * r_[0] / r;
+        out_f[1] += f * r_[0] / r;
+        out_f[2] += f * r_[0] / r;
+
+        return e_bias;
+    }
 };
 
 
