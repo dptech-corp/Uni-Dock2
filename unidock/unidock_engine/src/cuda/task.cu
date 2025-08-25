@@ -79,6 +79,28 @@ void DockTask::copy_all_to_cpu(){
 }
 
 
+__global__ void print_params_bias_kernel(FlexParamVina* list_flex_param) {
+    if (threadIdx.x == 0){
+        printf("GPU params_bias\n\n");
+        for (int aa = 0; aa < 100; aa++){
+            printf("%f, ", list_flex_param[0].params_bias[aa]);
+        }
+        printf("\n");
+
+        printf("GPU inds_bias\n");
+        for (int aa = 0; aa < 100; aa++){
+            printf("%d, ", list_flex_param[0].inds_bias[aa]);
+        }
+        printf("\n");
+    }
+}
+
+void debug_print_params_bias(FlexParamVina* list_flex_param) {
+    // 启动1个block，每个block 100线程
+    print_params_bias_kernel<<<1, 32>>>(list_flex_param);
+    cudaDeviceSynchronize();  // 确保打印完成
+}
+
 void DockTask::alloc_gpu(){
     spdlog::info("Memory Allocation on GPU...");
     checkCUDA(cudaDeviceSynchronize());
@@ -232,6 +254,7 @@ void DockTask::alloc_gpu(){
     alloc_device(&flex_param_list_cu, nflex);
     alloc_device(&flex_param_list_int_cu, (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex + n_atom_all_flex * 2));
     alloc_device(&flex_param_list_real_cu, (size_intra_all_flex + size_inter_all_flex) / 2 + size_bias_param_all_flex);
+    // printf("\n size_bias_param_all_flex is %d \n", size_bias_param_all_flex);
     FlexParamVina* flex_param_list;
     alloc_host(&flex_param_list, nflex);
 
@@ -270,6 +293,7 @@ void DockTask::alloc_gpu(){
             }
             params_bias.insert(params_bias.end(), b.param, b.param + 5);
             inds_bias[b.i * 2 + 1] = params_bias.size();
+            last_i = b.i;
         }
         cp_to_device(flex_param_list[i].inds_bias, inds_bias, m.natom * 2);
         p_int_cu = flex_param_list[i].inds_bias + m.natom * 2;
@@ -284,6 +308,7 @@ void DockTask::alloc_gpu(){
         p_real_cu = flex_param_list[i].params_bias + params_bias.size();
     }
     cp_to_device(flex_param_list_cu, flex_param_list, nflex);
+    // debug_print_params_bias(flex_param_list_cu);
     checkCUDA(cudaFreeHost(flex_param_list));
 
 

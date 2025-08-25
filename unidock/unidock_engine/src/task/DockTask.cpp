@@ -139,6 +139,7 @@ void DockTask::run_cluster(){
 
 void DockTask::run_refine(){
     spdlog::info("Run Refinement (BFGS) for {} steps...", dock_param.refine_steps);
+
     optimize_cu(flex_pose_list_cu, clustered_pose_inds_cu, flex_topo_list_cu, *fix_mol_cu,
                           flex_param_list_cu, *fix_param_cu,
                           aux_poses_cu, aux_grads_cu, aux_hessians_cu,

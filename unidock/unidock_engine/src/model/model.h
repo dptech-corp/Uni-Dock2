@@ -147,6 +147,7 @@ struct Box{
 struct DockParam{
     int seed = 12345;
     bool constraint_docking = false;
+    bool zalign = false;
     int exhaustiveness = 128;
     bool randomize = true;
     int mc_steps = 20; // MC steps
@@ -166,12 +167,14 @@ struct DockParam{
                      "box: x_lo={} Angstrom, x_hi={} Angstrom, y_lo={} Angstrom, y_hi={} Angstrom, z_lo={} Angstrom, z_hi={} Angstrom, \n"
                      "constraint_docking={}, exhaustiveness={}, \n"
                      "mc_steps={}, opt_steps={}, refine_steps={}, \n"
-                     "num_pose={}, rmsd_limit={} Angstrom, \n",
+                     "num_pose={}, rmsd_limit={} Angstrom, \n"
+                     "zalign={}, \n",
                      seed, static_cast<int>(search_score), static_cast<int>(opt_score),
                      box.x_lo, box.x_hi, box.y_lo, box.y_hi, box.z_lo, box.z_hi,
                      constraint_docking, exhaustiveness,
                      mc_steps, opt_steps, refine_steps,
-                     num_pose, rmsd_limit);
+                     num_pose, rmsd_limit,
+                     zalign);
     }
 };
 

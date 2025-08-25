@@ -334,35 +334,43 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
 
 
     // 1.4. Compute position-bias
-    for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
-        int i1 = flex_param.inds_bias[i * 2]; // get bias for each atom
-        int i2 = flex_param.inds_bias[i * 2 + 1];
+    if (FLAG_ZALIGN){
+        // if(tile.thread_rank() == 0){
+        //     printf("\n");
+        //     for (int aa = 0; aa < 100; aa++){
+        //         printf("%f, ", flex_param.params_bias[aa]);
+        //     }
+        //     printf("\n");
+        // }
+        for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
+            int i1 = flex_param.inds_bias[i * 2]; // get bias for each atom
+            int i2 = flex_param.inds_bias[i * 2 + 1];
 
-        if (i1 < i2){
-            Real f_bias[3] = {0.};
+            if (i1 < i2){
+                Real f_bias[3] = {0.};
 
-            coord_adj[0] = pose->coords[i * 3];
-            coord_adj[1] = pose->coords[i * 3 + 1];
-            coord_adj[2] = pose->coords[i * 3 + 2];
+                coord_adj[0] = pose->coords[i * 3];
+                coord_adj[1] = pose->coords[i * 3 + 1];
+                coord_adj[2] = pose->coords[i * 3 + 2];
 
-            for (int j = i1; j < i2; j += 5){
-                Real r_[3] = {
-                    flex_param.params_bias[j] -  coord_adj[0],
-                    flex_param.params_bias[j + 1] -  coord_adj[1],
-                    flex_param.params_bias[j + 2] -  coord_adj[2]
-                };
+                for (int j = i1; j < i2; j += 5){
+                    Real r_[3] = {
+                        flex_param.params_bias[j] -  coord_adj[0],
+                        flex_param.params_bias[j + 1] -  coord_adj[1],
+                        flex_param.params_bias[j + 2] -  coord_adj[2]
+                    };
 
-                // energy += Score.eval_ef_pos(r_, flex_param.params_bias[j + 3], flex_param.params_bias[j + 4], f_bias);
-                energy += Score.eval_ef_zalign(r_, flex_param.params_bias[j + 3], flex_param.atom_types[i], f_bias);
+                    // energy += Score.eval_ef_pos(r_, flex_param.params_bias[j + 3], flex_param.params_bias[j + 4], f_bias);
+                    energy += Score.eval_ef_zalign(r_, flex_param.params_bias[j + 3], flex_param.atom_types[i], f_bias);
+                }
+
+                aux_f[i * 3] += f_bias[0];
+                aux_f[i * 3 + 1] += f_bias[1];
+                aux_f[i * 3 + 2] += f_bias[2];
             }
-
-            aux_f[i * 3] += f_bias[0];
-            aux_f[i * 3 + 1] += f_bias[1];
-            aux_f[i * 3 + 2] += f_bias[2];
         }
+        tile.sync();
     }
-    tile.sync();
-
 
     // 2. Compute energy and forces by dihedral
     //bla bla...

@@ -274,6 +274,7 @@ int main(int argc, char* argv[])
         dock_param.randomize = false;
     }
 
+    dock_param.zalign = get_config_with_err<bool>(config, "Advanced", "zalign", false);
 
     // -------------------------------  Perform Task -------------------------------
     std::string dp_out = get_config_with_err<std::string>(config, "Outputs", "dir");
@@ -337,7 +338,7 @@ int main(int argc, char* argv[])
         run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
 
     } else{
-        spdlog::critical("Not supported task: {} doesn't belong to (screen, local_only, mc)", task);
+        spdlog::critical("Not supported task: {} doesn't belong to (screen, score, mc randomize, optimize)", task);
         exit(1);
     }
 

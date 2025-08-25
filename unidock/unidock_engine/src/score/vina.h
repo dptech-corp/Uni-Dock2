@@ -281,46 +281,78 @@ public:
         return e_bias;
     }
 
+
+    /**
+     * @brief Compute Z-align affinity potential.
+     * Wang, Z., Zhou, F., Wang, Z., Hu, Q., Li, Y. Q., Wang, S., Wei, Y., Zheng, L., Li, W., &
+     * Peng, X. (2024). Fully Flexible Molecular Alignment Enables Accurate Ligand Structure
+     * Modeling. Journal of Chemical Information and Modeling, 64(15), 6205–6215.
+     * https://doi.org/10.1021/acs.jcim.4c00669
+     *
+     * @snippet test/unit/score/test_bias.cpp eval_ef_zalign
+     * @param r_ Real[3], vector from biased atom to the bias position
+     * @param a_qt Affinity score between biased atom and the template atom at the bias position
+     * @param vn_type Atom type of the biased atom
+     * @param out_f Output derivative (-force)
+     * @return energy
+     */
     SCOPE_INLINE Real eval_ef_zalign(Real* r_, Real a_qt, int vn_type, Real* out_f){
 
-        // attractive
-
+        // 1. Attractive
         const Real s_a = 3.;
         const Real c_a = 1.;
-        Real k_a = vn_type == VN_TYPE_H ? 0.1 : 30.; // Hydrogen 0.1
+        Real k_a = (vn_type == VN_TYPE_H ? 0.1 : 30.); // Hydrogen 0.1
 
-        // Param 3: remove effects of hydrogen
-        // Real k_a = vn_type == VN_TYPE_H ? 0 : 30.; // Hydrogen 0.1
+        // // Param: remove effects of hydrogen
+        k_a = vn_type == VN_TYPE_H ? 0 : 30.; // Hydrogen 0.1
 
-        // Param 1: increase the amplitude
-        // k_a *= 3.; //fixme: experimental
+        // Param: increase the amplitude
+        k_a *= 0.1;
 
-        // // Param 2: expand the cutoff to 3 Angstrom.
+        // // Param: expand the cutoff to 3 Angstrom.
         // k_a *= 1.5;
         // const Real s_a = 2.;
         // const Real c_a = 1.5;
 
+        // Param: expand the cutoff to 8 Angstrom.
+        // k_a *= 3.3;
+        // const Real s_a = 1;
+        // const Real c_a = 3;
+
         Real r = cal_norm(r_);
+
+        // // Param: set the cutoff
+        // if (r > 0.5){
+        //     return 0.;
+        // }
+
+        // Param: Augment bias inside 1 Angstrom
+        // if (r < 1){
+        //     k_a *= 2;
+        // }
 
         Real e_item = exp(s_a * (c_a - r));
         Real e_bias = a_qt * k_a / (1 + e_item);
-        Real f = e_bias * e_item * (1 + e_item) * s_a;
+        Real f = - e_bias * e_item / (1 + e_item) * s_a;
 
         out_f[0] += f * r_[0] / r;
-        out_f[1] += f * r_[0] / r;
-        out_f[2] += f * r_[0] / r;
+        out_f[1] += f * r_[1] / r;
+        out_f[2] += f * r_[2] / r;
 
+        // printf("a_qt = %f, e_bias = %f \n", a_qt, e_bias);
         return e_bias;
+
+        // Real e2 = eval_ef_zalign_close(r_, a_qt, vn_type, out_f);
+        // return e_bias + e2;
     }
 
     SCOPE_INLINE Real eval_ef_zalign_close(Real* r_, Real a_qt, int vn_type, Real* out_f){
 
         // attractive
 
-        const Real s_a = 100;
-        const Real c_a = 0.1;
+        const Real s_a = 20;
+        const Real c_a = 0.3;
         Real k_a = vn_type == VN_TYPE_H ? 0.1 : 30.; // Hydrogen 0.1
-        k_a /= 30;
 
         Real r = cal_norm(r_);
 

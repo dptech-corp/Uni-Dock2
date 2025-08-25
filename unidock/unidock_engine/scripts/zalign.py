@@ -134,12 +134,14 @@ class ZScore:
         return (q_rings[:, np.newaxis] == t_rings[np.newaxis, :])
 
     def score(self):
+
         a_element = self.score_element()
         a_bond = self.score_bond()
         a_ring = self.score_ring()
         a_charge = self.score_charge()
 
         return a_element + a_charge + np.minimum(2, a_bond + 2 * a_ring)
+        
     
     def score_mols(self, mol_q, mol_t):
         self.at_q = ZAtomType(mol_q)
@@ -150,7 +152,7 @@ class ZScore:
     def score_atom_types(self, at_q, at_t):
         self.at_q = at_q
         self.at_t = at_t
-
+        
         return self.score()
 
 

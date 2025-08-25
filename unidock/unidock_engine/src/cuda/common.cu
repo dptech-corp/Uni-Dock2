@@ -7,6 +7,8 @@ __device__ __managed__ unsigned int funcCallCount = 0;
 
 
 __constant__ bool FLAG_CONSTRAINT_DOCK = false;
+__constant__ bool FLAG_ZALIGN = false;
+
 __constant__ Box CU_BOX;
 
 
@@ -19,6 +21,7 @@ __constant__ Gaff2 Score;
 
 void init_constants(const DockParam& dock_param){
     //======================= constants ======================
+    checkCUDA(cudaMemcpyToSymbol(FLAG_ZALIGN, &dock_param.zalign, sizeof(bool)));
     checkCUDA(cudaMemcpyToSymbol(FLAG_CONSTRAINT_DOCK, &dock_param.constraint_docking, sizeof(bool)));
     checkCUDA(cudaMemcpyToSymbol(CU_BOX, &dock_param.box, sizeof(dock_param.box), 0, cudaMemcpyHostToDevice));
     checkCUDA(cudaDeviceSynchronize());// assure that memcpy is finished
