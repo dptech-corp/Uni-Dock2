@@ -56,22 +56,27 @@ public:
         _dock_param.seed = seed;
         _dock_param.constraint_docking = constraint_docking;
 
-        if (search_mode == "fast"){
-            _dock_param.exhaustiveness = (exhaustiveness > 0) ? exhaustiveness : 64;
-            _dock_param.mc_steps = (mc_steps > 0) ? mc_steps : 30;
-            _dock_param.opt_steps = (opt_steps > 0) ? opt_steps : 3;
+        if (opt_steps < 0){ //heuristic
+            opt_steps = -1;
+            spdlog::info("Use heuristic method to decide opt_steps");
+        }
+
+        if (search_mode == "free"){
+            _dock_param.exhaustiveness = exhaustiveness;
+            _dock_param.mc_steps = mc_steps;
+            _dock_param.opt_steps = opt_steps;
+        } else if (search_mode == "fast"){
+            _dock_param.exhaustiveness = 128;
+            _dock_param.mc_steps = 20;
+            _dock_param.opt_steps = -1;
         } else if (search_mode == "balance"){
-            _dock_param.exhaustiveness = (exhaustiveness > 0) ? exhaustiveness : 64;
-            _dock_param.mc_steps = (mc_steps > 0) ? mc_steps : 200;
-            _dock_param.opt_steps = (opt_steps > 0) ? opt_steps : 5;
+            _dock_param.exhaustiveness = 256;
+            _dock_param.mc_steps = 30;
+            _dock_param.opt_steps = -1;
         } else if (search_mode == "detail"){
-            _dock_param.exhaustiveness = (exhaustiveness > 0) ? exhaustiveness : 512;
-            _dock_param.mc_steps = (mc_steps > 0) ? mc_steps : 300;
-            _dock_param.opt_steps = (opt_steps > 0) ? opt_steps : 5;
-        } else if (search_mode == "free"){
-            _dock_param.exhaustiveness = (exhaustiveness > 0) ? exhaustiveness : 512;
-            _dock_param.mc_steps = (mc_steps > 0) ? mc_steps : 40;
-            _dock_param.opt_steps = (opt_steps > 0) ? opt_steps : -1;
+            _dock_param.exhaustiveness = 512;
+            _dock_param.mc_steps = 40;
+            _dock_param.opt_steps = -1;
         } else {
             throw std::runtime_error("Not supported search_mode: " + search_mode);
         }
