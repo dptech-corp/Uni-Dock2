@@ -102,6 +102,7 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
             energy.PushBack(flex_pose_list_res[j].center[1], doc.GetAllocator()); // inter
             energy.PushBack(flex_pose_list_res[j].center[2], doc.GetAllocator()); // penalty
             energy.PushBack(flex_pose_list_res[j].rot_vec[2], doc.GetAllocator()); // conf independent contribution
+            // energy.PushBack(flex_pose_list_res[j].rot_vec[3], doc.GetAllocator()); // bias reward
             pose_obj.AddMember("energy", energy.Move(), doc.GetAllocator());
 
             rj::Value coords(rj::kArrayType);

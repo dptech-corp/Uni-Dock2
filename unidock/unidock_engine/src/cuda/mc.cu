@@ -24,7 +24,7 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
 
     // generate a random pose inside the box
     if (tile.thread_rank() == 0){
-        if (FLAG_CONSTRAINT_DOCK){
+        if (FLAG_FIX_CORE){
             // center and orientation are fixed
             aux_g->center_g[0] = 0;
             aux_g->center_g[1] = 0;
@@ -33,7 +33,7 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
             aux_g->orientation_g[1] = 0;
             aux_g->orientation_g[2] = 0;
         }
-        else if(FLAG_ZALIGN){
+        else if(BIAS_TYPE == BT_ALIGN){
             aux_g->center_g[0] = 0;
             aux_g->center_g[1] = 0;
             aux_g->center_g[2] = 0;
@@ -160,7 +160,7 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
 
     if (tile.thread_rank() == 0){
         int num_mutable = 2 + flex_topo->ntorsion; //center, orientation, torsions
-        if (FLAG_CONSTRAINT_DOCK){
+        if (FLAG_FIX_CORE){
             if (num_mutable < 3){ // no torsion
                 which = 3; // so no mutation
             }

@@ -140,7 +140,7 @@ class ZScore:
         a_ring = self.score_ring()
         a_charge = self.score_charge()
 
-        return a_element + a_charge + np.minimum(2, a_bond + 2 * a_ring)
+        return np.minimum(2, a_bond + 2 * a_ring) + a_element + a_charge
         
     
     def score_mols(self, mol_q, mol_t):

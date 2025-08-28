@@ -188,14 +188,14 @@ void DockTask::run_score(){
     spdlog::info("Scoring...");
     // only score once
     Vina v;
-    std::string show_format = "{:<10}{:<20}";
+    std::string show_format = "{:<10}{:<20}{:<20}{:<20}";
 
     for (int i = 0; i < nflex; i ++){
         auto mol = udflex_mols[i];
         int n_tors = mol.torsions.size();
         if(show_score){
             spdlog::info("-------------------------------------------");
-            spdlog::info(show_format, "Rank", "Affinity (kcal/mol)");
+            spdlog::info(show_format, "Rank", "Affinity (kcal/mol)", "Bias (kcal/mol)", "RBias (kcal/mol)");
             spdlog::info("-------------------------------------------");
         }
 
@@ -203,12 +203,13 @@ void DockTask::run_score(){
         // use center[3] to record intra, inter, penalty
         // then use orientation[4] to record Predicted Free Energy of Binding, Total score, inter(contains penalty) score, conf_independent part
         int j_r1 = filtered_pose_inds_list[i][0];
-        score(flex_pose_list_res + j_r1, flex_pose_list_real_res + list_i_real[j_r1 * 2], udfix_mol, mol, dock_param.box);
+        score(flex_pose_list_res + j_r1, flex_pose_list_real_res + list_i_real[j_r1 * 2], udfix_mol, mol, dock_param);
         Real e_intra_rank1 = flex_pose_list_res[j_r1].center[0];
+        Real e_bias_rank1 = flex_pose_list_res[j_r1].rot_vec[3];
 
         int pose_num = 0;
         for (auto& j: filtered_pose_inds_list[i]){
-            score(flex_pose_list_res + j, flex_pose_list_real_res + list_i_real[j * 2], udfix_mol, mol, dock_param.box);
+            score(flex_pose_list_res + j, flex_pose_list_real_res + list_i_real[j * 2], udfix_mol, mol, dock_param);
             flex_pose_list_res[j].rot_vec[1] = flex_pose_list_res[j].center[0] + flex_pose_list_res[j].center[1] +
                 flex_pose_list_res[j].center[2]; // Total
 
@@ -219,7 +220,7 @@ void DockTask::run_score(){
 
             pose_num ++;
             if(show_score){
-                spdlog::info(show_format, pose_num, flex_pose_list_res[j].rot_vec[0]);
+                spdlog::info(show_format, pose_num, flex_pose_list_res[j].rot_vec[0], flex_pose_list_res[j].rot_vec[3], flex_pose_list_res[j].rot_vec[3] - e_bias_rank1);
             }
         }
         if(show_score){

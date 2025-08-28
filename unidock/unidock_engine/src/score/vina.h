@@ -267,9 +267,16 @@ public:
         return e;
     }
 
+// #ifdef __CUDACC__
+// #define bias_scale BIAS_K
+// #else
+// #define bias_scale ::BIAS_K_CPU
+// #endif
+//     Real BIAS_K_CPU = 0.1;
 
     SCOPE_INLINE Real eval_ef_pos(Real* r_, Real V_set, Real r2, Real* out_f){
         // r_ is bias_position - flex_atom_position
+        // V_set *= bias_scale;
 
         Real rr = r_[0] * r_[0] + r_[1] * r_[1] + r_[2] * r_[2];
         Real e_bias = V_set * expf(- rr / r2);
@@ -304,10 +311,14 @@ public:
         Real k_a = (vn_type == VN_TYPE_H ? 0.1 : 30.); // Hydrogen 0.1
 
         // // Param: remove effects of hydrogen
-        k_a = vn_type == VN_TYPE_H ? 0 : 30.; // Hydrogen 0.1
+        // k_a = vn_type == VN_TYPE_H ? 0 : 30.; // Hydrogen 0.1
 
-        // Param: increase the amplitude
-        k_a *= 0.1;
+        // k_a *= bias_scale;
+
+        // // Param: expand the cutoff to 0.5 Angstrom.
+        // k_a *= 1.5;
+        // const Real s_a = 2.;
+        // const Real c_a = 1.5;
 
         // // Param: expand the cutoff to 3 Angstrom.
         // k_a *= 1.5;
@@ -321,14 +332,9 @@ public:
 
         Real r = cal_norm(r_);
 
-        // // Param: set the cutoff
-        // if (r > 0.5){
-        //     return 0.;
-        // }
-
-        // Param: Augment bias inside 1 Angstrom
-        // if (r < 1){
-        //     k_a *= 2;
+        // // Param: augment those too-close pairs
+        // if (r < 0.5){
+        //     k_a *= 3;
         // }
 
         Real e_item = exp(s_a * (c_a - r));

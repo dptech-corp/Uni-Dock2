@@ -36,7 +36,7 @@ Vina SF;
 
 
 void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mol, const UDFlexMol& udflex_mol,
-           const Box& box){
+           const DockParam& dock_param){
     Real rr = 0;
     Real f = 0;
     Real e_intra = 0., e_inter = 0., e_penalty = 0.;
@@ -58,16 +58,6 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
         // DPrintCPU("Pair: %d %d r2 = %f", i1, i2, rr);
         if (rr < SF.r2_cutoff){
             rr = sqrt(rr); // use r2 as a container for |r|
-            // if ((i1 == 17) and i2 == 20){
-            //     int mmm = 1;
-            //     for (int n = 200; n < 500; n++) {
-            //         float r = n * 0.01;
-            //         float tmp_f=0;
-            //         float res = SF.eval_ef(r - udflex_mol.r1_plus_r2_intra[i], udflex_mol.vina_types[i1],
-            //                         udflex_mol.vina_types[i2], &tmp_f);
-            //         // printf("r=%f, e=%f\n", r, res);
-            //     }
-            // }
             Real tmp = SF.eval_ef(rr - udflex_mol.r1_plus_r2_intra[i], udflex_mol.vina_types[i1],
                                   udflex_mol.vina_types[i2], &f);
             e_intra += tmp;
@@ -116,26 +106,49 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
         if (udflex_mol.vina_types[i] == VN_TYPE_H){
             continue;
         }
-        e_penalty += cal_box_penalty(flex_coords + i * 3, box, tmp3);;
+        e_penalty += cal_box_penalty(flex_coords + i * 3, dock_param.box, tmp3);;
     }
     out_pose->center[2] = e_penalty;
 
-    // // 1.4. Compute position-bias
-    // Real e_bias = 0.;
-    // for (auto & b: udflex_mol.biases){
-    //     Real f_bias[3] = {0.};
-    //     Real coord_adj[3] = {udflex_mol.coords[b.i * 3], udflex_mol.coords[b.i * 3 + 1], udflex_mol.coords[b.i * 3 + 2]};
-    //
-    //     Real r_[3] = {
-    //         b.param[0] -  coord_adj[0],
-    //         b.param[1] -  coord_adj[1],
-    //         b.param[2] -  coord_adj[2]
-    //     };
-    //
-    //     // energy += Score.eval_ef_pos(r_, flex_param.params_bias[j + 3], flex_param.params_bias[j + 4], f_bias);
-    //     e_bias += SF.eval_ef_zalign(r_, b.param[3], udflex_mol.vina_types[b.i], f_bias);
-    // }
-    // out_pose->center[1] += e_bias;
+    // 1.4. Compute position-bias
+    Real e_bias = 0.;
+    Real e_atom = 0.;
+    Real e_one = 0.;
+    int i_last = 0;
+    int i_ref = 0;
+    for (auto & b: udflex_mol.biases){
+        Real f_bias[3] = {0.};
+        Real coord_adj[3] = {
+            flex_coords[b.i * 3],
+            flex_coords[b.i * 3 + 1],
+            flex_coords[b.i * 3 + 2]
+        };
+
+        Real r_[3] = {
+            b.param[0] -  coord_adj[0],
+            b.param[1] -  coord_adj[1],
+            b.param[2] -  coord_adj[2]
+        };
+
+        if (b.i != i_last){
+            // printf("  [Total] Bias on %i is %f\n", i_last, e_atom);
+            i_ref = 0;
+            e_atom = 0;
+        }
+
+        if (dock_param.bias_type == BT_POS){
+            e_one = SF.eval_ef_pos(r_, b.param[3] * dock_param.bias_k, b.param[4], f_bias);
+        } else if (dock_param.bias_type == BT_ALIGN){
+            e_one = SF.eval_ef_zalign(r_, b.param[3] * dock_param.bias_k, udflex_mol.vina_types[b.i], f_bias);
+        }
+
+        e_bias += e_one;
+        e_atom += e_one;
+        i_last = b.i;
+        i_ref ++;
+    }
+    out_pose->rot_vec[3] = e_bias;
+
 }
 
 

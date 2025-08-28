@@ -178,7 +178,7 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 
 
     // write gradient of center
-    if ((!FLAG_CONSTRAINT_DOCK) and (tile.thread_rank() == 0)){
+    if ((!FLAG_FIX_CORE) and (tile.thread_rank() == 0)){
         out_g->center_g[0] = tmp4[0];
         out_g->center_g[1] = tmp4[1];
         out_g->center_g[2] = tmp4[2];
@@ -334,14 +334,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
 
 
     // 1.4. Compute position-bias
-    if (FLAG_ZALIGN){
-        // if(tile.thread_rank() == 0){
-        //     printf("\n");
-        //     for (int aa = 0; aa < 100; aa++){
-        //         printf("%f, ", flex_param.params_bias[aa]);
-        //     }
-        //     printf("\n");
-        // }
+    if (BIAS_TYPE != BT_NO){
         for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
             int i1 = flex_param.inds_bias[i * 2]; // get bias for each atom
             int i2 = flex_param.inds_bias[i * 2 + 1];
@@ -360,8 +353,11 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
                         flex_param.params_bias[j + 2] -  coord_adj[2]
                     };
 
-                    // energy += Score.eval_ef_pos(r_, flex_param.params_bias[j + 3], flex_param.params_bias[j + 4], f_bias);
-                    energy += Score.eval_ef_zalign(r_, flex_param.params_bias[j + 3], flex_param.atom_types[i], f_bias);
+                    if (BIAS_TYPE == BT_POS){
+                        energy += Score.eval_ef_pos(r_, flex_param.params_bias[j + 3] * BIAS_K, flex_param.params_bias[j + 4], f_bias);
+                    } else if (BIAS_TYPE == BT_ALIGN){
+                        energy += Score.eval_ef_zalign(r_, flex_param.params_bias[j + 3] * BIAS_K, flex_param.atom_types[i], f_bias);
+                    }
                 }
 
                 aux_f[i * 3] += f_bias[0];
@@ -371,6 +367,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         }
         tile.sync();
     }
+
 
     // 2. Compute energy and forces by dihedral
     //bla bla...
@@ -558,7 +555,7 @@ __device__ __forceinline__ void apply_grad_update_pose_tile(const cg::thread_blo
     tile.sync();
 
 
-    if (!FLAG_CONSTRAINT_DOCK){
+    if (!FLAG_FIX_CORE){
         Real q[4] = {0}, tmp1[3] = {0}, tmp2[3] = {0};
 
         // -------------- orientation & center increment --------------

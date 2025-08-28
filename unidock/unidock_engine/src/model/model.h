@@ -19,7 +19,7 @@
 struct FlexPose{
     Real energy = 999.;
     Real center[3] = {0.};
-    Real rot_vec[3] = {0.}; // # record the rot_vec of last rotation todo: move to FlexPoseGradient
+    Real rot_vec[4] = {0.}; // # record the rot_vec of last rotation; rot_vec[3] just for recording the score
     Real* coords; // size: natom * 3
     Real* dihedrals; // size: ntorsion. Unit: radian (not degree)
 };
@@ -144,10 +144,15 @@ struct Box{
     }
 };
 
+enum BiasType{
+    BT_NO,
+    BT_POS,
+    BT_ALIGN
+};
+
 struct DockParam{
     int seed = 12345;
     bool constraint_docking = false;
-    bool zalign = false;
     int exhaustiveness = 128;
     bool randomize = true;
     int mc_steps = 20; // MC steps
@@ -160,6 +165,8 @@ struct DockParam{
     ScoreFunc search_score = vina;
     ScoreFunc opt_score = vina;
     Box box;
+    BiasType bias_type;
+    Real bias_k = 0.1;
     DockParam() = default;
 
     void show() const{
@@ -168,13 +175,13 @@ struct DockParam{
                      "constraint_docking={}, exhaustiveness={}, \n"
                      "mc_steps={}, opt_steps={}, refine_steps={}, \n"
                      "num_pose={}, rmsd_limit={} Angstrom, \n"
-                     "zalign={}, \n",
+                     "bias_type={}, bias_k={}\n",
                      seed, static_cast<int>(search_score), static_cast<int>(opt_score),
                      box.x_lo, box.x_hi, box.y_lo, box.y_hi, box.z_lo, box.z_hi,
                      constraint_docking, exhaustiveness,
                      mc_steps, opt_steps, refine_steps,
                      num_pose, rmsd_limit,
-                     zalign);
+                     int(bias_type), bias_k);
     }
 };
 

@@ -274,7 +274,20 @@ int main(int argc, char* argv[])
         dock_param.randomize = false;
     }
 
-    dock_param.zalign = get_config_with_err<bool>(config, "Advanced", "zalign", false);
+    std::string bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
+    if (bias == "no"){
+        dock_param.bias_type = BT_NO;
+    }else if (bias == "pos"){
+        dock_param.bias_type = BT_POS;
+    }else if (bias == "align"){
+        dock_param.bias_type = BT_ALIGN;
+    }else{
+        spdlog::critical("Not supported bias: {} doesn't belong to (no, pos, align)" , bias);
+        exit(1);
+    }
+
+    dock_param.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", dock_param.bias_k);
+
 
     // -------------------------------  Perform Task -------------------------------
     std::string dp_out = get_config_with_err<std::string>(config, "Outputs", "dir");

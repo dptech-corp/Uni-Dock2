@@ -13,8 +13,9 @@
 extern __device__ __managed__ unsigned int funcCallCount;
 
 // -------------- Constants -----------------
-extern __constant__ bool FLAG_CONSTRAINT_DOCK;
-extern __constant__ bool FLAG_ZALIGN;
+extern __constant__ bool FLAG_FIX_CORE;
+extern __constant__ BiasType BIAS_TYPE;
+extern __constant__ Real BIAS_K;
 
 extern __constant__ Box CU_BOX;
 
