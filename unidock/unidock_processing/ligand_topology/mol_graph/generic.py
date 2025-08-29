@@ -158,11 +158,11 @@ class GenericMolGraph(BaseMolGraph):
         """
         self._preprocess_mol()
 
-        rotatable_bond_info_list = self._get_rotatable_bond_info()
-
         atom_pair_12_13_nested_list, atom_pair_14_nested_list = utils.calculate_nonbonded_atom_pairs(self.mol)
 
         atom_type_list, partial_charge_list, torsion_parameter_nested_dict = self.__construct_gaff2()
+
+        rotatable_bond_info_list = self._get_rotatable_bond_info()
 
         splitted_mol_list = self._freeze_bond(rotatable_bond_info_list)
 
