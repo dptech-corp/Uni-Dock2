@@ -267,12 +267,6 @@ public:
         return e;
     }
 
-// #ifdef __CUDACC__
-// #define bias_scale BIAS_K
-// #else
-// #define bias_scale ::BIAS_K_CPU
-// #endif
-//     Real BIAS_K_CPU = 0.1;
 
     SCOPE_INLINE Real eval_ef_pos(Real* r_, Real V_set, Real r2, Real* out_f){
         // r_ is bias_position - flex_atom_position
@@ -290,7 +284,7 @@ public:
 
 
     /**
-     * @brief Compute Z-align affinity potential.
+     * @brief Compute Z-align attractive potential.
      * Wang, Z., Zhou, F., Wang, Z., Hu, Q., Li, Y. Q., Wang, S., Wei, Y., Zheng, L., Li, W., &
      * Peng, X. (2024). Fully Flexible Molecular Alignment Enables Accurate Ligand Structure
      * Modeling. Journal of Chemical Information and Modeling, 64(15), 6205–6215.
@@ -313,29 +307,12 @@ public:
         // // Param: remove effects of hydrogen
         // k_a = vn_type == VN_TYPE_H ? 0 : 30.; // Hydrogen 0.1
 
-        // k_a *= bias_scale;
-
-        // // Param: expand the cutoff to 0.5 Angstrom.
-        // k_a *= 1.5;
-        // const Real s_a = 2.;
-        // const Real c_a = 1.5;
-
         // // Param: expand the cutoff to 3 Angstrom.
         // k_a *= 1.5;
         // const Real s_a = 2.;
         // const Real c_a = 1.5;
 
-        // Param: expand the cutoff to 8 Angstrom.
-        // k_a *= 3.3;
-        // const Real s_a = 1;
-        // const Real c_a = 3;
-
         Real r = cal_norm(r_);
-
-        // // Param: augment those too-close pairs
-        // if (r < 0.5){
-        //     k_a *= 3;
-        // }
 
         Real e_item = exp(s_a * (c_a - r));
         Real e_bias = a_qt * k_a / (1 + e_item);
@@ -345,33 +322,9 @@ public:
         out_f[1] += f * r_[1] / r;
         out_f[2] += f * r_[2] / r;
 
-        // printf("a_qt = %f, e_bias = %f \n", a_qt, e_bias);
-        return e_bias;
-
-        // Real e2 = eval_ef_zalign_close(r_, a_qt, vn_type, out_f);
-        // return e_bias + e2;
-    }
-
-    SCOPE_INLINE Real eval_ef_zalign_close(Real* r_, Real a_qt, int vn_type, Real* out_f){
-
-        // attractive
-
-        const Real s_a = 20;
-        const Real c_a = 0.3;
-        Real k_a = vn_type == VN_TYPE_H ? 0.1 : 30.; // Hydrogen 0.1
-
-        Real r = cal_norm(r_);
-
-        Real e_item = exp(s_a * (c_a - r));
-        Real e_bias = a_qt * k_a / (1 + e_item);
-        Real f = e_bias * e_item * (1 + e_item) * s_a;
-
-        out_f[0] += f * r_[0] / r;
-        out_f[1] += f * r_[0] / r;
-        out_f[2] += f * r_[0] / r;
-
         return e_bias;
     }
+
 };
 
 
