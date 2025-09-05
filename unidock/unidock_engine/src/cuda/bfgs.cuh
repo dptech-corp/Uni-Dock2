@@ -329,7 +329,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         }
     }
     tile.sync();
-去
 
     // 1.4. Compute position-bias
     if (BIAS_TYPE != BT_NO){
