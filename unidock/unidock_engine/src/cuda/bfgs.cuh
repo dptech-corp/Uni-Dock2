@@ -275,8 +275,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
 
             if (rr < EPSILON){ // fixme: robust?
                 rr = EPSILON;
-                // CUDA_ERROR("[INTER] Two atoms overlap! i1: %d, i2: %d, r_vec:%f, %f, %f, f: %.10f\n",
-                //            i1, i2, r_vec[0], r_vec[1], r_vec[2], f_div_r);
             }
             f_div_r /= rr; //now it is f / |r|
 
@@ -331,7 +329,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         }
     }
     tile.sync();
-
+去
 
     // 1.4. Compute position-bias
     if (BIAS_TYPE != BT_NO){
@@ -367,10 +365,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         }
         tile.sync();
     }
-
-
-    // 2. Compute energy and forces by dihedral
-    //bla bla...
 
     // Sum the total energy of all threads in this warp
     energy = cg::reduce(tile, energy, cg::plus<Real>());
@@ -649,7 +643,7 @@ __device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TIL
     }
     tile.sync();
 
-    // fixme: WHY? this version will lead to active lock (100% occupancy of GPU, never stop)
+    // fixme: WHY? this version will lead to active lock (100% occupancy of GPU, can't stop)
     // fixme: requiring fact-checking @25-03-20
     // if (tile.thread_rank() == 0){ // check why the active lock appears
     //     *out_e = e_new;
