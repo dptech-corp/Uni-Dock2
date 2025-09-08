@@ -343,12 +343,12 @@ def check_manual_atom_mapping_connection(
 
     try:
         Chem.SanitizeMol(reference_core_mol)
-    except:
+    except Exception:
         return False
 
     try:
         Chem.SanitizeMol(query_core_mol)
-    except:
+    except Exception:
         return False
 
     largest_fragment_chooser = rdMolStandardize.LargestFragmentChooser()

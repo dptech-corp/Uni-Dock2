@@ -80,3 +80,35 @@ def test_fragment_split(query_sdf_file:str, ref_sdf_file:str, atom_mapping:dict,
     rot_bonds = mol_graph_builder._get_rotatable_bond_info()
     filtered_fragments = mol_graph_builder._freeze_bond(rot_bonds)
     assert len(filtered_fragments) > 1, "incorrect fragments number after freezing bonds"
+
+
+@pytest.fixture
+def torsion_case_torsion_result() -> set[tuple[int]]:
+    return set([(12, 13, 14, 15), (13, 14, 15, 16)])
+
+
+@pytest.mark.parametrize("query_sdf_file,ref_sdf_file,atom_mapping,root_atom_ids,method",
+                         get_test_cases(["torsion_case"]))
+def test_torsion(query_sdf_file:str, ref_sdf_file:str, atom_mapping:dict, root_atom_ids:list[int],
+                 method:str, tmp_path:Path, torsion_case_torsion_result:list[tuple[int]]):
+    query_mol = Chem.SDMolSupplier(query_sdf_file, removeHs=False)[0]
+    reference_mol = Chem.SDMolSupplier(ref_sdf_file, removeHs=False)[0]
+
+    mol_graph_builder = BaseMolGraph.create(
+        method,
+        mol=query_mol,
+        torsion_library_dict=torsion_library_dict,
+        reference_mol=reference_mol,
+        core_atom_mapping_dict=atom_mapping,
+        working_dir_name=tmp_path,
+    )
+    (
+        atom_info_nested_list,
+        torsion_info_nested_list,
+        root_atom_idx_list,
+        fragment_atom_idx_nested_list,
+    ) = mol_graph_builder.build_graph()
+    torsion_ids = set([tuple(t[0]) for t in torsion_info_nested_list])
+
+    assert torsion_ids == torsion_case_torsion_result, \
+        f"Torsion info mismatch: expected {torsion_case_torsion_result}, got {torsion_ids}"

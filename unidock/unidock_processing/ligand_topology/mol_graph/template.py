@@ -2,6 +2,7 @@ import os
 import re
 from rdkit import Chem
 from unidock_processing.ligand_topology import utils
+from unidock_processing.ligand_topology.rotatable_bond import BaseRotatableBond
 from .generic import GenericMolGraph
 
 
@@ -53,11 +54,13 @@ class TemplateMolGraph(GenericMolGraph):
         super()._preprocess_mol()
         self.core_atom_idx_list = core_atom_idx_list
 
-    def _freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
+    def _get_rotatable_bond_info(self) -> list[tuple[int,...]]:
+        rotatable_bond_finder = BaseRotatableBond.create('generic')
+        rotatable_bond_info_list = rotatable_bond_finder.identify_rotatable_bonds(self.mol)
         rotatable_bond_info_list = [bond_info for bond_info in rotatable_bond_info_list \
                                     if bond_info[0] in self.core_atom_idx_list \
                                         and bond_info[1] in self.core_atom_idx_list]
-        return super()._freeze_bond(rotatable_bond_info_list)
+        return rotatable_bond_info_list
 
     def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:

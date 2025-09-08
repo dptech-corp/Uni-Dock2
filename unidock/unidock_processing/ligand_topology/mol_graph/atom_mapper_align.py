@@ -25,10 +25,6 @@ class AlignMolGraph(GenericMolGraph):
         self.core_atom_mapping_dict = core_atom_mapping_dict
         self.core_atom_idx_list = []
 
-    def _get_rotatable_bond_info(self) -> list[tuple[int,...]]:
-        rotatable_bond_finder = BaseRotatableBond.create('atom_mapper_align')
-        return rotatable_bond_finder.identify_rotatable_bonds(self.mol)
-
     def _preprocess_mol(self):
         mol = self.mol
         reference_mol = self.reference_mol
@@ -44,9 +40,12 @@ class AlignMolGraph(GenericMolGraph):
         super()._preprocess_mol()
         self.core_atom_idx_list = core_atom_idx_list
 
-    def _freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
+    def _get_rotatable_bond_info(self) -> list[tuple[int,...]]:
         mol = self.mol
         core_atom_idx_list = self.core_atom_idx_list
+        rotatable_bond_finder = BaseRotatableBond.create('atom_mapper_align')
+        rotatable_bond_info_list = rotatable_bond_finder.identify_rotatable_bonds(mol)
+
         filtered_rotatable_bond_info_list = []
         for rotatable_bond_info in rotatable_bond_info_list:
             rotatable_begin_atom_idx = rotatable_bond_info[0]
@@ -87,7 +86,7 @@ class AlignMolGraph(GenericMolGraph):
             else:
                 filtered_rotatable_bond_info_list.append(rotatable_bond_info)
 
-        return super()._freeze_bond(filtered_rotatable_bond_info_list)
+        return filtered_rotatable_bond_info_list
 
     def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
@@ -103,7 +102,7 @@ class AlignMolGraph(GenericMolGraph):
                         for nbr_atom in nbr_atoms_heavy:
                             nbr_heavy_atom_idx = int(re.split(r"(\d+)", nbr_atom.GetProp("atom_name"))[1]) - 1
                             nbr_heavy_atom_idx_list.append(nbr_heavy_atom_idx)
-                            # if one of the nbr_heavy_atom_idx is in core_atom_idx_list, then this atom is the root atom
+                        # if one of the nbr_heavy_atom_idx is in core_atom_idx_list, then this atom is the root atom
                         if any(nbr_heavy_atom_idx in core_atom_idx_list \
                                for nbr_heavy_atom_idx in nbr_heavy_atom_idx_list):
                             root_fragment_idx = fragment_idx
