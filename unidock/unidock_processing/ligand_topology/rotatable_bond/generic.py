@@ -11,9 +11,9 @@ class GenericRotatableBond(BaseRotatableBond):
             "(C([CH3])([CH3])[CH3])]-!@[!$(*#*)&!D1&!$([CH3])&!$(C(F)(F)F)&!$"
             "(C(Cl)(Cl)Cl)&!$(C(Br)(Br)Br)&!$(C([CH3])([CH3])[CH3])]"
         )
-        self.amide_bond_smarts = "[C&$(C=O)]-[N&$(NC=O);v3;H1,H2;0]"
-        self.amine_bond_smarts = "[*]-[N;$([+1;H3]),$([0;H2])]"
-        self.hydroxyl_bond_smarts = "[*]-[O,S;$([-1;H0]),$([0;H1])]"
+        self.amide_bond_smarts = "[C&$(C=O)]-[N&$(NC=O);v3;H1,H2;+0]"
+        self.amine_bond_smarts = "[*]-[N;$([+1;H3]),$([+0;H2])]"
+        self.hydroxyl_bond_smarts = "[*]-[O,S;$([-1;H0]),$([+0;H1])]"
         self.carboxyl_bond_smarts = "[*]-[C;$(C(=[O,S])O)]"
         self.phosphate_bond_smarts = "[*]-[P;$(P(=[O,S])([O,S])[O,S])]"
 
