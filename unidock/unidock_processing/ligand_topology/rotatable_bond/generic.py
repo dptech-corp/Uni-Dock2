@@ -7,8 +7,8 @@ class GenericRotatableBond(BaseRotatableBond):
 
     def __init__(self):
         self.rotatable_bond_smarts = (
-            "[!$(*#*)&!D1&!$([CH3])&!$(C(F)(F)F)&!$(C(Cl)(Cl)Cl)&!$(C(Br)(Br)Br)&!$"
-            "(C([CH3])([CH3])[CH3])]-!@[!$(*#*)&!D1&!$([CH3])&!$(C(F)(F)F)&!$"
+            "[!D1&!$([CH3])&!$(C(F)(F)F)&!$(C(Cl)(Cl)Cl)&!$(C(Br)(Br)Br)&!$"
+            "(C([CH3])([CH3])[CH3])]-!@[!D1&!$([CH3])&!$(C(F)(F)F)&!$"
             "(C(Cl)(Cl)Cl)&!$(C(Br)(Br)Br)&!$(C([CH3])([CH3])[CH3])]"
         )
         self.amide_bond_smarts = "[C&$(C=O)]-[N&$(NC=O);v3;H1,H2;+0]"
@@ -25,7 +25,7 @@ class GenericRotatableBond(BaseRotatableBond):
         )
 
         self.conjugate_bond_smarts = (
-            "[C,N;0;$([C,N;0]=[C,N;0])]-[C,N;0;$([C,N;0]=[C,N;0])]"
+            "[C,N;+0;$([C,N;+0]=[C,N;+0])]-[C,N;+0;$([C,N;+0]=[C,N;+0])]"
         )
 
         self.rotatable_bond_pattern = Chem.MolFromSmarts(self.rotatable_bond_smarts)
