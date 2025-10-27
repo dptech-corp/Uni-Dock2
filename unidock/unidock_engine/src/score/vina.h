@@ -304,14 +304,6 @@ public:
         const Real c_a = 1.;
         Real k_a = (vn_type == VN_TYPE_H ? 0.1 : 30.); // Hydrogen 0.1
 
-        // // Param: remove effects of hydrogen
-        // k_a = vn_type == VN_TYPE_H ? 0 : 30.; // Hydrogen 0.1
-
-        // // Param: expand the cutoff to 3 Angstrom.
-        // k_a *= 1.5;
-        // const Real s_a = 2.;
-        // const Real c_a = 1.5;
-
         Real r = cal_norm(r_);
 
         Real e_item = exp(s_a * (c_a - r));

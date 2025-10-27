@@ -70,15 +70,15 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
     out_pose->center[0] = e_intra;
 
     // -- Compute inter-molecular energy: flex-protein
-    int atom_id = udflex_mol.inter_pairs[0]; // begin from
-    Real atom_e = 0;
+    // int atom_id = udflex_mol.inter_pairs[0]; // begin from
+    // Real atom_e = 0;
     for (int i = 0; i < udflex_mol.inter_pairs.size() / 2; i++){
         int i1 = udflex_mol.inter_pairs[i * 2], i2 = udflex_mol.inter_pairs[i * 2 + 1];
-        if (i1 > atom_id){
-            // DPrintCPU("Atom %d e_inter = %f\n", atom_id, atom_e);
-            atom_e = 0;
-            atom_id++;
-        }
+        // if (i1 > atom_id){
+        //     // DPrintCPU("Atom %d e_inter = %f\n", atom_id, atom_e);
+        //     atom_e = 0;
+        //     atom_id++;
+        // }
         // Cartesian distances won't be saved
         Real r_vec[3] = {
             udfix_mol.coords[i2 * 3] - flex_coords[i1 * 3],
@@ -93,7 +93,7 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
                                 udfix_mol.vina_types[i2], &f);
             // printf("Atom %d %d e=%f\n", i1, i2, e);
             e_inter += e;
-            atom_e += e;
+            // atom_e += e;
         }
     }
     // DPrintCPU("Atom %d e_inter = %f\n", atom_id, atom_e);
@@ -148,7 +148,6 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
         i_ref ++;
     }
     out_pose->rot_vec[3] = e_bias;
-
 }
 
 

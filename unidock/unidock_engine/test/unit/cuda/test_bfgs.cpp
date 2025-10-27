@@ -81,8 +81,6 @@ void prepare_flex_1(FixMol* fix_mol, FixParamVina* fix_param, FlexParamVina* fle
 }
 
 
-
-
 TEST_CASE("test bfgs process", "[bfgs]"){
     Real out_e = 9999, out_alpha = -9999;
     FixMol fix_mol;

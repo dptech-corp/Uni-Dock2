@@ -18,10 +18,10 @@ Args:
 import json
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import rdMolAlign
+import argparse
 
 
-def tran_json_to_sdf(fp_res_json, fp_sdf, fp_res_sdf, noH=False, topN=None):
+def tran_json_to_sdf(fp_res_json, fp_in_sdf, fp_res_sdf, noH=False, topN=None):
     print("topN: ", topN)
     # fixme: The atom order in fp_res_json is different from the original fp_sdf
     """ Use RDKit to perform an align&rmsd process, without Hydrogen """
@@ -30,7 +30,7 @@ def tran_json_to_sdf(fp_res_json, fp_sdf, fp_res_sdf, noH=False, topN=None):
     list_k = list(json_res.keys())
 
     # fp_sdf is the input ligand structure for UD2 engine. By now, contains no Hydrogen atoms
-    list_mol_ref = Chem.SDMolSupplier(str(fp_sdf), removeHs=noH)
+    list_mol_ref = Chem.SDMolSupplier(str(fp_in_sdf), removeHs=noH)
 
     # create a writer
     writer = Chem.SDWriter(fp_res_sdf)
@@ -68,8 +68,8 @@ def tran_json_to_sdf(fp_res_json, fp_sdf, fp_res_sdf, noH=False, topN=None):
     print(f"The sdf file {fp_res_sdf} has been generated.")
 
 
+
 if __name__ == "__main__":
-    import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("json_file", type=str, help="the json file to tackle")
     parser.add_argument("reference_sdf", type=str, help="the reference sdf file")
@@ -77,5 +77,4 @@ if __name__ == "__main__":
     parser.add_argument("--noH", action="store_true", help="whether to remove hydrogen atoms")
     parser.add_argument("--topN", type=int, help="the top N poses to write to the sdf file", default=None)
     args = parser.parse_args()
-
     tran_json_to_sdf(args.json_file, args.reference_sdf, args.output_sdf, args.noH, args.topN)

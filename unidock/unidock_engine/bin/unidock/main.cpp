@@ -193,8 +193,10 @@ int main(int argc, char* argv[])
     }
 
     // todo: remove these
-    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", true);;
-    if (not use_tor_lib){
+    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", false);;
+    if (use_tor_lib){
+        spdlog::warn("Torsion Library is used.");
+    }else{
         spdlog::warn("Torsion Library is NOT used.");
     }
 
