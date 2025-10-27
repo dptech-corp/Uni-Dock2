@@ -8,9 +8,9 @@
 // the maximum cutoff of VINA functions
 #define VINA_CUTOFF 8.0
 
-#define LINE_SEARCH_STEPS 10
+#define LINE_SEARCH_STEPS 5
 #define LINE_SEARCH_C0 0.0001
-#define LINE_SEARCH_MULTIPLIER 0.5
+#define LINE_SEARCH_MULTIPLIER 0.3
 
 
 #define PENALTY_SLOPE 1e6
