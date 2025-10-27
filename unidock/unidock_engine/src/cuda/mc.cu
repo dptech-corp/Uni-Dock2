@@ -58,7 +58,6 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
             tmp4[2] = R * sin(beta);
             tmp4[3] = R * cos(beta);
             quaternion_to_rotvec(aux_g->orientation_g, tmp4);
-            // printf("[RAND] %f, %f, %f\n", aux_g->orientation_g[0], aux_g->orientation_g[1], aux_g->orientation_g[2]);
         }
     }
 
@@ -151,7 +150,6 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         else{
             which = gen_rand_int_within(state, 0, num_mutable - 1);
         }
-        // DPrint1("which is %d\n", which);
         // prepare random values for choosing DOF to mutate
         gen_4_rand_in_sphere(rand_5, state);
         rand_5[4] = curand_uniform(state);
@@ -235,7 +233,6 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         if (tile.thread_rank() == 0){
             a = get_radian_in_ranges(flex_topo->range_list + flex_topo->range_inds[2 * which],
                                      flex_topo->range_inds[2 * which + 1], rand_5 + 3) - out_pose->dihedrals[which];
-            // printf("which is %d, a is %f\n", which,  a);
         }
         a = tile.shfl(a, 0); // increment of dihedral value
         apply_grad_update_dihe_tile(tile, out_pose, flex_topo, which, a);
@@ -326,10 +323,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
         else{
             for (int step = 0; step < mc_steps; step++){
                 // 1. mutate conf, PRODUCE a random conf
-                DPrint1("========= MC step %d \n", step);
-
                 duplicate_pose_tile(tile, &pose_candidate, &pose_accepted, dim, flex_topo.natom);
-
                 mutate_pose_tile(tile, &pose_candidate, &flex_topo, &state);
 
                 // todo: add clash-detection for efficiency

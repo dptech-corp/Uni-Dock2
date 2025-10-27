@@ -203,7 +203,6 @@ public:
      * @return energy
      */
     SCOPE_INLINE Real vina_conf_indep(Real e, int num_rotator){
-        // printf("e=%f, num_rotator=%d, weight_conf_indep = %f, ratio = %f\n", e, num_rotator, weight_conf_indep, 1/(1 + weight_conf_indep * num_rotator));
         return e / (1 + weight_conf_indep * num_rotator);
     }
 
@@ -218,47 +217,31 @@ public:
      * @return energy
      */
     SCOPE_INLINE Real eval_ef(Real d, int at1, int at2, Real* out_f){
-        // Real r = d + 1.9 + 1.9;
-        // Real e1 = r * r;
-        // *out_f = 2 * r;
-        // return e1;
-
         // add all items of geometrical energy
         Real e = 0;
         *out_f = 0;
         Real f = 0;
-        Real e_tmp = 0;
 
         // ignore all hydrogen atoms
         if (at1 == VN_TYPE_H || at2 == VN_TYPE_H){
             return e;
         }
 
-        e_tmp += weight_gauss1 * vina_gaussian1(d, &f);
-        // DPrintCPU(" gauss1: %f", e_tmp);
-        e += e_tmp;
+        e += weight_gauss1 * vina_gaussian1(d, &f);
         *out_f += weight_gauss1 * f;
 
-        e_tmp = weight_gauss2 * vina_gaussian2(d, &f);
-        // DPrintCPU(" gauss2: %f", e_tmp);
-        e += e_tmp;
+        e += weight_gauss2 * vina_gaussian2(d, &f);
         *out_f += weight_gauss2 * f;
 
-        e_tmp = weight_repulsion * vina_repulsion(d, &f);
-        // DPrintCPU(" repulsion: %f", e_tmp);
-        e += e_tmp;
+        e += weight_repulsion * vina_repulsion(d, &f);
         *out_f += weight_repulsion * f;
 
         if (vn_is_hydrophobic(at1) && vn_is_hydrophobic(at2)){
-            e_tmp = weight_hydrophobic * vina_hydrophobic(d, &f);
-            // DPrintCPU(" hydrophobic: %f", e_tmp);
-            e += e_tmp;
+            e += weight_hydrophobic * vina_hydrophobic(d, &f);
             *out_f += weight_hydrophobic * f;
         }
         if (xs_h_bond_possible(at1, at2)){
-            e_tmp = weight_hbond * vina_hbond(d, &f);
-            // DPrintCPU(" hbond: %f", e_tmp);
-            e += e_tmp;
+            e += weight_hbond * vina_hbond(d, &f);
             *out_f += weight_hbond * f;
         }
         return e;

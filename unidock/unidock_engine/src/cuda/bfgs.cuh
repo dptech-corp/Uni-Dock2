@@ -103,8 +103,7 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 
             // compute the torque on the atom for the torsion
             cross_product(tmp1, tmp2, tmp3);
-            // DPrint("iat= %d: arm: %f, %f, %f; f: %f, %f, %f; t: %f, %f, %f\n", i_at,
-            //     tmp1[0], tmp1[1], tmp1[2], tmp2[0], tmp2[1], tmp2[2], tmp3[0], tmp3[1], tmp3[2]);
+
             // accumulate the torque for the torsion
             tmp5[0] += tmp3[0];
             tmp5[1] += tmp3[1];
@@ -118,7 +117,6 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 
         // projection on axis as the gradient on dihedral
         out_g->dihedrals_g[i_tor] = dot_product(tmp5, tmp3) / cal_norm(tmp3);
-        DPrint("dihedrals_g: %f\n", out_g->dihedrals_g[i_tor]);
 
     }
     tile.sync();
@@ -143,8 +141,6 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 
         // rotate tmp1 to get real rotation coord
         rotate_vec_by_quaternion(tmp1, q);
-        // DPrint("Last coord %d: %f, %f, %f\n", i_at, tmp1[0], tmp1[1], tmp1[2]);
-
 
         // take grad over pos of each atom
         tmp2[0] = aux_f[i_at * 3];
@@ -183,24 +179,17 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
         out_g->center_g[0] = tmp4[0];
         out_g->center_g[1] = tmp4[1];
         out_g->center_g[2] = tmp4[2];
-        DPrint("Total force: %f, %f, %f\n", tmp4[0], tmp4[1], tmp4[2]);
-        // DPrint("mat: \n%f, %f, %f\n%f, %f, %f\n%f, %f, %f\n",
-            // mat[0], mat[1], mat[2], mat[3], mat[4], mat[5], mat[6], mat[7], mat[8]);
 
         // gradient of rotation over vector
-        // DPrint("pose.orientation (rotvec in real): %f, %f, %f\n", pose->rot_vec[0], pose->rot_vec[1], pose->rot_vec[2]);
         for (int i = 0; i < 3; ++i){
             Real dR_dv[9] = {0.};
             cal_grad_of_rot_over_vec(dR_dv, pose->rot_vec, i);
-            // DPrint("dR/dv_%d: \n%f, %f, %f\n%f, %f, %f\n%f, %f, %f\n", i,
-            //     dR_dv[0], dR_dv[1], dR_dv[2], dR_dv[3], dR_dv[4], dR_dv[5], dR_dv[6], dR_dv[7], dR_dv[8]);
 
             // Mirzaei, H., Beglov, D., Paschalidis, I. C., Vajda, S., Vakili, P., & Kozakov, D. (2012).
             // Rigid body energy minimization on manifolds for molecular docking. Journal of Chemical
             // Theory and Computation, 8(11), 4374–4380. https://doi.org/10.1021/ct300272j
             out_g->orientation_g[i] = frobenius_product(mat, dR_dv);
         }
-        DPrint("orientation_g: %f, %f, %f\n", out_g->orientation_g[0], out_g->orientation_g[1], out_g->orientation_g[2]);
     }
     tile.sync();
 }
@@ -276,8 +265,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
 
             if (rr < EPSILON){ // fixme: robust?
                 rr = EPSILON;
-                // CUDA_ERROR("[INTER] Two atoms overlap! i1: %d, i2: %d, r_vec:%f, %f, %f, f: %.10f\n",
-                //            i1, i2, r_vec[0], r_vec[1], r_vec[2], f_div_r);
             }
             f_div_r /= rr; //now it is f / |r|
 
@@ -301,7 +288,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     // -- Compute intra-molecular energy
     for (int i = tile.thread_rank(); i < flex_param.npair_intra; i += tile.num_threads()){
         int i1 = flex_param.pairs_intra[i * 2], i2 = flex_param.pairs_intra[i * 2 + 1];
-        // DPrint1("i1:%d, i2:%d\n", i1, i2);
         // Cartesian distances won't be saved
         Real r_vec[3] = {
             pose->coords[i2 * 3] - pose->coords[i1 * 3],
@@ -316,8 +302,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
                                     flex_param.atom_types[i2], &f_div_r);
             if (rr < EPSILON){// robust
                 rr = EPSILON;
-                // CUDA_ERROR("[INTRA] Two atoms overlap! i1: %d, i2: %d, r_vec:%f, %f, %f, f: %.10f\n",
-                //            i1, i2, r_vec[0], r_vec[1], r_vec[2], f_div_r);
             }
             f_div_r /= rr; // till now, it is the real f/|r|
             assert(i1 < flex_topo.natom && i2 < flex_topo.natom);
@@ -401,21 +385,15 @@ __device__ __forceinline__ void apply_grad_update_dihe_tile(const cg::thread_blo
     if (tile.thread_rank() == 0){
         dihe_incre = dihe_incre_raw;
         dihe_incre = normalize_angle(dihe_incre_raw);
-        DPrint1("\ni_tor: %d, dihe_incre_raw: %f, dihe_incre: %f\n", i_tor, dihe_incre_raw, dihe_incre);
 
         // apply constraint by Torsion Library
         int i_lo = flex_topo->range_inds[i_tor * 2];
         tmp1[0] = normalize_angle(out_x->dihedrals[i_tor] + dihe_incre);
 
-        Real dihe_new = clamp_by_ranges(tmp1[0],
-                                        flex_topo->range_list + i_lo, flex_topo->range_inds[i_tor * 2 + 1]);
-        DPrint("Ranges: %f, %f, %f, %f, %f, %f\n",
-            flex_topo->range_list[0], flex_topo->range_list[1], flex_topo->range_list[2], flex_topo->range_list[3],
-            flex_topo->range_list[4], flex_topo->range_list[5]);
+        Real dihe_new = clamp_by_ranges(tmp1[0],flex_topo->range_list + i_lo, flex_topo->range_inds[i_tor * 2 + 1]);
 
         // update dihedral value
         dihe_incre = dihe_new - out_x->dihedrals[i_tor];
-        DPrint("dihe_new[%d] after clamping: %f, dihe_now: %f, dihe_incre: %f\n", i_tor, dihe_new, out_x->dihedrals[i_tor], dihe_incre);
         out_x->dihedrals[i_tor] = dihe_new;
 
         // influenced atoms
@@ -511,7 +489,6 @@ __device__ __forceinline__ void apply_grad_update_pose_tile(const cg::thread_blo
                                                             Real alpha){
     // -------------- torsion increment --------------
     for (int i_tor = 0; i_tor < flex_topo.ntorsion; i_tor++){
-        DPrint1("dihedral_g[%d] = %f\n", i_tor, g->dihedrals_g[i_tor]);
         apply_grad_update_dihe_tile(tile, out_x, &flex_topo, i_tor, g->dihedrals_g[i_tor] * alpha);
     }
     tile.sync();
@@ -537,7 +514,6 @@ __device__ __forceinline__ void apply_grad_update_pose_tile(const cg::thread_blo
             tmp2[1] = g->orientation_g[1] * alpha;
             tmp2[2] = g->orientation_g[2] * alpha;
             rotvec_to_quaternion(q, tmp2);
-            DPrint1("RotVec: %f, %f, %f, q: %f, %f, %f, %f\n", tmp2[0], tmp2[1], tmp2[2], q[0], q[1], q[2], q[3]);
             out_x->rot_vec[0] = tmp2[0]; // record rotvec fixme
             out_x->rot_vec[1] = tmp2[1];
             out_x->rot_vec[2] = tmp2[2];
@@ -587,22 +563,13 @@ __device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TIL
         atomicAdd(&funcCallCount, 1);  // todo: for debug, show call count
 
         duplicate_pose_tile(tile, out_x_new, x, dim_x, flex_topo.natom); // x_new = x
-        // DPrint1("coord_0: %f, %f, %f\n\n", out_x_new->coords[0], out_x_new->coords[1], out_x_new->coords[2]);
 
         // apply alpha * gradient, get new x
         apply_grad_update_pose_tile(tile, out_x_new, p, flex_topo, alpha); // apply gradient increment
 
         e_new = cal_e_grad_tile(tile, out_x_new, out_g_new, flex_topo, fix_mol, flex_param, fix_param, aux_f);
-        // DPrint1("\n[LINE SEARCH] coord0_new: %f, %f, %f coord10_new: %f, %f, %f e_new: %f, alpha: %f, p: %f, %f, %f, %f, %f, %f, pg: %f \n",
-        //     out_x_new->coords[0], out_x_new->coords[1], out_x_new->coords[2],
-        //     out_x_new->coords[30], out_x_new->coords[31], out_x_new->coords[32],
-        //     e_new, alpha,
-        //     p->center_g[0], p->center_g[1], p->center_g[2],
-        //     p->orientation_g[0], p->orientation_g[1], p->orientation_g[2], pg);
-        DPrint1("Alpha = %f, e_new = %f\n", alpha, e_new);
 
         if (e_new - e0 < LINE_SEARCH_C0 * alpha * pg){
-            // DPrint1("\nLine search SUCCEED!\n", 1);
             break;
         }
         //todo: Wolfe condition
@@ -642,7 +609,6 @@ __forceinline__ __device__ void bfgs_update_hessian_tile(const cg::thread_block_
                                                          FlexPoseGradient* aux_minus_hy, const Real alpha){
     Real yp = 0, yhy = 0;
     yp = g_dot_product_tile(tile, y, p, dim);
-    DPrint1("yp is %f\n", yp);
     if (alpha * yp < EPSILON_cu){
         return;
     }
@@ -717,9 +683,6 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
     // Record initial energy and gradient. E_ori is energy, aux_g is set as current gradient
     // alpha is step length
     Real E = E_ori, E1 = 0, alpha = 0;
-    DPrint1("\nBefore BFGS, Energy is %f\n", E_ori);
-    // print_g(aux_g, dim);
-
 
     // Initialize hessian as Unit Matrix
     init_tri_mat_tile(tile, aux_h->matrix, dim_g, 0); // set zero
@@ -745,18 +708,9 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
         // find the best alpha, and updates x_new & aux_g_new. f1 is the new energy
         line_search_tile(tile, fix_mol, fix_param, flex_param, out_x, aux_g, flex_topo,
                          aux_p, aux_f->f, aux_x_new, aux_g_new, E, dim_g, dim_x, &E1, &alpha);
-        DPrint1("Alpha is %f, New Energy is %f\n", alpha, E1);
 
         // aux_y = aux_g_new
         duplicate_grad_tile(tile, aux_y, aux_g_new, dim_g);
-        if(tile.thread_rank() == 0){
-            DPrint1("p is \n", 1);
-            print_g(aux_p, dim_g);
-            DPrint1("g_new is \n", 1);
-            print_g(aux_y, dim_g);
-            DPrint1("g_old is \n", 1);
-            print_g(aux_g, dim_g);
-        }
 
         // aux_y = aux_y - aux_g, namely aux_y = aux_g_new - aux_g
         for (int i = tile.thread_rank(); i < dim_g; i += tile.num_threads()){
@@ -764,10 +718,7 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
             grad_index_write(aux_y, i, tmp);
         }
         tile.sync();
-        if(tile.thread_rank() == 0){
-            DPrint1("y is \n", 1);
-            print_g(aux_y, dim_g);
-        }
+
         // Update energy as the new one
         E = E1;
 
@@ -790,27 +741,14 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
                 // yp = aux_y * -Hg
                 Real yp = g_dot_product_tile(tile, aux_y, aux_p, dim_g);
                 set_tri_mat_diagonal_tile(tile, aux_h->matrix, dim_g, alpha * yp / yy); // heuristic value
-
-                DExec(
-                    printf("yy is %f, yp is %f\n", yy, yp);
-                    printf("modified Hessian of Step 1: \n");
-                    print_uptri_mat(aux_h->matrix, dim_g);
-                )
             }
 
         }
         tile.sync();
 
-
-
         // aux_minus_hy serves a container rather than a given parameter
         bfgs_update_hessian_tile(tile, aux_h->matrix, dim_g, aux_p, aux_y, aux_minus_hy, alpha);
 
-
-        DExec(
-            printf("Updated Hessian: \n");
-            print_uptri_mat(aux_h->matrix, dim_g);
-        )
     }
 
     // If this optimization fails (a higher energy is found), resume to the original state
