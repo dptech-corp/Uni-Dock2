@@ -4,6 +4,7 @@ message("      [Sub-Section] Building unit tests ...")
 set(sources unit_test.cpp
         cuda/test_bfgs.cpp
         cuda/test_cu_common.cpp
+        cuda/test_struct_array_manager.cpp
 
         format/test_json.cpp
 
