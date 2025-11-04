@@ -5,6 +5,8 @@
 #include "common.cuh"
 #include "task/DockTask.h"
 #include "myutils/errors.h"
+#include "cuda/struct_array_manager.cuh"
+#include <cstring>
 
 void alloc_cu_flex_pose_list(FlexPose** flex_pose_list_cu, Real** flex_pose_list_real_cu, std::vector<int>* list_i_real,
                              const UDFlexMolList& udflex_mols, int npose, int nflex, int exhaustiveness,
@@ -137,84 +139,118 @@ void DockTask::alloc_gpu(){
     // GPU cost: nflex * sizeof(FlexTopo) + (n_atom_all_flex + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 +
     // n_dihe_all_flex * 2 + n_rotated_atoms_all_flex) * sizeof(int) +
     // (n_range_all_flex) * 2 * sizeof(Real)
-    checkCUDA(cudaMalloc(&flex_topo_list_cu, nflex * sizeof(FlexTopo)));
-    checkCUDA( // vn_types, axis_atoms, range_inds, rotated_inds, rotated_atoms
-        cudaMalloc(&flex_topo_list_int_cu, (n_atom_all_flex + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 +
-            n_dihe_all_flex * 2 +
-            n_rotated_atoms_all_flex) * sizeof(int)));
-    checkCUDA(cudaMalloc(&flex_topo_list_real_cu, (n_range_all_flex) * 2 * sizeof(Real))); //range_list
-    FlexTopo* flex_topo_list;
-    checkCUDA(cudaMallocHost(&flex_topo_list, nflex * sizeof(FlexTopo)));
+    // Calculate range_list sizes for each molecule
+    std::vector<int> list_range_list_size(nflex);
+    for (int i = 0; i < nflex; i++){
+        list_range_list_size[i] = 0;
+        for (auto& t : udflex_mols[i].torsions){
+            list_range_list_size[i] += t.range_list.size();
+        }
+    }
 
-    p_int_cu = flex_topo_list_int_cu;
-    p_real_cu = flex_topo_list_real_cu;
+    // Create StructArrayManager
+    flex_topo_list_manager = new StructArrayManager<FlexTopo>(nflex);
+
+    // Prepare field size lists
+    std::vector<int> list_vn_types_size(nflex);
+    std::vector<int> list_axis_atoms_size(nflex);
+    std::vector<int> list_range_inds_size(nflex);
+    std::vector<int> list_rotated_inds_size(nflex);
+    std::vector<int> list_rotated_atoms_size(nflex);
+    std::vector<int> list_range_list_size_vec(nflex);
+
+    for (int i = 0; i < nflex; i++){
+        list_vn_types_size[i] = list_natom_flex[i];
+        list_axis_atoms_size[i] = list_ndihe[i] * 2;
+        list_range_inds_size[i] = list_ndihe[i] * 2;
+        list_rotated_inds_size[i] = list_ndihe[i] * 2;
+        list_rotated_atoms_size[i] = list_nrotated_atoms[i];
+        list_range_list_size_vec[i] = list_range_list_size[i];
+    }
+
+    // Register pointer fields
+    flex_topo_list_manager->add_ptr_field<int*>({
+        &FlexTopo::vn_types,
+        sizeof(int),
+        list_vn_types_size
+    });
+    flex_topo_list_manager->add_ptr_field<int*>({
+        &FlexTopo::axis_atoms,
+        sizeof(int),
+        list_axis_atoms_size
+    });
+    flex_topo_list_manager->add_ptr_field<int*>({
+        &FlexTopo::range_inds,
+        sizeof(int),
+        list_range_inds_size
+    });
+    flex_topo_list_manager->add_ptr_field<int*>({
+        &FlexTopo::rotated_inds,
+        sizeof(int),
+        list_rotated_inds_size
+    });
+    flex_topo_list_manager->add_ptr_field<int*>({
+        &FlexTopo::rotated_atoms,
+        sizeof(int),
+        list_rotated_atoms_size
+    });
+    flex_topo_list_manager->add_ptr_field<Real*>({
+        &FlexTopo::range_list,
+        sizeof(Real),
+        list_range_list_size_vec
+    });
+
+    // Allocate and assign
+    flex_topo_list_manager->allocate_and_assign();
+
+    // Fill host data directly via array_host member pointers
     for (int i = 0; i < nflex; i++){
         int ind_range = 0, ind_rotated = 0;
         auto& m = udflex_mols[i];
+        auto& flex_topo = flex_topo_list_manager->array_host[i];
+        // Set values
+        flex_topo.natom = list_natom_flex[i];
+        flex_topo.ntorsion = list_ndihe[i];
 
-        // set values
-        flex_topo_list[i].natom = list_natom_flex[i];
-        flex_topo_list[i].ntorsion = list_ndihe[i];
+        // Per-object member pointers (already bound to host_data by allocate_and_assign)
+        int*  axis_atoms_i    = flex_topo.axis_atoms;
+        int*  range_inds_i    = flex_topo.range_inds;
+        int*  rotated_inds_i  = flex_topo.rotated_inds;
+        int*  rotated_atoms_i = flex_topo.rotated_atoms;
+        Real* range_list_i    = flex_topo.range_list;
 
-        // set pointer to GPU
-        flex_topo_list[i].vn_types = p_int_cu;
-        p_int_cu += list_natom_flex[i];
-        flex_topo_list[i].axis_atoms = p_int_cu;
-        p_int_cu += list_ndihe[i] * 2;
-        flex_topo_list[i].range_inds = p_int_cu;
-        p_int_cu += list_ndihe[i] * 2;
-        flex_topo_list[i].rotated_inds = p_int_cu;
-        p_int_cu += list_ndihe[i] * 2;
-        flex_topo_list[i].rotated_atoms = p_int_cu;
-        p_int_cu += list_nrotated_atoms[i];
+        // Copy vn_types
+        std::memcpy(flex_topo.vn_types, m.vina_types.data(), m.natom * sizeof(int));
 
-        flex_topo_list[i].range_list = p_real_cu;
+        // Process each torsion
+        for (int j = 0; j < (int)m.torsions.size(); j++){
+            // Copy axis_atoms（每个 torsion 两个索引）
+            std::memcpy(axis_atoms_i + j * 2, m.torsions[j].axis, 2 * sizeof(int));
 
-        // copy values to GPU
-        checkCUDA(
-            cudaMemcpy(flex_topo_list[i].vn_types, m.vina_types.data(), m.natom * sizeof(int), cudaMemcpyHostToDevice));
-
-        for (int j = 0; j < m.torsions.size(); j++){
-            // todo: optimize memcpy by putting these to udmol
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].axis_atoms + j * 2, m.torsions[j].axis, 2 * sizeof(int),
-                    cudaMemcpyHostToDevice));
-
-            // range_inds end
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].range_inds + j * 2, &ind_range, sizeof(int), cudaMemcpyHostToDevice));
-            int n = m.torsions[j].range_list.size();
-            // range list
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].range_list + ind_range, m.torsions[j].range_list.data(), n * sizeof(int),
-                    cudaMemcpyHostToDevice));
-            // update pointer
-            p_real_cu += n;
-            // range_inds end
+            // Set range_inds
+            range_inds_i[j * 2] = ind_range;
+            int n = (int)m.torsions[j].range_list.size();
+            std::memcpy(range_list_i + ind_range, m.torsions[j].range_list.data(), n * sizeof(Real));
             ind_range += n;
             int nrange = n / 2;
-            checkCUDA(cudaMemcpy(flex_topo_list[i].range_inds + j * 2 + 1, &nrange, sizeof(int), cudaMemcpyHostToDevice));
+            range_inds_i[j * 2 + 1] = nrange;
 
-
-            // rotated_inds start
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].rotated_inds + j * 2, &ind_rotated, sizeof(int), cudaMemcpyHostToDevice));
-            // rotated_atoms
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].rotated_atoms + ind_rotated, m.torsions[j].rotated_atoms.data(), m.torsions
-                    [j].rotated_atoms.size() * sizeof(int), cudaMemcpyHostToDevice));
-
-            // rotated_inds end
-            ind_rotated += m.torsions[j].rotated_atoms.size() - 1;
-            checkCUDA(
-                cudaMemcpy(flex_topo_list[i].rotated_inds + j * 2 + 1, &ind_rotated, sizeof(int), cudaMemcpyHostToDevice
-                ));
+            // Set rotated_inds
+            rotated_inds_i[j * 2] = ind_rotated;
+            std::memcpy(rotated_atoms_i + ind_rotated,
+                        m.torsions[j].rotated_atoms.data(),
+                        m.torsions[j].rotated_atoms.size() * sizeof(int));
+            ind_rotated += (int)m.torsions[j].rotated_atoms.size() - 1;
+            rotated_inds_i[j * 2 + 1] = ind_rotated;
             ind_rotated += 1;
         }
     }
 
-    checkCUDA(cudaMemcpy(flex_topo_list_cu, flex_topo_list, nflex * sizeof(FlexTopo), cudaMemcpyHostToDevice));
-    checkCUDA(cudaFreeHost(flex_topo_list));
+    // Copy to GPU
+    flex_topo_list_manager->copy_to_gpu();
+
+    // Set flex_topo_list_cu to point to device array
+    flex_topo_list_cu = flex_topo_list_manager->array_device;
 
 
     //----- fix_mol -----
@@ -421,9 +457,12 @@ void DockTask::free_gpu(){
     checkCUDA(cudaFree(flex_pose_list_cu));
     checkCUDA(cudaFree(flex_pose_list_real_cu));
 
-    checkCUDA(cudaFree(flex_topo_list_cu));
-    checkCUDA(cudaFree(flex_topo_list_int_cu));
-    checkCUDA(cudaFree(flex_topo_list_real_cu));
+    if (flex_topo_list_manager){
+        flex_topo_list_manager->free_all();
+        delete flex_topo_list_manager;
+        flex_topo_list_manager = nullptr;
+        // flex_topo_list_cu is managed by flex_topo_list_manager
+    }
 
     checkCUDA(cudaFree(fix_mol_cu));
     checkCUDA(cudaFree(fix_mol_real_cu));

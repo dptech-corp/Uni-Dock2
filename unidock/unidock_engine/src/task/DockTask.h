@@ -9,6 +9,7 @@
 #include "model/model.h"
 #include <string>
 #include "score/vina.h"
+#include "cuda/struct_array_manager.cuh"
 
 
 /**
@@ -72,8 +73,7 @@ private:
     Real* flex_pose_list_real_cu;
 
     FlexTopo* flex_topo_list_cu; // size: nflex
-    int* flex_topo_list_int_cu;
-    Real* flex_topo_list_real_cu;
+    StructArrayManager<FlexTopo>* flex_topo_list_manager = nullptr;
 
     FlexPoseGradient* flex_grad_list_cu;
     FlexPoseHessian* flex_hessian_list_cu;

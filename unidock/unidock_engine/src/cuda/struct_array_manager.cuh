@@ -7,6 +7,7 @@
 
 #include <vector>
 #include <string>
+#include <cstring>
 #include <stdexcept>
 #include <cuda_runtime.h>
 #include "myutils/errors.h" 
@@ -59,41 +60,52 @@ public:
     template<typename PtrType>
     void add_ptr_field(StructsMemberPtrField<T, PtrType> f) {
         if (f.list_n_member.size() != array_size) {
-            throw std::runtime_error(
-                "StructArrayManager::add_ptr_field: list_n_member size (" +
-                std::to_string(f.list_n_member.size()) +
-                ") must equal array_size (" + std::to_string(array_size) + ")");
+            UD2_FATALF("list_n_member size (%d) must equal array_size (%d)",
+                       (int)f.list_n_member.size(), array_size);
         }
         // new PtrField
         ptr_fields.push_back(new PtrField<PtrType>(f, array_size));
     }
 
     void allocate_and_assign() {
-        // allocate all memory on host and device for the whole array
+        // allocate memory on host and device for the whole array
         checkCUDA(cudaMallocHost(&array_host, array_size * sizeof(T)));
         checkCUDA(cudaMalloc(&array_device, array_size * sizeof(T)));
 
-        // allocate memory for all registered members of all ptr_fields
+        // allocate memory on host and device for all registered members of all ptr_fields
         for (auto& field : ptr_fields){
             field->allocate();
         }
-        // assign the pointer to the data
+        // bind host-side struct member pointers to host_data
         for (auto& field : ptr_fields){
-            field->assign(array_host);
+            field->assign_host_ptrs(array_host);
         }
     }
 
     void copy_to_gpu() {
+        // 1) copy flattened payloads to device
         for (auto& field : ptr_fields){
             field->copy_to_gpu();
         }
-        checkCUDA(cudaMemcpy(array_device, array_host, array_size * sizeof(T), cudaMemcpyHostToDevice));
+        // 2) bake device pointers into a temporary host-side view, then memcpy to GPU
+        std::vector<T> tmp(array_size);
+        std::memcpy(tmp.data(), array_host, array_size * sizeof(T));
+        for (auto& field : ptr_fields){
+            field->assign_device_ptrs_into(tmp.data());
+        }
+        checkCUDA(cudaMemcpy(array_device, tmp.data(), array_size * sizeof(T), cudaMemcpyHostToDevice));
     }
 
     void copy_to_host() {
+        // 1) copy device-side struct array (with device pointers) back to host array
         checkCUDA(cudaMemcpy(array_host, array_device, array_size * sizeof(T), cudaMemcpyDeviceToHost));
+        // 2) copy flattened payloads back to host
         for (auto& field : ptr_fields){
             field->copy_to_host();
+        }
+        // 3) restore host-side struct member pointers to host_data
+        for (auto& field : ptr_fields){
+            field->assign_host_ptrs(array_host);
         }
     }
 
@@ -124,14 +136,54 @@ public:
     // get the host_data pointer of the i-th registered field
     template<typename PtrType>
     PtrType get_host_data(int field_idx) {
+        UD2_REQUIRE(field_idx >= 0 && field_idx < (int)ptr_fields.size(),
+                    "field_idx out of range: %d", field_idx);
         auto p = dynamic_cast<PtrField<PtrType>*>(ptr_fields[field_idx]);
-        return p ? p->host_data : nullptr;
+        UD2_REQUIRE(p != nullptr, "bad PtrType");
+        return p->host_data;
+    }
+
+    // return the per-object lengths list for a given pointer field
+    template<typename PtrType>
+    const std::vector<int>& get_field_lengths(int field_idx) {
+        UD2_REQUIRE(field_idx >= 0 && field_idx < (int)ptr_fields.size(),
+                    "field_idx out of range: %d", field_idx);
+
+        auto p = dynamic_cast<PtrField<PtrType>*>(ptr_fields[field_idx]);
+        UD2_REQUIRE(p != nullptr, "bad field_idx or PtrType");
+
+        return p->field.list_n_member;
+    }
+
+    // return the host segment pointer for (field_idx, obj_idx)
+    template<typename PtrType>
+    PtrType get_segment_ptr(int field_idx, int obj_idx) {
+        UD2_REQUIRE(field_idx >= 0 && field_idx < (int)ptr_fields.size(),
+                    "field_idx out of range: %d", field_idx);
+        auto p = dynamic_cast<PtrField<PtrType>*>(ptr_fields[field_idx]);
+        UD2_REQUIRE(p != nullptr, "bad PtrType");
+        UD2_REQUIRE(obj_idx >= 0 && obj_idx < (int)p->field.list_n_member.size(),
+                    "obj_idx out of range: %d", obj_idx);
+        return p->host_data + p->offsets[obj_idx];
+    }
+
+    // return the segment length for (field_idx, obj_idx)
+    template<typename PtrType>
+    int get_segment_len(int field_idx, int obj_idx) {
+        UD2_REQUIRE(field_idx >= 0 && field_idx < (int)ptr_fields.size(),
+                    "field_idx out of range: %d", field_idx);
+        auto p = dynamic_cast<PtrField<PtrType>*>(ptr_fields[field_idx]);
+        UD2_REQUIRE(p != nullptr, "bad PtrType");
+        UD2_REQUIRE(obj_idx >= 0 && obj_idx < (int)p->field.list_n_member.size(),
+                    "obj_idx out of range: %d", obj_idx);
+        return p->field.list_n_member[obj_idx];
     }
 
 private:
     struct PtrFieldBase {
         virtual void allocate() = 0;
-        virtual void assign(T* host_structs) = 0;
+        virtual void assign_host_ptrs(T* host_structs) = 0;
+        virtual void assign_device_ptrs_into(T* host_structs_view) = 0;
         virtual void copy_to_gpu() = 0;
         virtual void copy_to_host() = 0;
         virtual void free_mem() = 0;
@@ -144,23 +196,36 @@ private:
         PtrType device_data = nullptr;
         PtrType host_data = nullptr;
         int sum_n_member = 0;
+        // per-object starting offsets into the flattened buffer
+        std::vector<int> offsets;
         PtrField(StructsMemberPtrField<T, PtrType> f, int nobj) : field(f) {}
 
         void allocate() override {
             // allocate memory on GPU and host for the pointer field.
             sum_n_member = 0;
-            for (auto n_member : field.list_n_member){
-                sum_n_member += n_member;
+            offsets.resize(field.list_n_member.size());
+            int off = 0;
+            for (int i = 0; i < (int)field.list_n_member.size(); ++i){
+                offsets[i] = off;
+                off += field.list_n_member[i];
             }
+            sum_n_member = off;
             checkCUDA(cudaMalloc(&device_data, sum_n_member * field.type_size));
             checkCUDA(cudaMallocHost(&host_data, sum_n_member * field.type_size));
         }
 
-        void assign(T* host_structs) override {
-            // assign the pointer to the data
+        void assign_host_ptrs(T* host_structs) override {
             int offset = 0;
-            for (int i = 0; i < field.list_n_member.size(); ++i) {
-                host_structs[i].*field.member_ptr = device_data + offset;
+            for (int i = 0; i < (int)field.list_n_member.size(); ++i) {
+                host_structs[i].*field.member_ptr = host_data + offset;
+                offset += field.list_n_member[i];
+            }
+        }
+
+        void assign_device_ptrs_into(T* host_structs_view) override {
+            int offset = 0;
+            for (int i = 0; i < (int)field.list_n_member.size(); ++i) {
+                host_structs_view[i].*field.member_ptr = device_data + offset;
                 offset += field.list_n_member[i];
             }
         }

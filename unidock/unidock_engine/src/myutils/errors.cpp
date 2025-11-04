@@ -50,6 +50,11 @@ void init_logger(const std::string& fp_log, int level){
 
         // format
         spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%s:%!:%#] %v");
+        // flush on error and above to ensure logs are persisted before throws
+        spdlog::flush_on(spdlog::level::err);
+        if (auto def_logger = spdlog::default_logger()) {
+            def_logger->flush_on(spdlog::level::err);
+        }
     }
     catch (const spdlog::spdlog_ex& ex){
         std::cerr << "Logger initialization failed: " << ex.what() << std::endl;
