@@ -183,7 +183,7 @@ struct UDTorsion{
     int axis[2] = {-1}; // rotation axis atoms
     int atoms[4] = {-1};
     std::vector<int> rotated_atoms; // all atoms rotated by this torsion
-    std::vector<Real> range_list;
+    std::vector<Real> range_list; // each two is v_lo, v_
     std::vector<Real> param_gaff2; // each 4 elements are one group 
 };
 

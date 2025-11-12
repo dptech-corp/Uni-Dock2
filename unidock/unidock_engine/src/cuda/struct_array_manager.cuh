@@ -17,11 +17,11 @@
 // ======== Template: Management of struct GPU Memory ======
 //==========================================================
 
-// 成员指针描述器
+// Member Pointer Related Info
 template<typename StructType, typename PtrType>
 struct StructsMemberPtrField {
     PtrType StructType::* member_ptr;
-    int type_size;            // for example, sizeof(float)
+    int type_size; //size_t
     std::vector<int> list_n_member;    // member lengths of all objects
 };
 
@@ -61,13 +61,16 @@ public:
     void add_ptr_field(StructsMemberPtrField<T, PtrType> f) {
         if (f.list_n_member.size() != array_size) {
             UD2_FATALF("list_n_member size (%d) must equal array_size (%d)",
-                       (int)f.list_n_member.size(), array_size);
+                       f.list_n_member.size(), array_size);
         }
         // new PtrField
         ptr_fields.push_back(new PtrField<PtrType>(f, array_size));
     }
 
     void allocate_and_assign() {
+        //todo: memory pool? maybe alloc AoS + all_members once, then copy the data one by one
+        // pros: we can free all memory once (a big block)
+
         // allocate memory on host and device for the whole array
         checkCUDA(cudaMallocHost(&array_host, array_size * sizeof(T)));
         checkCUDA(cudaMalloc(&array_device, array_size * sizeof(T)));
@@ -136,7 +139,7 @@ public:
     // get the host_data pointer of the i-th registered field
     template<typename PtrType>
     PtrType get_host_data(int field_idx) {
-        UD2_REQUIRE(field_idx >= 0 && field_idx < (int)ptr_fields.size(),
+        UD2_REQUIRE(field_idx >= 0 && field_idx < ptr_fields.size(),
                     "field_idx out of range: %d", field_idx);
         auto p = dynamic_cast<PtrField<PtrType>*>(ptr_fields[field_idx]);
         UD2_REQUIRE(p != nullptr, "bad PtrType");
@@ -146,7 +149,7 @@ public:
     // return the per-object lengths list for a given pointer field
     template<typename PtrType>
     const std::vector<int>& get_field_lengths(int field_idx) {
-        UD2_REQUIRE(field_idx >= 0 && field_idx < (int)ptr_fields.size(),
+        UD2_REQUIRE(field_idx >= 0 && field_idx < ptr_fields.size(),
                     "field_idx out of range: %d", field_idx);
 
         auto p = dynamic_cast<PtrField<PtrType>*>(ptr_fields[field_idx]);
@@ -158,11 +161,11 @@ public:
     // return the host segment pointer for (field_idx, obj_idx)
     template<typename PtrType>
     PtrType get_segment_ptr(int field_idx, int obj_idx) {
-        UD2_REQUIRE(field_idx >= 0 && field_idx < (int)ptr_fields.size(),
+        UD2_REQUIRE(field_idx >= 0 && field_idx < ptr_fields.size(),
                     "field_idx out of range: %d", field_idx);
         auto p = dynamic_cast<PtrField<PtrType>*>(ptr_fields[field_idx]);
         UD2_REQUIRE(p != nullptr, "bad PtrType");
-        UD2_REQUIRE(obj_idx >= 0 && obj_idx < (int)p->field.list_n_member.size(),
+        UD2_REQUIRE(obj_idx >= 0 && obj_idx < p->field.list_n_member.size(),
                     "obj_idx out of range: %d", obj_idx);
         return p->host_data + p->offsets[obj_idx];
     }
@@ -170,11 +173,11 @@ public:
     // return the segment length for (field_idx, obj_idx)
     template<typename PtrType>
     int get_segment_len(int field_idx, int obj_idx) {
-        UD2_REQUIRE(field_idx >= 0 && field_idx < (int)ptr_fields.size(),
+        UD2_REQUIRE(field_idx >= 0 && field_idx < ptr_fields.size(),
                     "field_idx out of range: %d", field_idx);
         auto p = dynamic_cast<PtrField<PtrType>*>(ptr_fields[field_idx]);
         UD2_REQUIRE(p != nullptr, "bad PtrType");
-        UD2_REQUIRE(obj_idx >= 0 && obj_idx < (int)p->field.list_n_member.size(),
+        UD2_REQUIRE(obj_idx >= 0 && obj_idx < p->field.list_n_member.size(),
                     "obj_idx out of range: %d", obj_idx);
         return p->field.list_n_member[obj_idx];
     }
@@ -183,7 +186,7 @@ private:
     struct PtrFieldBase {
         virtual void allocate() = 0;
         virtual void assign_host_ptrs(T* host_structs) = 0;
-        virtual void assign_device_ptrs_into(T* host_structs_view) = 0;
+        virtual void  assign_device_ptrs_into(T* host_structs_view) = 0;
         virtual void copy_to_gpu() = 0;
         virtual void copy_to_host() = 0;
         virtual void free_mem() = 0;
@@ -205,7 +208,7 @@ private:
             sum_n_member = 0;
             offsets.resize(field.list_n_member.size());
             int off = 0;
-            for (int i = 0; i < (int)field.list_n_member.size(); ++i){
+            for (int i = 0; i < field.list_n_member.size(); ++i){
                 offsets[i] = off;
                 off += field.list_n_member[i];
             }
@@ -216,7 +219,7 @@ private:
 
         void assign_host_ptrs(T* host_structs) override {
             int offset = 0;
-            for (int i = 0; i < (int)field.list_n_member.size(); ++i) {
+            for (int i = 0; i < field.list_n_member.size(); ++i) {
                 host_structs[i].*field.member_ptr = host_data + offset;
                 offset += field.list_n_member[i];
             }
@@ -224,7 +227,7 @@ private:
 
         void assign_device_ptrs_into(T* host_structs_view) override {
             int offset = 0;
-            for (int i = 0; i < (int)field.list_n_member.size(); ++i) {
+            for (int i = 0; i < field.list_n_member.size(); ++i) {
                 host_structs_view[i].*field.member_ptr = device_data + offset;
                 offset += field.list_n_member[i];
             }
