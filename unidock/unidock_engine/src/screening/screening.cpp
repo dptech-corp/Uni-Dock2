@@ -138,6 +138,8 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
     int memory_fix = predict_gpu_fix(dpfix_mol);
     device_max_memory -= memory_fix;
 
+    DockTask task(dpfix_mol, dock_param);
+
     // For each group, divide flex_mol_list into small batches according to GPU Mem Limit
     for (int igroup=0; igroup < groups.size(); igroup ++){
         spdlog::info("@@@@@@@@@@@@@@ Tackling Group: {} @@@@@@@@@@@@@@", GroupNames[igroup]);
@@ -184,7 +186,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
             if (dock_param.opt_steps == -1){ // he
                 dock_param.opt_steps = unsigned(25 + natom_noH / 3);
             }
-            DockTask task(dpfix_mol, batch_flex_mol_list, dock_param, batch_fns_flex, fp_json);
+            task.set_flex(batch_flex_mol_list, dock_param, batch_fns_flex, fp_json);
             task.run();
             spdlog::info("Task is done.");
 
@@ -193,6 +195,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
 
         }
     }
+    task.free_fix_mol_gpu();
 }
 
 

@@ -448,9 +448,6 @@ void DockTask::free_gpu(){
     checkCUDA(cudaFree(flex_topo_list_int_cu));
     checkCUDA(cudaFree(flex_topo_list_real_cu));
 
-    checkCUDA(cudaFree(fix_mol_cu));
-    checkCUDA(cudaFree(fix_mol_real_cu));
-
     checkCUDA(cudaFree(flex_param_list_cu));
     checkCUDA(cudaFree(flex_param_list_int_cu));
     checkCUDA(cudaFree(flex_param_list_real_cu));
@@ -481,4 +478,10 @@ void DockTask::free_gpu(){
     checkCUDA(cudaFreeHost(flex_pose_list_res));
     checkCUDA(cudaFreeHost(flex_pose_list_real_res));
     spdlog::info("Memory free on CPU is done.");
+};
+
+
+void DockTask::free_fix_mol_gpu(){
+    checkCUDA(cudaFree(fix_mol_cu));
+    checkCUDA(cudaFree(fix_mol_real_cu));
 }

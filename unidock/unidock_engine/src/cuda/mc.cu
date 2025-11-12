@@ -423,16 +423,18 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
         randomize_pose<<<nblock, BLOCK_SIZE>>>(out_poses, topos, aux_gradients,
                                               states, seed,
                                               exhuastiveness, nthreads);
+        spdlog::info("Randomization is done.");
     }
 
 
+    spdlog::info("MC Searching...");
     mc_kernel<<<nblock, BLOCK_SIZE>>>(out_poses, topos, fix_mol,
                                      flex_param, fix_param,
                                      aux_poses, aux_gradients, aux_hessians, aux_forces,
                                      states, seed,
                                      mc_steps, opt_steps, exhuastiveness, nthreads);
-
     checkCUDA(cudaDeviceSynchronize());
+    spdlog::info("MC Searching is done.");
     spdlog::warn("[Line Search Steps Count]: {}", funcCallCount);
 
     // free mem

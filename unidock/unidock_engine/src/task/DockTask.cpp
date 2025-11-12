@@ -14,36 +14,101 @@
 #include "score/vina.h"
 #include "score/score.h"
 
+DockTask::DockTask() noexcept
+    : flex_pose_list_res(nullptr),
+      flex_pose_list_real_res(nullptr),
+      fix_mol_cu(nullptr),
+      fix_mol_real_cu(nullptr),
+      flex_pose_list_cu(nullptr),
+      flex_pose_list_real_cu(nullptr),
+      flex_topo_list_cu(nullptr),
+      flex_topo_list_int_cu(nullptr),
+      flex_topo_list_real_cu(nullptr),
+      flex_grad_list_cu(nullptr),
+      flex_hessian_list_cu(nullptr),
+      flex_param_list_cu(nullptr),
+      flex_param_list_int_cu(nullptr),
+      flex_param_list_real_cu(nullptr),
+      fix_param_cu(nullptr),
+      fix_param_int_cu(nullptr),
+      aux_list_e_cu(nullptr),
+      clustered_pose_inds_cu(nullptr),
+      aux_poses_cu(nullptr),
+      aux_poses_real_cu(nullptr),
+      aux_grads_cu(nullptr),
+      aux_grads_real_cu(nullptr),
+      aux_hessians_cu(nullptr),
+      aux_hessians_real_cu(nullptr),
+      aux_forces_cu(nullptr),
+      aux_forces_real_cu(nullptr),
+      aux_rmsd_ij_cu(nullptr),
+      aux_list_cluster_cu(nullptr){
+    // 成员如 nflex/npose_clustered 等已在类中有默认初始值，不必重复设
+}
+
+void DockTask::initialize(const UDFixMol& fix_mol, const UDFlexMolList& flex_mol_list,
+                          DockParam dock_param,
+                          std::vector<std::string> fns_flex,
+                          std::string fp_json){
+    udfix_mol = fix_mol;
+
+    udflex_mols = flex_mol_list;
+    this->fns_flex = std::move(fns_flex);
+    this->fp_json = std::move(fp_json);
+    nflex = flex_mol_list.size();
+}
+
+void DockTask::set_flex(const UDFlexMolList& flex_mol_list,
+                        DockParam dock_param,
+                        std::vector<std::string> fns_flex,
+                        std::string fp_json){
+    this->dock_param = dock_param;
+    udflex_mols = flex_mol_list;
+    this->fns_flex = std::move(fns_flex);
+    this->fp_json = std::move(fp_json);
+    nflex = flex_mol_list.size();
+
+    // TODO: 清理与 flex 相关的临时/结果列表，防止旧状态影响新一次运行
+    list_i_real.clear();
+    clustered_pose_inds_list.clear();
+    filtered_pose_inds_list.clear();
+    npose_clustered = 0;
+}
+
 void DockTask::run(){
     spdlog::debug("All file names of this Task: ");
-    for(auto& f : fns_flex){
+    for (auto& f : fns_flex){
         spdlog::debug(f);
     }
 
-    try {
+    try{
         // compute necessary sizes
         prepare_vina();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e){
         spdlog::critical("Failed to prepare Vina: {}", e.what());
     }
 
-    try {
+    try{
         alloc_gpu();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e){
         spdlog::critical("Failed to allocate GPU: {}", e.what());
     }
 
-    try {
+    try{
         run_search();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e){
         spdlog::critical("Failed to run search: {}", e.what());
     }
     // todo: free some unnecessary data
 
 
-    try {
+    try{
         run_cluster();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e){
         spdlog::critical("Failed to run cluster: {}", e.what());
     }
 
@@ -51,9 +116,10 @@ void DockTask::run(){
 
 
     if (dock_param.refine_steps > 0){
-        try {
+        try{
             run_refine();
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception& e){
             spdlog::critical("Failed to run refine: {}", e.what());
         }
     }
@@ -61,31 +127,35 @@ void DockTask::run(){
     // Move to CPU
     try{
         run_filter();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e){
         spdlog::critical("Failed to copy results from GPU to CPU: {}", e.what());
     }
 
     // Run on CPU
     // todo: if not cluster or not refine?
-    try {
+    try{
         run_score();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e){
         spdlog::critical("Failed to run score: {}", e.what());
     }
 
     // Run on CPU
-    try {
+    try{
         spdlog::info("Dumping the poses to {}...", fp_json);
         dump_poses();
         spdlog::info("Dumping is done.");
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e){
         spdlog::critical("Failed to dump poses: {}", e.what());
     }
 
     // Run on CPU
-    try {
+    try{
         free_gpu();
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e){
         spdlog::critical("Failed to free GPU: {}", e.what());
     }
 }
@@ -98,14 +168,16 @@ void DockTask::prepare_vina(){
         for (int j = 0; j < flex_mol.intra_pairs.size(); j += 2){
             int i1 = flex_mol.intra_pairs[j];
             int i2 = flex_mol.intra_pairs[j + 1];
-            flex_mol.r1_plus_r2_intra.push_back(VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[flex_mol.vina_types[i2]]);
+            flex_mol.r1_plus_r2_intra.push_back(
+                VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[flex_mol.vina_types[i2]]);
         }
 
         // compute r1 + r2 for all inter pairs
         for (int j = 0; j < flex_mol.inter_pairs.size(); j += 2){
             int i1 = flex_mol.inter_pairs[j];
             int i2 = flex_mol.inter_pairs[j + 1];
-            flex_mol.r1_plus_r2_inter.push_back(VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[udfix_mol.vina_types[i2]]);
+            flex_mol.r1_plus_r2_inter.push_back(
+                VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[udfix_mol.vina_types[i2]]);
         }
     }
 }
@@ -129,10 +201,12 @@ void DockTask::run_search(){
  */
 void DockTask::run_cluster(){
     // clustering according to rmsd_limit, num_pose. [ energy_range(not loaded)]
-    spdlog::info("Clustering {} * {} = {} poses ...", nflex, dock_param.exhaustiveness, nflex * dock_param.exhaustiveness);
-    cluster_cu(clustered_pose_inds_cu, &npose_clustered, &clustered_pose_inds_list, flex_pose_list_cu, flex_topo_list_cu,
-        aux_list_e_cu, aux_list_cluster_cu, aux_rmsd_ij_cu,
-        nflex, dock_param.exhaustiveness, dock_param.rmsd_limit);
+    spdlog::info("Clustering {} * {} = {} poses ...", nflex, dock_param.exhaustiveness,
+                 nflex * dock_param.exhaustiveness);
+    cluster_cu(clustered_pose_inds_cu, &npose_clustered, &clustered_pose_inds_list, flex_pose_list_cu,
+               flex_topo_list_cu,
+               aux_list_e_cu, aux_list_cluster_cu, aux_rmsd_ij_cu,
+               nflex, dock_param.exhaustiveness, dock_param.rmsd_limit);
     spdlog::info("Clustering is done. {} poses are left.", npose_clustered);
 }
 
@@ -141,10 +215,10 @@ void DockTask::run_refine(){
     spdlog::info("Run Refinement (BFGS) for {} steps...", dock_param.refine_steps);
 
     optimize_cu(flex_pose_list_cu, clustered_pose_inds_cu, flex_topo_list_cu, *fix_mol_cu,
-                          flex_param_list_cu, *fix_param_cu,
-                          aux_poses_cu, aux_grads_cu, aux_hessians_cu,
-                          aux_forces_cu,
-                          dock_param.refine_steps, npose_clustered, dock_param.exhaustiveness);
+                flex_param_list_cu, *fix_param_cu,
+                aux_poses_cu, aux_grads_cu, aux_hessians_cu,
+                aux_forces_cu,
+                dock_param.refine_steps, npose_clustered, dock_param.exhaustiveness);
     spdlog::info("Refinement (BFGS) is done.");
 }
 
@@ -155,24 +229,28 @@ void DockTask::run_filter(){
     copy_all_to_cpu();
 
     // Object: all clutered poses
-    for (int i = 0; i < nflex; i ++){ // for each flex
+    for (int i = 0; i < nflex; i++){
+        // for each flex
         auto& clustered_inds = clustered_pose_inds_list[i];
 
         // prepare indices
         std::vector<int> sorted_indices(clustered_inds.size()); // find the best num_modes poses for each flex
         std::iota(sorted_indices.begin(), sorted_indices.end(), 0); // 填充0,1,2,...
         std::sort(sorted_indices.begin(), sorted_indices.end(),
-        [this, &clustered_inds](int a, int b) { return this->flex_pose_list_res[clustered_inds[a]].energy < this->flex_pose_list_res[clustered_inds[b]].energy; });
+                  [this, &clustered_inds](int a, int b){
+                      return this->flex_pose_list_res[clustered_inds[a]].energy < this->flex_pose_list_res[
+                          clustered_inds[b]].energy;
+                  });
 
         int count = 0;
         Real e_min = flex_pose_list_res[clustered_inds[sorted_indices[0]]].energy;
         std::vector<int> filtered_inds;
-        for (auto& j: sorted_indices){
-            if(flex_pose_list_res[clustered_inds[j]].energy > e_min + dock_param.energy_range){
+        for (auto& j : sorted_indices){
+            if (flex_pose_list_res[clustered_inds[j]].energy > e_min + dock_param.energy_range){
                 break;
             }
             filtered_inds.push_back(clustered_inds[j]);
-            count ++;
+            count++;
             if (count >= dock_param.num_pose){
                 break;
             }
@@ -183,17 +261,16 @@ void DockTask::run_filter(){
 }
 
 
-
 void DockTask::run_score(){
     spdlog::info("Scoring...");
     // only score once
     Vina v;
     std::string show_format = "{:<10}{:<20}{:<20}{:<20}";
 
-    for (int i = 0; i < nflex; i ++){
+    for (int i = 0; i < nflex; i++){
         auto mol = udflex_mols[i];
         int n_tors = mol.torsions.size();
-        if(show_score){
+        if (show_score){
             spdlog::info("-------------------------------------------");
             spdlog::info(show_format, "Rank", "Affinity (kcal/mol)", "Bias (kcal/mol)", "RBias (kcal/mol)");
             spdlog::info("-------------------------------------------");
@@ -208,22 +285,23 @@ void DockTask::run_score(){
         Real e_bias_rank1 = flex_pose_list_res[j_r1].rot_vec[3];
 
         int pose_num = 0;
-        for (auto& j: filtered_pose_inds_list[i]){
+        for (auto& j : filtered_pose_inds_list[i]){
             score(flex_pose_list_res + j, flex_pose_list_real_res + list_i_real[j * 2], udfix_mol, mol, dock_param);
             flex_pose_list_res[j].rot_vec[1] = flex_pose_list_res[j].center[0] + flex_pose_list_res[j].center[1] +
                 flex_pose_list_res[j].center[2]; // Total
 
             Real e_inter = flex_pose_list_res[j].rot_vec[1] - e_intra_rank1; // Real adopted inter
             // Free Energy of Binding
-            flex_pose_list_res[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors);  // Affinity
-            flex_pose_list_res[j].rot_vec[2] = flex_pose_list_res[j].rot_vec[0] - e_inter;  // Conf-Independent
+            flex_pose_list_res[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors); // Affinity
+            flex_pose_list_res[j].rot_vec[2] = flex_pose_list_res[j].rot_vec[0] - e_inter; // Conf-Independent
 
-            pose_num ++;
-            if(show_score){
-                spdlog::info(show_format, pose_num, flex_pose_list_res[j].rot_vec[0], flex_pose_list_res[j].rot_vec[3], flex_pose_list_res[j].rot_vec[3] - e_bias_rank1);
+            pose_num++;
+            if (show_score){
+                spdlog::info(show_format, pose_num, flex_pose_list_res[j].rot_vec[0], flex_pose_list_res[j].rot_vec[3],
+                             flex_pose_list_res[j].rot_vec[3] - e_bias_rank1);
             }
         }
-        if(show_score){
+        if (show_score){
             spdlog::info("-------------------------------------------");
         }
     }
@@ -232,13 +310,11 @@ void DockTask::run_score(){
 }
 
 
-
 void DockTask::dump_poses(){
     // prepare flex names
 
     write_poses_to_json(fp_json, fns_flex, filtered_pose_inds_list,
-        flex_pose_list_res, flex_pose_list_real_res, list_i_real);
+                        flex_pose_list_res, flex_pose_list_real_res, list_i_real);
 
     // output poses all info to json
 }
-

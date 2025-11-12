@@ -34,11 +34,25 @@ public:
     std::string fp_json;
 
     // Construction
+    DockTask() noexcept;
+
+    DockTask(const UDFixMol& fix_mol, DockParam dock_param) :
+        udfix_mol(fix_mol), dock_param(dock_param){
+    };
+
     DockTask(const UDFixMol& fix_mol, const UDFlexMolList& flex_mol_list, DockParam dock_param,
-             std::vector<std::string> fns_flex, std::string fp_json):
+             std::vector<std::string> fns_flex, std::string fp_json) :
         udfix_mol(fix_mol), udflex_mols(flex_mol_list), dock_param(dock_param), fns_flex(fns_flex), fp_json(fp_json){
         nflex = flex_mol_list.size();
     };
+
+    void set_flex(const UDFlexMolList& flex_mol_list, DockParam dock_param,
+                  std::vector<std::string> fns_flex,
+                  std::string fp_json);
+
+    void initialize(const UDFixMol& fix_mol, const UDFlexMolList& flex_mol_list, DockParam dock_param,
+                    std::vector<std::string> fns_flex, std::string fp_json);
+
 
     /**
      * @brief Run a whole process: global search, cluster by RMSD, refinement by optimization and final output.
@@ -50,12 +64,14 @@ public:
 
     // Output
     void dump_poses_to_json(std::string fp_json);
+    void free_fix_mol_gpu();
 
 private:
     // CPU
     int n_atom_all_flex = 0;
     int n_dihe_all_flex = 0;
-    std::vector<int> list_i_real; // record indices/ranges of coords & dihedrals in Real data, size: nflex * exhaustiveness
+    std::vector<int> list_i_real;
+    // record indices/ranges of coords & dihedrals in Real data, size: nflex * exhaustiveness
     FlexPose* flex_pose_list_res; // size: nflex * exhaustiveness
     // Finally, use center[3] to record intra, inter, penalty
     // then use orientation[4] to record Predicted Free Energy of Binding, Total score, inter(contains penalty) score, conf_independent part
@@ -114,7 +130,6 @@ private:
     void alloc_gpu();
     void copy_all_to_cpu();
     void free_gpu();
-    void free_gpu_mc();
 };
 
 
