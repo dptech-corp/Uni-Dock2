@@ -70,7 +70,7 @@ private:
     Real* fix_mol_real_cu;
 
     FlexPose* flex_pose_list_cu; // size: nflex * exhaustiveness
-    Real* flex_pose_list_real_cu;
+    StructArrayManager<FlexPose>* flex_pose_list_manager = nullptr;
 
     FlexTopo* flex_topo_list_cu; // size: nflex
     StructArrayManager<FlexTopo>* flex_topo_list_manager = nullptr;

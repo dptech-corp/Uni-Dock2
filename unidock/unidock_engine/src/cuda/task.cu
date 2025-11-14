@@ -63,6 +63,64 @@ void alloc_flex_topo_list(StructArrayManager<FlexTopo>*& flex_topo_list_manager,
     flex_topo_list_cu = flex_topo_list_manager->array_device;
 }
 
+
+void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_manager,
+                             FlexPose*& flex_pose_list_cu,
+                             std::vector<int>* list_i_real,
+                             const UDFlexMolList& udflex_mols, int npose, int nflex, int exhaustiveness,
+                             const std::vector<int>& list_natom_flex, const std::vector<int>& list_ndihe){
+
+    flex_pose_list_manager = new StructArrayManager<FlexPose>(npose);
+
+    // 计算每个 FlexPose 需要的大小
+    std::vector<int> list_coords_size(npose);
+    std::vector<int> list_dihedrals_size(npose);
+
+    for (int i = 0; i < nflex; i++){
+        for (int j = 0; j < exhaustiveness; j++){
+            int idx = i * exhaustiveness + j;
+            list_coords_size[idx] = list_natom_flex[i] * 3;
+            list_dihedrals_size[idx] = list_ndihe[i];
+        }
+    }
+
+    // 添加指针字段
+    flex_pose_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexPose, Real*>{&FlexPose::coords, sizeof(Real), list_coords_size});
+    flex_pose_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexPose, Real*>{&FlexPose::dihedrals, sizeof(Real), list_dihedrals_size});
+
+    flex_pose_list_manager->allocate_and_assign();
+
+    // 填充数据并记录索引
+    list_i_real->push_back(0);
+    for (int i = 0; i < nflex; i++){
+        auto& m = udflex_mols[i];
+        for (int j = 0; j < exhaustiveness; j++){
+            int idx = i * exhaustiveness + j;
+            auto& flex_pose = flex_pose_list_manager->array_host[idx];
+
+            // 设置初始位姿
+            flex_pose.center[0] = m.center[0];
+            flex_pose.center[1] = m.center[1];
+            flex_pose.center[2] = m.center[2];
+            flex_pose.rot_vec[0] = 0;
+            flex_pose.rot_vec[1] = 0;
+            flex_pose.rot_vec[2] = 0;
+            flex_pose.energy = 999;
+
+            // 复制坐标和二面角数据
+            std::memcpy(flex_pose.coords, m.coords.data(), m.coords.size() * sizeof(Real));
+            std::memcpy(flex_pose.dihedrals, m.dihedrals.data(), m.dihedrals.size() * sizeof(Real));
+
+            // 记录索引信息
+            list_i_real->push_back(list_i_real->back() + list_natom_flex[i] * 3);
+            list_i_real->push_back(list_i_real->back() + list_ndihe[i]);
+        }
+    }
+
+    flex_pose_list_manager->copy_to_gpu();
+    flex_pose_list_cu = flex_pose_list_manager->array_device;
+}
+
 static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param_list_manager,
                                   FlexParamVina*& flex_param_list_cu,
                                   const UDFlexMolList& udflex_mols,
@@ -237,71 +295,39 @@ static void alloc_fix_mol(FixMol*& fix_mol_cu, Real*& fix_mol_real_cu, const UDF
     checkCUDA(cudaMemcpy(fix_mol_cu, &fix_mol, sizeof(FixMol), cudaMemcpyHostToDevice));
 }
 
+
 void DockTask::cp_to_cpu(){
-    checkCUDA(cudaMallocHost(&flex_pose_list_res, nflex * dock_param.exhaustiveness * sizeof(FlexPose)));
+    // 使用 array manager 复制数据回 CPU
+    flex_pose_list_manager->copy_to_host();
+    
+    // 为了保持兼容性，仍然分配旧格式的内存并复制数据
+    int npose = nflex * dock_param.exhaustiveness;
+    checkCUDA(cudaMallocHost(&flex_pose_list_res, npose * sizeof(FlexPose)));
     checkCUDA(
         cudaMallocHost(&flex_pose_list_real_res, dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) *
             sizeof(Real)));
-
-    checkCUDA(cudaMemcpy(flex_pose_list_res, flex_pose_list_cu, nflex * dock_param.exhaustiveness * sizeof(FlexPose),
-        cudaMemcpyDeviceToHost));
-    checkCUDA(
-        cudaMemcpy(flex_pose_list_real_res, flex_pose_list_real_cu, dock_param.exhaustiveness * (n_atom_all_flex * 3 +
-                n_dihe_all_flex) * sizeof(Real),
-            cudaMemcpyDeviceToHost));
-}
-
-
-void alloc_cu_flex_pose_list(FlexPose** flex_pose_list_cu, Real** flex_pose_list_real_cu, std::vector<int>* list_i_real,
-                             const UDFlexMolList& udflex_mols, int npose, int nflex, int exhaustiveness,
-                             int* list_natom_flex, int n_atom_all_flex, int* list_ndihe, int n_dihe_all_flex){
-    // GPU Cost: npose * sizeof(FlexPose) + exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real)))
-
-    checkCUDA(cudaMalloc(flex_pose_list_cu, npose * sizeof(FlexPose)));
-    checkCUDA(cudaMalloc(flex_pose_list_real_cu,
-        exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real)));
-    FlexPose* flex_pose_list; // for transferring to GPU
-    checkCUDA(cudaMallocHost(&flex_pose_list, npose * sizeof(FlexPose)));
-    // set the value of flex_pose_list
-    Real* p_real_cu = *flex_pose_list_real_cu;
-
-    list_i_real->push_back(0);
+    
+    // 复制结构体数组
+    std::memcpy(flex_pose_list_res, flex_pose_list_manager->array_host, npose * sizeof(FlexPose));
+    
+    // 复制连续的 Real 数据
+    Real* p_real = flex_pose_list_real_res;
     for (int i = 0; i < nflex; i++){
-        auto& m = udflex_mols[i];
-        for (int j = 0; j < exhaustiveness; j++){
-            // I prefer to randomize pose on GPU. So here is just a copy of initial pose
-            flex_pose_list[i * exhaustiveness + j].center[0] = m.center[0];
-            flex_pose_list[i * exhaustiveness + j].center[1] = m.center[1];
-            flex_pose_list[i * exhaustiveness + j].center[2] = m.center[2];
-            flex_pose_list[i * exhaustiveness + j].rot_vec[0] = 0;
-            flex_pose_list[i * exhaustiveness + j].rot_vec[1] = 0;
-            flex_pose_list[i * exhaustiveness + j].rot_vec[2] = 0;
-            flex_pose_list[i * exhaustiveness + j].energy = 999;
-
-            flex_pose_list[i * exhaustiveness + j].coords = p_real_cu;
-            list_i_real->push_back(list_i_real->back() + list_natom_flex[i] * 3);
-
-            p_real_cu += list_natom_flex[i] * 3;
-            flex_pose_list[i * exhaustiveness + j].dihedrals = p_real_cu;
-            list_i_real->push_back(list_i_real->back() + list_ndihe[i]);
-
-            // copy the coords and dihedrals to the GPU
-            checkCUDA(
-                cudaMemcpy(flex_pose_list[i * exhaustiveness + j].coords, m.coords.data(), m.coords.size() * sizeof(Real
-                    ),
-                    cudaMemcpyHostToDevice));
-            checkCUDA(
-                cudaMemcpy(flex_pose_list[i * exhaustiveness + j].dihedrals, m.dihedrals.data(), m.dihedrals.size() *
-                    sizeof(Real),
-                    cudaMemcpyHostToDevice));
-
-            // update the pointer
-            p_real_cu += list_ndihe[i];
+        for (int j = 0; j < dock_param.exhaustiveness; j++){
+            int idx = i * dock_param.exhaustiveness + j;
+            auto& flex_pose = flex_pose_list_manager->array_host[idx];
+            
+            // 复制 coords
+            int coords_size = list_i_real[idx * 2 + 1] - list_i_real[idx * 2];
+            std::memcpy(p_real, flex_pose.coords, coords_size * sizeof(Real));
+            p_real += coords_size;
+            
+            // 复制 dihedrals
+            int dihedrals_size = list_i_real[idx * 2 + 2] - list_i_real[idx * 2 + 1];
+            std::memcpy(p_real, flex_pose.dihedrals, dihedrals_size * sizeof(Real));
+            p_real += dihedrals_size;
         }
     }
-    checkCUDA(cudaMemcpy(*flex_pose_list_cu, flex_pose_list, npose * sizeof(FlexPose),
-        cudaMemcpyHostToDevice));
-    checkCUDA(cudaFreeHost(flex_pose_list));
 }
 
 
@@ -354,9 +380,8 @@ void DockTask::alloc_gpu(){
     }
 
     //----- flex_pose_list -----
-    alloc_cu_flex_pose_list(&flex_pose_list_cu, &flex_pose_list_real_cu, &list_i_real, udflex_mols, npose, nflex,
-                            dock_param.exhaustiveness,
-                            list_n_atom_flex.data(), n_atom_all_flex, list_n_dihe.data(), n_dihe_all_flex);
+    alloc_flex_pose_list(flex_pose_list_manager, flex_pose_list_cu, &list_i_real, udflex_mols, npose, nflex,
+                            dock_param.exhaustiveness, list_n_atom_flex, list_n_dihe);
 
 
     //----- flex_topo_list -----
@@ -442,8 +467,13 @@ void DockTask::free_gpu(){
     //----- Free all GPU memory -----
 
     spdlog::info("Memory free on GPU...");
-    checkCUDA(cudaFree(flex_pose_list_cu));
-    checkCUDA(cudaFree(flex_pose_list_real_cu));
+    
+    if (flex_pose_list_manager){
+        flex_pose_list_manager->free_all();
+        delete flex_pose_list_manager;
+        flex_pose_list_manager = nullptr;
+        // flex_pose_list_cu is managed by flex_pose_list_manager
+    }
 
     if (flex_topo_list_manager){
         flex_topo_list_manager->free_all();
