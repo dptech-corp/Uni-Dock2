@@ -79,8 +79,8 @@ private:
     FlexPoseHessian* flex_hessian_list_cu;
 
     FlexParamVina* flex_param_list_cu;
-    int* flex_param_list_int_cu;
-    Real* flex_param_list_real_cu;
+    StructArrayManager<FlexParamVina>* flex_param_list_manager = nullptr;
+    
     FixParamVina* fix_param_cu;
     int* fix_param_int_cu;
 
@@ -90,13 +90,16 @@ private:
 
     // GPU - auxiliary
     FlexPose* aux_poses_cu;
-    Real* aux_poses_real_cu;
+    StructArrayManager<FlexPose>* aux_poses_manager = nullptr;
+    
     FlexPoseGradient* aux_grads_cu;
-    Real* aux_grads_real_cu;
+    StructArrayManager<FlexPoseGradient>* aux_grads_manager = nullptr;
+    
     FlexPoseHessian* aux_hessians_cu;
-    Real* aux_hessians_real_cu;
+    StructArrayManager<FlexPoseHessian>* aux_hessians_manager = nullptr;
+    
     FlexForce* aux_forces_cu;
-    Real* aux_forces_real_cu;
+    StructArrayManager<FlexForce>* aux_forces_manager = nullptr;
 
     int* aux_rmsd_ij_cu; // saves pose indices of tri mat (no diagonal), {(i, j) | 0<= i,j < exhaustiveness; i < j}
     int* aux_list_cluster_cu; // saves all pose state: 1 for left, 0 for abandoned (after merging)
