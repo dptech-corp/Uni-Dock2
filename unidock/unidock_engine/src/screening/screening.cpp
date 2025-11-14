@@ -162,7 +162,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
                 batch_flex_mol_list.emplace_back(m);
 
                 // check GPU memory
-                if (predict_gpu_flex(batch_flex_mol_list, dock_param.exhaustiveness) < device_max_memory){
+                if ((batch_size < 1000) and (predict_gpu_flex(batch_flex_mol_list, dock_param.exhaustiveness) < device_max_memory)){
                     batch_fns_flex.emplace_back(fns_flex[group[imol]]);
                     int natom_noH_tmp = m.vina_types.size() - std::count(m.vina_types.begin(), m.vina_types.end(), VN_TYPE_H);
                     if (natom_noH_tmp > natom_noH){
