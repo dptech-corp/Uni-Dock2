@@ -13,7 +13,7 @@
 #include "model/model.h"
 
 
-void alloc_flex_topo_list(StructArrayManager<FlexTopo>*& flex_topo_list_manager, FlexTopo*& flex_topo_list_cu,
+static void alloc_flex_topo_list(StructArrayManager<FlexTopo>*& flex_topo_list_manager, FlexTopo*& flex_topo_list_cu,
                           const UDFlexMolList& udflex_mols,
                           const std::vector<int>& list_n_atom_flex, const std::vector<int>& list_n_dihe,
                           const std::vector<int>& list_n_range, const std::vector<int>& list_n_rotated_atoms){
@@ -64,7 +64,7 @@ void alloc_flex_topo_list(StructArrayManager<FlexTopo>*& flex_topo_list_manager,
 }
 
 
-void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_manager,
+static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_manager,
                              FlexPose*& flex_pose_list_cu,
                              std::vector<int>* list_i_real,
                              const UDFlexMolList& udflex_mols, int npose, int nflex, int exhaustiveness,
