@@ -135,5 +135,9 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
     writer.SetMaxDecimalPlaces(3);
     doc.Accept(writer);
 
+    os.Flush(); // FileWriteStream
+    fflush(f); // FILE* buffer
+    fsync(fileno(f)); // FIXME: specifically for GPFS 251117 - hs
+
     fclose(f);
 }
