@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.27)
+cmake_minimum_required(VERSION 3.18)
 
 # ------------------------------ Options for Users
 option(BUILD_BIN "build binaries" ON)
@@ -42,13 +42,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
 set(CMAKE_CUDA_ARCHITECTURES # At least 70!
+        60 # 10
         70 # V100
-        # 75 # RTX 20, T4
-        80 # A100, A800
-        86 # RTX 30 89 # RTX 40, L40
-        90 # H100
+        75 # Turing: RTX 20, T4
+        80 # Ampere: A100, A800, L20
+        86 # Ampere consumer: RTX 30
+        89 # Ada: RTX 40, L4, L40, L40S
+        90 # Hopper / Blackwell: H100, B100/B200
 )
-message("CMAKE_CUDA_ARCHITECTURES: ${CMAKE_CUDA_ARCHITECTURES}")
+message("Supported Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
 
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
