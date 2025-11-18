@@ -77,8 +77,8 @@ def test_fragment_split(query_sdf_file:str, ref_sdf_file:str, atom_mapping:dict,
         core_atom_mapping_dict=atom_mapping,
         working_dir_name=tmp_path,
     )
-    rot_bonds = mol_graph_builder._get_rotatable_bond_info()
-    filtered_fragments = mol_graph_builder._freeze_bond(rot_bonds)
+    rot_bonds = mol_graph_builder.get_rotatable_bond_info()
+    filtered_fragments = mol_graph_builder.freeze_bond(rot_bonds)
     assert len(filtered_fragments) > 1, "incorrect fragments number after freezing bonds"
 
 
