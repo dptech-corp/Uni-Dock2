@@ -22,8 +22,8 @@ git clone https://github.com/dptech-corp/Uni-Dock2.git
 
 ### Step 1. Build unidock_engine
 **Prerequisites**
-* `CUDA toolkit >= 12.0 (Including nvcc)`
-* `CMake >= 3.27`
+* `CUDA toolkit (Including nvcc)`
+* `CMake >= 3.18`
 * `C++ compiler`
 * `Pybind11`
 
@@ -35,7 +35,7 @@ cd ../..
 
 ### Step 2. Build unidock_processing
 ```sh
-conda install pyyaml pathos numpy pandas scipy networkx rdkit mdanalysis pdbfixer openmm cuda-version=12.0 msys_viparr_lpsolve55 ambertools_stable -c http://quetz.dp.tech:8088/get/baymax -c conda-forge --no-repodata-use-zst
+conda install pydantic pyyaml pathos numpy pandas scipy networkx rdkit mdanalysis pdbfixer openmm msys_viparr_lpsolve55 ambertools_stable -c http://quetz.dp.tech:8088/get/baymax -c conda-forge --no-repodata-use-zst
 pip install .
 ```
 
