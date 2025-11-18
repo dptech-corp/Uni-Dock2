@@ -1,6 +1,7 @@
 from typing import Optional
 import os
 import math
+import json
 import logging
 
 from multiprocess.pool import Pool
@@ -10,7 +11,6 @@ from rdkit.Chem import Descriptors
 from unidock_processing.torsion_library.utils import get_torsion_lib_dict
 from unidock_processing.ligand_topology.mol_graph import BaseMolGraph
 
-
 def batch_topology_builder_process(
     ligand_sdf_file_name: str,
     covalent_ligand: bool,
@@ -18,6 +18,7 @@ def batch_topology_builder_process(
     reference_sdf_file_name: str,
     core_atom_mapping_dict_list: list[dict],
     working_dir_name: str,
+    construct_ff: bool,
     atom_mapper_align: bool = False,
 ):
     torsion_library_dict = get_torsion_lib_dict()
@@ -45,6 +46,7 @@ def batch_topology_builder_process(
             torsion_library_dict=torsion_library_dict,
             reference_mol=reference_mol,
             core_atom_mapping_dict=core_atom_mapping_dict,
+            construct_ff=construct_ff,
             working_dir_name=working_dir_name,
         )
         (
@@ -75,6 +77,7 @@ class UnidockLigandTopologyBuilder(object):
         core_atom_mapping_dict_list:Optional[list[dict]]=None,
         n_cpu:Optional[int]=None,
         working_dir_name:str='.',
+        construct_ff: bool=False,
         atom_mapper_align:bool=False,
     ):
         self.ligand_sdf_file_name_list = ligand_sdf_file_name_list
@@ -140,7 +143,12 @@ class UnidockLigandTopologyBuilder(object):
         if n_cpu:
             self.n_cpu = min(n_cpu, self.n_cpu)
 
+        self.construct_ff = construct_ff
         self.atom_mapper_align = atom_mapper_align
+
+        self.summary_ligand_info_json_file_name = os.path.join(
+            self.root_working_dir_name, 'summary_ligand_info.json'
+        )
 
     def generate_batch_ligand_topology(self):
         Chem.SetDefaultPickleProperties(Chem.PropertyPickleOptions.AllProps)
@@ -172,6 +180,7 @@ class UnidockLigandTopologyBuilder(object):
                         self.reference_sdf_file_name,
                         batch_core_atom_mapping_dict_list,
                         working_dir_name,
+                        self.construct_ff,
                         self.atom_mapper_align,
                     ),
             )
@@ -187,12 +196,15 @@ class UnidockLigandTopologyBuilder(object):
                     real total number of input ligands!!"
             )
 
-    def get_summary_ligand_info_dict(self) -> dict:
-        return {
-            ligand_info_dict['ligand_name']: {
-                'atoms': ligand_info_dict['atom_info'],
-                'torsions': ligand_info_dict['torsion_info'],
-                'root_atoms': ligand_info_dict['root_atom_idx'],
-                'fragment_atom_idx': ligand_info_dict['fragment_atom_idx'],
-            } for ligand_info_dict in self.total_ligand_info_dict_list
-        }
+    def get_summary_ligand_info_dict(self):
+        self.summary_ligand_info_dict = {}
+        for ligand_info_dict in self.total_ligand_info_dict_list:
+            ligand_name = ligand_info_dict['ligand_name']
+            self.summary_ligand_info_dict[ligand_name] = {'atoms': ligand_info_dict['atom_info'],
+                                                          'torsions': ligand_info_dict['torsion_info'],
+                                                          'root_atoms': ligand_info_dict['root_atom_idx'],
+                                                          'fragment_atom_idx': ligand_info_dict['fragment_atom_idx']}
+
+    def write_summary_ligand_info_json_file(self):
+        with open(self.summary_ligand_info_json_file_name, 'w') as f:
+            json.dump(self.summary_ligand_info_dict, f)

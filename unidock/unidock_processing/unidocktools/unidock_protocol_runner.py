@@ -20,15 +20,17 @@ class UnidockProtocolRunner(object):
     def __init__(
         self,
         receptor_file_name: str,
-        ligand_sdf_file_name_list: List[str],
         target_center: Tuple[float, float, float],
         box_size: Tuple[float, float, float] = (30.0, 30.0, 30.0),
+        ligand_sdf_file_name_list: List[str] = None,
+        ligand_json_file_name: str = None,
         template_docking: bool = False,
         reference_sdf_file_name: Optional[str] = None,
         compute_center: bool = True,
         core_atom_mapping_dict_list: Optional[List[Optional[Dict[int, int]]]] = None,
         covalent_ligand: bool = False,
         covalent_residue_atom_info_list: Optional[List[Dict[str, Any]]] = None,
+        construct_ff: bool = False,
         atom_mapper_align: bool = False,
         preserve_receptor_hydrogen: bool = False,
         working_dir_name: str = '.',
@@ -47,18 +49,23 @@ class UnidockProtocolRunner(object):
         energy_range: float = 5.0,
         seed: int = 1234567,
         use_tor_lib: bool = False,
-        existing_receptor_info: Optional[list] = None,
-        existing_ligands_info: Optional[dict] = None,
-        debug: bool = False,
+        engine_checkpoint: bool = False,
     ) -> None:
         self.receptor_file_name = os.path.abspath(receptor_file_name)
-        self.ligand_sdf_file_name_list = [os.path.abspath(f) for f in ligand_sdf_file_name_list]
+
+        if ligand_sdf_file_name_list is not None:
+            self.ligand_sdf_file_name_list = [os.path.abspath(f) for f in ligand_sdf_file_name_list]
+
+        if ligand_json_file_name is not None:
+            self.ligand_json_file_name = os.path.abspath(ligand_json_file_name)
+
         self.target_center = target_center
         self.template_docking = template_docking
         self.reference_sdf_file_name = os.path.abspath(reference_sdf_file_name) if reference_sdf_file_name else None
         self.compute_center = compute_center
         self.covalent_ligand = covalent_ligand
         self.covalent_residue_atom_info_list = covalent_residue_atom_info_list
+        self.construct_ff = construct_ff
         self.atom_mapper_align = atom_mapper_align
         self.preserve_receptor_hydrogen = preserve_receptor_hydrogen
         self.box_size = box_size
@@ -76,9 +83,7 @@ class UnidockProtocolRunner(object):
         self.energy_range = energy_range
         self.seed = seed
         self.use_tor_lib = use_tor_lib
-        self.existing_receptor_info = existing_receptor_info
-        self.existing_ligands_info = existing_ligands_info
-        self.debug = debug
+        self.engine_checkpoint = engine_checkpoint
         self.working_dir_name = os.path.abspath(working_dir_name)
         self.unidock2_output_dir_name = os.path.join(self.working_dir_name, 'unidock2_output')
         self.docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
@@ -98,6 +103,14 @@ class UnidockProtocolRunner(object):
             self.target_center = tuple(utils.calculate_center_of_mass(ligand_mol))
 
         print(f'Target Center for Current Docking: {self.target_center}')
+
+        if self.ligand_json_file_name:
+            with open(self.ligand_json_file_name) as ligand_json_file:
+                self.existing_ligands_info = json.load(ligand_json_file)
+
+        if self.receptor_file_name.split('.')[-1] == 'json':
+            with open(self.receptor_file_name) as receptor_file:
+                self.existing_receptor_info = json.load(receptor_file)
 
     def run_unidock_protocol(self) -> str:
         # Prepare receptor
@@ -128,12 +141,13 @@ class UnidockProtocolRunner(object):
                 core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
                 n_cpu=self.n_cpu,
                 working_dir_name=self.working_dir_name,
+                construct_ff=self.construct_ff,
                 atom_mapper_align=self.atom_mapper_align,
             )
             ligand_builder.generate_batch_ligand_topology()
             ligands_info = ligand_builder.get_summary_ligand_info_dict()
 
-        if self.debug:
+        if self.engine_checkpoint:
             with open(os.path.join(self.working_dir_name, 'ud2_engine_inputs.json'), 'w') as f:
                 json.dump({
                     "receptor": receptor_info,
