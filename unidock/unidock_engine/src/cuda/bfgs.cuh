@@ -404,18 +404,10 @@ __device__ __forceinline__ void apply_grad_update_dihe_tile(const cg::thread_blo
         DPrint1("\ni_tor: %d, dihe_incre_raw: %f, dihe_incre: %f\n", i_tor, dihe_incre_raw, dihe_incre);
 
         // apply constraint by Torsion Library
-        int i_lo = flex_topo->range_inds[i_tor * 2];
-        tmp1[0] = normalize_angle(out_x->dihedrals[i_tor] + dihe_incre);
-
-        Real dihe_new = clamp_by_ranges(tmp1[0],
-                                        flex_topo->range_list + i_lo, flex_topo->range_inds[i_tor * 2 + 1]);
-        DPrint("Ranges: %f, %f, %f, %f, %f, %f\n",
-            flex_topo->range_list[0], flex_topo->range_list[1], flex_topo->range_list[2], flex_topo->range_list[3],
-            flex_topo->range_list[4], flex_topo->range_list[5]);
+        Real dihe_new = normalize_angle(out_x->dihedrals[i_tor] + dihe_incre);
 
         // update dihedral value
         dihe_incre = dihe_new - out_x->dihedrals[i_tor];
-        DPrint("dihe_new[%d] after clamping: %f, dihe_now: %f, dihe_incre: %f\n", i_tor, dihe_new, out_x->dihedrals[i_tor], dihe_incre);
         out_x->dihedrals[i_tor] = dihe_new;
 
         // influenced atoms
