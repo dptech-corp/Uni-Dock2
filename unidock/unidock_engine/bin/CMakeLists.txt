@@ -6,11 +6,12 @@ add_executable(${BIN_NAME}
 )
 target_compile_definitions(${BIN_NAME} PRIVATE VERSION_NUMBER="${VERSION_NUMBER}")
 target_link_libraries(${BIN_NAME} PRIVATE ${THIRD_NAME_YAML} ${LIB_NAME})
-target_include_directories(${BIN_NAME}
-        PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} ${CMAKE_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(${BIN_NAME} PUBLIC
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        ${CMAKE_SOURCE_DIR}/src
+)
 
-install(
-        TARGETS ${BIN_NAME}
+install(TARGETS ${BIN_NAME}
         RUNTIME DESTINATION bin
 )
 message("   [Section Done]  BIN !")

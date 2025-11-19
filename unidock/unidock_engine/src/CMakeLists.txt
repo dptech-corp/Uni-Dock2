@@ -49,7 +49,12 @@ set(sources
 add_library(${LIB_NAME} OBJECT ${sources})
 
 # include src directory
-target_include_directories(${LIB_NAME} PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}  ${CMAKE_SOURCE_DIR}/include . )
+target_include_directories(${LIB_NAME} SYSTEM PUBLIC # no warning from third-party
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        ${CMAKE_SOURCE_DIR}/include
+        .
+)
+
 target_link_libraries(${LIB_NAME} PUBLIC CUDA::cudart_static)
 set_target_properties(${LIB_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
