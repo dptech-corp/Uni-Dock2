@@ -19,6 +19,7 @@ class TemplateMolGraph(GenericMolGraph):
         torsion_library_dict:dict,
         reference_mol:Chem.Mol=None,
         core_atom_mapping_dict:dict=None,
+        construct_ff=False,
         working_dir_name:str='.',
     ):
         super().__init__(mol, torsion_library_dict, working_dir_name)

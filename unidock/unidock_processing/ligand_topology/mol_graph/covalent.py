@@ -15,6 +15,7 @@ class CovalentMolGraph(GenericMolGraph):
         self,
         mol:Chem.Mol,
         torsion_library_dict:dict,
+        construct_ff=False,
         working_dir_name:str='.',
         **kwargs
     ):
