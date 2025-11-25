@@ -38,7 +38,7 @@ class AlignMolGraph(GenericMolGraph):
 
         core_atom_idx_list = utils.get_full_ring_core_atoms(mol, list(core_atom_mapping_dict.values()))
 
-        super()._preprocess_mol()
+        super().preprocess_mol()
         self.core_atom_idx_list = core_atom_idx_list
 
     def get_rotatable_bond_info(self) -> list[tuple[int,...]]:
