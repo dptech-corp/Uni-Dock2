@@ -22,7 +22,7 @@ class TemplateMolGraph(GenericMolGraph):
         construct_ff=False,
         working_dir_name:str='.',
     ):
-        super().__init__(mol, torsion_library_dict, working_dir_name)
+        super().__init__(mol, torsion_library_dict, construct_ff, working_dir_name)
         self.reference_mol = reference_mol
         self.core_atom_mapping_dict = core_atom_mapping_dict
         self.core_atom_idx_list = []

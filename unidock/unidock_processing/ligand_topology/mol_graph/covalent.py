@@ -19,7 +19,7 @@ class CovalentMolGraph(GenericMolGraph):
         working_dir_name:str='.',
         **kwargs
     ):
-        super().__init__(mol, torsion_library_dict, working_dir_name)
+        super().__init__(mol, torsion_library_dict, construct_ff, working_dir_name)
         self.covalent_anchor_atom_info = tuple()
 
     def preprocess_mol(self):
