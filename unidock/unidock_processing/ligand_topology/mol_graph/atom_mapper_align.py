@@ -26,7 +26,7 @@ class AlignMolGraph(GenericMolGraph):
         self.core_atom_mapping_dict = core_atom_mapping_dict
         self.core_atom_idx_list = []
 
-    def _preprocess_mol(self):
+    def preprocess_mol(self):
         mol = self.mol
         reference_mol = self.reference_mol
         core_atom_mapping_dict = self.core_atom_mapping_dict
@@ -41,7 +41,7 @@ class AlignMolGraph(GenericMolGraph):
         super()._preprocess_mol()
         self.core_atom_idx_list = core_atom_idx_list
 
-    def _get_rotatable_bond_info(self) -> list[tuple[int,...]]:
+    def get_rotatable_bond_info(self) -> list[tuple[int,...]]:
         mol = self.mol
         core_atom_idx_list = self.core_atom_idx_list
         rotatable_bond_finder = BaseRotatableBond.create('atom_mapper_align')
@@ -89,7 +89,7 @@ class AlignMolGraph(GenericMolGraph):
 
         return filtered_rotatable_bond_info_list
 
-    def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
+    def get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
         core_atom_idx_list = self.core_atom_idx_list
         root_fragment_idx = None
