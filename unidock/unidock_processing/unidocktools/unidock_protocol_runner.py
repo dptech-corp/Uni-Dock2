@@ -51,13 +51,18 @@ class UnidockProtocolRunner(object):
         use_tor_lib: bool = False,
         engine_checkpoint: bool = False,
     ) -> None:
+
         self.receptor_file_name = os.path.abspath(receptor_file_name)
 
         if ligand_sdf_file_name_list is not None:
             self.ligand_sdf_file_name_list = [os.path.abspath(f) for f in ligand_sdf_file_name_list]
+        else:
+            self.ligand_sdf_file_name_list = None
 
         if ligand_json_file_name is not None:
             self.ligand_json_file_name = os.path.abspath(ligand_json_file_name)
+        else:
+            self.ligand_json_file_name = None
 
         self.target_center = target_center
         self.template_docking = template_docking
@@ -106,17 +111,17 @@ class UnidockProtocolRunner(object):
 
         if self.ligand_json_file_name:
             with open(self.ligand_json_file_name) as ligand_json_file:
-                self.existing_ligands_info = json.load(ligand_json_file)
+                self.specified_ligand_info_dict = json.load(ligand_json_file)
 
         if self.receptor_file_name.split('.')[-1] == 'json':
             with open(self.receptor_file_name) as receptor_file:
-                self.existing_receptor_info = json.load(receptor_file)
+                self.specified_receptor_info_dict = json.load(receptor_file)
 
     def run_unidock_protocol(self) -> str:
         # Prepare receptor
-        if self.existing_receptor_info:
-            print("Using existing receptor info.")
-            receptor_info = self.existing_receptor_info
+        if self.specified_receptor_info_dict:
+            print('Using specified receptor info dict...')
+            receptor_info_dict = self.specified_receptor_info_dict
         else:
             receptor_builder = UnidockReceptorTopologyBuilder(
                 self.receptor_file_name,
@@ -126,12 +131,12 @@ class UnidockProtocolRunner(object):
             )
             receptor_builder.generate_receptor_topology()
             receptor_builder.analyze_receptor_topology()
-            receptor_info = receptor_builder.get_summary_receptor_info()
+            receptor_info_dict = receptor_builder.get_summary_receptor_info()
 
         # Prepare ligands
-        if self.existing_ligands_info:
-            print("Using existing ligands info.")
-            ligands_info = self.existing_ligands_info
+        if self.specified_ligand_info_dict:
+            print('Using specified ligand info dict...')
+            ligand_info_dict = self.specified_ligand_info_dict
         else:
             ligand_builder = UnidockLigandTopologyBuilder(
                 self.ligand_sdf_file_name_list,
@@ -145,14 +150,15 @@ class UnidockProtocolRunner(object):
                 atom_mapper_align=self.atom_mapper_align,
             )
             ligand_builder.generate_batch_ligand_topology()
-            ligands_info = ligand_builder.get_summary_ligand_info_dict()
+            ligand_info_dict = ligand_builder.get_summary_ligand_info_dict()
 
         if self.engine_checkpoint:
             with open(os.path.join(self.working_dir_name, 'ud2_engine_inputs.json'), 'w') as f:
                 json.dump({
-                    "receptor": receptor_info,
-                    **ligands_info
+                    'receptor': receptor_info_dict,
+                    **ligand_info_dict
                 }, f)
+
         # Instantiate and configure the docking pipeline
         docking_pipeline = pipeline.DockingPipeline(
             output_dir=self.unidock2_output_dir_name,
@@ -178,8 +184,8 @@ class UnidockProtocolRunner(object):
             gpu_device_id=self.gpu_device_id
         )
 
-        docking_pipeline.set_receptor(receptor_info)
-        docking_pipeline.add_ligands(ligands_info)
+        docking_pipeline.set_receptor(receptor_info_dict)
+        docking_pipeline.add_ligands(ligand_info_dict)
 
         docking_pipeline.run()
 

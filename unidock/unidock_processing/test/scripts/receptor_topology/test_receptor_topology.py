@@ -54,7 +54,7 @@ def test_receptor_topology_pdb(receptor_topology_test_pdb_file):
 
         assert hasattr(unidock_receptor_topology_builder, 'atom_info_nested_list')
         assert (
-            len(unidock_receptor_topology_builder.get_summary_receptor_info())
+            len(unidock_receptor_topology_builder.summary_receptor_info_dict)
             > 0
         )
 
@@ -77,7 +77,7 @@ def test_receptor_topology_dms(receptor_topology_test_dms_file):
 
         assert hasattr(unidock_receptor_topology_builder, 'atom_info_nested_list')
         assert (
-            len(unidock_receptor_topology_builder.get_summary_receptor_info())
+            len(unidock_receptor_topology_builder.summary_receptor_info_dict)
             > 0
         )
 
@@ -100,6 +100,6 @@ def test_receptor_topology_RNA_pdb(receptor_topology_RNA_test_pdb_file):
 
         assert hasattr(unidock_receptor_topology_builder, 'atom_info_nested_list')
         assert (
-            len(unidock_receptor_topology_builder.get_summary_receptor_info())
+            len(unidock_receptor_topology_builder.summary_receptor_info_dict)
             > 0
         )

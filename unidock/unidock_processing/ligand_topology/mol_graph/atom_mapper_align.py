@@ -4,7 +4,6 @@ from unidock_processing.ligand_topology import utils
 from unidock_processing.ligand_topology.rotatable_bond import BaseRotatableBond
 from .generic import GenericMolGraph
 
-
 class AlignMolGraph(GenericMolGraph):
     """
     A class for constructing molecular graph for alignment docking.
