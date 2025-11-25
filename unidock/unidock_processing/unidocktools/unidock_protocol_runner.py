@@ -135,7 +135,8 @@ class UnidockProtocolRunner(object):
             )
             receptor_builder.generate_receptor_topology()
             receptor_builder.analyze_receptor_topology()
-            receptor_info_dict = receptor_builder.get_summary_receptor_info()
+            receptor_builder.get_summary_receptor_info()
+            receptor_info_dict = receptor_builder.summary_receptor_info_dict
 
         # Prepare ligands
         if self.specified_ligand_info_dict:
@@ -154,7 +155,8 @@ class UnidockProtocolRunner(object):
                 atom_mapper_align=self.atom_mapper_align,
             )
             ligand_builder.generate_batch_ligand_topology()
-            ligand_info_dict = ligand_builder.get_summary_ligand_info_dict()
+            ligand_builder.get_summary_ligand_info_dict()
+            ligand_info_dict = ligand_builder.summary_ligand_info_dict
 
         if self.engine_checkpoint:
             with open(os.path.join(self.working_dir_name, 'ud2_engine_inputs.json'), 'w') as f:
