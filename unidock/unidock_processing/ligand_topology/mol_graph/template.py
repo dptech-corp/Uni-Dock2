@@ -52,7 +52,7 @@ class TemplateMolGraph(GenericMolGraph):
         with Chem.SDWriter(os.path.join(self.working_dir_name, 'ligand_template_aligned.sdf')) as writer:
             writer.write(mol)
 
-        super()._preprocess_mol()
+        super().preprocess_mol()
         self.core_atom_idx_list = core_atom_idx_list
 
     def get_rotatable_bond_info(self) -> list[tuple[int,...]]:

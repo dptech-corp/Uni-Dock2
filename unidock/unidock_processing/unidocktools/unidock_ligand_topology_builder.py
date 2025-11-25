@@ -192,8 +192,8 @@ class UnidockLigandTopologyBuilder(object):
 
         if len(self.total_ligand_info_dict_list) != self.num_ligands:
             raise ValueError(
-                "Collected number of batch ligands does not equal to \
-                    real total number of input ligands!!"
+                'Collected number of batch ligands does not equal to \
+                    real total number of input ligands!!'
             )
 
     def get_summary_ligand_info_dict(self):

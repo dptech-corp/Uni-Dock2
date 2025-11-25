@@ -125,7 +125,7 @@ class UnidockProtocolRunner(object):
         # Prepare receptor
         if self.specified_receptor_info_dict:
             print('Using specified receptor info dict...')
-            receptor_info_dict = self.specified_receptor_info_dict
+            receptor_atom_info_list = self.specified_receptor_info_dict['receptor']
         else:
             receptor_builder = UnidockReceptorTopologyBuilder(
                 self.receptor_file_name,
@@ -136,7 +136,7 @@ class UnidockProtocolRunner(object):
             receptor_builder.generate_receptor_topology()
             receptor_builder.analyze_receptor_topology()
             receptor_builder.get_summary_receptor_info()
-            receptor_info_dict = receptor_builder.summary_receptor_info_dict
+            receptor_atom_info_list = receptor_builder.atom_info_nested_list
 
         # Prepare ligands
         if self.specified_ligand_info_dict:
@@ -161,7 +161,7 @@ class UnidockProtocolRunner(object):
         if self.engine_checkpoint:
             with open(os.path.join(self.working_dir_name, 'ud2_engine_inputs.json'), 'w') as f:
                 json.dump({
-                    'receptor': receptor_info_dict,
+                    'receptor': receptor_atom_info_list,
                     **ligand_info_dict
                 }, f)
 
@@ -190,7 +190,7 @@ class UnidockProtocolRunner(object):
             gpu_device_id=self.gpu_device_id
         )
 
-        docking_pipeline.set_receptor(receptor_info_dict)
+        docking_pipeline.set_receptor(receptor_atom_info_list)
         docking_pipeline.add_ligands(ligand_info_dict)
 
         docking_pipeline.run()

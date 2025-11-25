@@ -26,7 +26,7 @@ class CovalentMolGraph(GenericMolGraph):
         self.mol, self.covalent_anchor_atom_info, _ = (
             utils.prepare_covalent_ligand_mol(self.mol)
         )
-        super()._preprocess_mol()
+        super().preprocess_mol()
 
     def get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
