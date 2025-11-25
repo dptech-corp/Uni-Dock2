@@ -112,10 +112,14 @@ class UnidockProtocolRunner(object):
         if self.ligand_json_file_name:
             with open(self.ligand_json_file_name) as ligand_json_file:
                 self.specified_ligand_info_dict = json.load(ligand_json_file)
+        else:
+            self.specified_ligand_info_dict = None
 
         if self.receptor_file_name.split('.')[-1] == 'json':
             with open(self.receptor_file_name) as receptor_file:
                 self.specified_receptor_info_dict = json.load(receptor_file)
+        else:
+            self.specified_receptor_info_dict = None
 
     def run_unidock_protocol(self) -> str:
         # Prepare receptor
