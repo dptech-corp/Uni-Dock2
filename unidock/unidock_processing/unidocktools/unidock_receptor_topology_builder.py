@@ -1,5 +1,6 @@
 import os
 from shutil import which
+import json
 import msys
 
 from unidock_processing.utils.molecule_processing import get_mol_without_indices
@@ -26,10 +27,13 @@ class UnidockReceptorTopologyBuilder(object):
 
         self.working_dir_name = os.path.abspath(working_dir_name)
         self.receptor_structure_dms_file_name = os.path.join(
-            self.working_dir_name, "receptor_structure.dms"
+            self.working_dir_name, 'receptor_structure.dms'
         )
         self.receptor_parameterized_dms_file_name = os.path.join(
-            self.working_dir_name, "receptor_parameterized.dms"
+            self.working_dir_name, 'receptor_parameterized.dms'
+        )
+        self.summary_receptor_info_json_file_name = os.path.join(
+            self.working_dir_name, 'summary_receptor_info.json'
         )
 
     def run_protein_preparation(self):
@@ -220,5 +224,10 @@ class UnidockReceptorTopologyBuilder(object):
                 self.atom_info_nested_list[atom_idx] = atom_info_list
                 atom_idx += 1
 
-    def get_summary_receptor_info(self) -> list:
-        return self.atom_info_nested_list
+    def get_summary_receptor_info(self):
+        self.summary_receptor_info_dict = {}
+        self.summary_receptor_info_dict['receptor'] = self.atom_info_nested_list
+
+    def write_summary_receptor_info_json_file(self):
+        with open(self.summary_receptor_info_json_file_name, 'w') as f:
+            json.dump(self.summary_receptor_info_dict, f)

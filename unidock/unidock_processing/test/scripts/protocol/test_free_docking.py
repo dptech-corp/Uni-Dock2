@@ -112,8 +112,8 @@ def test_free_docking_by_yaml(
         _ = unidock_kwargs_dict.pop('output_receptor_dms_file_name', None)
 
         unidock_protocol_runner = UnidockProtocolRunner(
-            receptor_file_name=receptor_file_name,
-            ligand_sdf_file_name_list=[ligand_sdf_file_name],
+            receptor_file_name,
+            [ligand_sdf_file_name],
             target_center=tuple(target_center),
             working_dir_name=temp_dir_name,
             docking_pose_sdf_file_name=docking_pose_sdf_file_name,

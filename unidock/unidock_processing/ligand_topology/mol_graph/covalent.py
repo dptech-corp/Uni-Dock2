@@ -15,19 +15,20 @@ class CovalentMolGraph(GenericMolGraph):
         self,
         mol:Chem.Mol,
         torsion_library_dict:dict,
+        construct_ff=False,
         working_dir_name:str='.',
         **kwargs
     ):
-        super().__init__(mol, torsion_library_dict, working_dir_name)
+        super().__init__(mol, torsion_library_dict, construct_ff, working_dir_name)
         self.covalent_anchor_atom_info = tuple()
 
-    def _preprocess_mol(self):
+    def preprocess_mol(self):
         self.mol, self.covalent_anchor_atom_info, _ = (
             utils.prepare_covalent_ligand_mol(self.mol)
         )
-        super()._preprocess_mol()
+        super().preprocess_mol()
 
-    def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
+    def get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
         root_fragment_idx = None
         for fragment_idx, fragment in enumerate(splitted_mol_list):
