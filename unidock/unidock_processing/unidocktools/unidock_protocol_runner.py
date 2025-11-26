@@ -20,9 +20,9 @@ class UnidockProtocolRunner(object):
     def __init__(
         self,
         receptor_file_name: str,
+        ligand_sdf_file_name_list: List[str],
         target_center: Tuple[float, float, float],
         box_size: Tuple[float, float, float] = (30.0, 30.0, 30.0),
-        ligand_sdf_file_name_list: List[str] = None,
         ligand_json_file_name: str = None,
         template_docking: bool = False,
         reference_sdf_file_name: Optional[str] = None,
@@ -53,11 +53,7 @@ class UnidockProtocolRunner(object):
     ) -> None:
 
         self.receptor_file_name = os.path.abspath(receptor_file_name)
-
-        if ligand_sdf_file_name_list is not None:
-            self.ligand_sdf_file_name_list = [os.path.abspath(f) for f in ligand_sdf_file_name_list]
-        else:
-            self.ligand_sdf_file_name_list = None
+        self.ligand_sdf_file_name_list = [os.path.abspath(f) for f in ligand_sdf_file_name_list]
 
         if ligand_json_file_name is not None:
             self.ligand_json_file_name = os.path.abspath(ligand_json_file_name)
@@ -142,6 +138,17 @@ class UnidockProtocolRunner(object):
         if self.specified_ligand_info_dict:
             print('Using specified ligand info dict...')
             ligand_info_dict = self.specified_ligand_info_dict
+            ligand_builder = UnidockLigandTopologyBuilder(
+                self.ligand_sdf_file_name_list,
+                covalent_ligand=self.covalent_ligand,
+                template_docking=self.template_docking,
+                reference_sdf_file_name=self.reference_sdf_file_name,
+                core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
+                n_cpu=self.n_cpu,
+                working_dir_name=self.working_dir_name,
+                construct_ff=self.construct_ff,
+                atom_mapper_align=self.atom_mapper_align,
+            )
         else:
             ligand_builder = UnidockLigandTopologyBuilder(
                 self.ligand_sdf_file_name_list,

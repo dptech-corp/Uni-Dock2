@@ -45,9 +45,9 @@ def test_free_docking(
         docking_pose_sdf_file_name = os.path.join(working_dir_name, 'unidock2_pose.sdf')
         unidock_protocol_runner = UnidockProtocolRunner(
             receptor,
+            [ligand],
             target_center=pocket_center,
             box_size=box_size,
-            ligand_sdf_file_name_list=[ligand],
             working_dir_name=working_dir_name,
             docking_pose_sdf_file_name=docking_pose_sdf_file_name
         )
@@ -112,9 +112,9 @@ def test_free_docking_by_yaml(
         _ = unidock_kwargs_dict.pop('output_receptor_dms_file_name', None)
 
         unidock_protocol_runner = UnidockProtocolRunner(
-            receptor_file_name=receptor_file_name,
+            receptor_file_name,
+            [ligand_sdf_file_name],
             target_center=tuple(target_center),
-            ligand_sdf_file_name_list=[ligand_sdf_file_name],
             working_dir_name=temp_dir_name,
             docking_pose_sdf_file_name=docking_pose_sdf_file_name,
             **unidock_kwargs_dict,

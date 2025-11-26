@@ -41,9 +41,9 @@ def test_covalent_docking(
         docking_pose_sdf_file_name = os.path.join(working_dir_name, 'unidock2_pose.sdf')
         unidock_protocol_runner = UnidockProtocolRunner(
             receptor,
+            ligand,
             target_center=pocket_center,
             box_size=box_size,
-            ligand_sdf_file_name_list=ligand,
             covalent_ligand=True,
             covalent_residue_atom_info_list=covalent_residue_atom_info_list,
             preserve_receptor_hydrogen=True,
