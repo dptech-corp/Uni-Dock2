@@ -16,19 +16,19 @@ class BaseMolGraph(ABC, metaclass=MolGraphMeta):
     """Abstract base class for building molecule graph."""
 
     @abstractmethod
-    def _preprocess_mol(self):
+    def preprocess_mol(self):
         raise NotImplementedError("Preprocessing mol method must be implemented.")
 
     @abstractmethod
-    def _get_rotatable_bond_info(self) -> list[tuple[int,...]]:
+    def get_rotatable_bond_info(self) -> list[tuple[int,...]]:
         raise NotImplementedError("Rotatable bond identification method must be implemented.")
 
     @abstractmethod
-    def _freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
+    def freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
         raise NotImplementedError("Bond freezing method must be implemented.")
 
     @abstractmethod
-    def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
+    def get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
         raise NotImplementedError("Root atom ID extraction method must be implemented.")
 

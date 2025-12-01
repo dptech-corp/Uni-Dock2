@@ -46,6 +46,7 @@ class SettingsConfig(BaseModel):
         return v
 
 class PreprocessingConfig(BaseModel):
+    construct_ff: bool = False
     template_docking: bool = False
     reference_sdf_file_name: Optional[str] = None
     compute_center: bool = True
@@ -54,6 +55,7 @@ class PreprocessingConfig(BaseModel):
     covalent_residue_atom_info_list: Optional[List[Any]] = None
     preserve_receptor_hydrogen: bool = False
     temp_dir_name: str = '/tmp'
+    engine_checkpoint: bool = False
     output_receptor_dms_file_name: str = 'receptor_parameterized.dms'
     output_docking_pose_sdf_file_name: str = 'unidock2_pose.sdf'
 
@@ -67,11 +69,11 @@ CONFIG_MAPPING: ClassVar[List[Tuple[str, str, Type[BaseModel], List[str]]]] = [
     ('Hardware', 'hardware', HardwareConfig, ['n_cpu', 'gpu_device_id']),
     ('Settings', 'settings', SettingsConfig, ['box_size', 'task', 'search_mode']),
     ('Preprocessing', 'preprocessing', PreprocessingConfig, [
-     'template_docking', 'reference_sdf_file_name', 'compute_center',
-     'core_atom_mapping_dict_list', 'covalent_ligand',
+     'construct_ff', 'template_docking', 'reference_sdf_file_name',
+     'compute_center', 'core_atom_mapping_dict_list', 'covalent_ligand',
      'covalent_residue_atom_info_list', 'preserve_receptor_hydrogen',
-     'temp_dir_name', 'output_receptor_dms_file_name',
-     'output_docking_pose_sdf_file_name'])
+     'temp_dir_name', 'engine_checkpoint',
+     'output_receptor_dms_file_name', 'output_docking_pose_sdf_file_name'])
 ]
 
 def build_unidock_model():
