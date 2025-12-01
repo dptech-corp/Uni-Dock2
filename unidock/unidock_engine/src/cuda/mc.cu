@@ -132,7 +132,7 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
                                                  curandStatePhilox4_32_10_t* state, Real amplitude = 1){
     //amplitude:2.0
     // DOF, which as an index of DOF
-    Real rand_4[4] = {0};
+    Real rand4[4] = {0};
     Real q[4] = {0};
     Real tmp1[3] = {0};
     Real a = 0;
@@ -153,24 +153,24 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         }
         // DPrint1("which is %d\n", which);
         // prepare random values for choosing DOF to mutate
-        gen_4_rand_in_sphere(rand_4, state);
+        gen_4_rand_in_sphere(rand4, state);
     }
     tile.sync();
 
     which = tile.shfl(which, 0);
-    rand_4[0] = tile.shfl(rand_4[0], 0);
-    rand_4[1] = tile.shfl(rand_4[1], 0);
-    rand_4[2] = tile.shfl(rand_4[2], 0);
-    rand_4[3] = tile.shfl(rand_4[3], 0);
+    rand4[0] = tile.shfl(rand4[0], 0);
+    rand4[1] = tile.shfl(rand4[1], 0);
+    rand4[2] = tile.shfl(rand4[2], 0);
+    rand4[3] = tile.shfl(rand4[3], 0);
 
     // 0 for translation
     if (which == 0){
         // compute a translation under box constraint
-        tmp1[0] = clamp_by_range(amplitude * rand_4[0] + out_pose->center[0], CU_BOX.x_hi, CU_BOX.x_lo) - out_pose->center[0];
+        tmp1[0] = clamp_by_range(amplitude * rand4[0] + out_pose->center[0], CU_BOX.x_hi, CU_BOX.x_lo) - out_pose->center[0];
         //amplitude * rand_5[0];
-        tmp1[1] = clamp_by_range(amplitude * rand_4[1] + out_pose->center[1], CU_BOX.y_hi, CU_BOX.y_lo) - out_pose->center[1];
+        tmp1[1] = clamp_by_range(amplitude * rand4[1] + out_pose->center[1], CU_BOX.y_hi, CU_BOX.y_lo) - out_pose->center[1];
         //amplitude * rand_5[1];
-        tmp1[2] = clamp_by_range(amplitude * rand_4[2] + out_pose->center[2], CU_BOX.z_hi, CU_BOX.z_lo) - out_pose->center[2];
+        tmp1[2] = clamp_by_range(amplitude * rand4[2] + out_pose->center[2], CU_BOX.z_hi, CU_BOX.z_lo) - out_pose->center[2];
         //amplitude * rand_5[2];
 
         for (int i_at = tile.thread_rank(); i_at < flex_topo->natom; i_at += tile.num_threads()){
@@ -196,9 +196,9 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
             assert(a > EPSILON);
             // add a random rotation to temporary quaternion
             // the movement step of an atom is roughly amplitude Angstrom
-            tmp1[0] = amplitude / a * rand_4[0];
-            tmp1[1] = amplitude / a * rand_4[1];
-            tmp1[2] = amplitude / a * rand_4[2];
+            tmp1[0] = amplitude / a * rand4[0];
+            tmp1[1] = amplitude / a * rand4[1];
+            tmp1[2] = amplitude / a * rand4[2];
 
             rotvec_to_quaternion(q, tmp1);
 
@@ -231,7 +231,7 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         which -= 2;
         // change lig dihedral
         if (tile.thread_rank() == 0){ // todo: check the continuity of gradient
-            a = get_real_within(rand_4[3], -PI, PI) - out_pose->dihedrals[which];
+            a = get_real_within(rand4[3], -PI, PI) - out_pose->dihedrals[which];
         }
         a = tile.shfl(a, 0); // increment of dihedral value
         apply_grad_update_dihe_tile(tile, out_pose, flex_topo, which, a);
