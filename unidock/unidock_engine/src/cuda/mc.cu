@@ -393,11 +393,14 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
 
     // run the kernel
     if (randomize){
+        spdlog::info("Randomization ...");
         randomize_pose<<<nblock, BLOCK_SIZE>>>(out_poses, topos, aux_gradients,
                                               states, seed,
                                               exhuastiveness, nthreads);
+        spdlog::info("Randomization is done.");
     }
 
+    spdlog::info("MC ...");
     mc_kernel<<<nblock, BLOCK_SIZE>>>(out_poses, topos, fix_mol,
                                      flex_param, fix_param,
                                      aux_poses, aux_gradients, aux_hessians, aux_forces,
@@ -409,4 +412,5 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
 
     // free mem
     checkCUDA(cudaFree(states));
+    spdlog::info("MC is done.");
 }
