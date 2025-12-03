@@ -151,7 +151,7 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         else{
             which = gen_rand_int_within(state, 0, num_mutable - 1);
         }
-        // DPrint1("which is %d\n", which);
+
         // prepare random values for choosing DOF to mutate
         gen_4_rand_in_sphere(rand4, state);
     }
@@ -322,8 +322,6 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
         else{
             for (int step = 0; step < mc_steps; step++){
                 // 1. mutate conf, PRODUCE a random conf
-                DPrint1("========= MC step %d \n", step);
-
                 duplicate_pose_tile(tile, &pose_candidate, &pose_accepted, dim, flex_topo.natom);
 
                 mutate_pose_tile(tile, &pose_candidate, &flex_topo, &state);
@@ -395,11 +393,14 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
 
     // run the kernel
     if (randomize){
+        spdlog::info("Randomization ...");
         randomize_pose<<<nblock, BLOCK_SIZE>>>(out_poses, topos, aux_gradients,
                                               states, seed,
                                               exhuastiveness, nthreads);
+        spdlog::info("Randomization is done.");
     }
 
+    spdlog::info("MC ...");
     mc_kernel<<<nblock, BLOCK_SIZE>>>(out_poses, topos, fix_mol,
                                      flex_param, fix_param,
                                      aux_poses, aux_gradients, aux_hessians, aux_forces,
@@ -411,4 +412,5 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
 
     // free mem
     checkCUDA(cudaFree(states));
+    spdlog::info("MC is done.");
 }

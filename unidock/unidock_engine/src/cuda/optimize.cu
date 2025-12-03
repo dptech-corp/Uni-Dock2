@@ -57,7 +57,6 @@ __global__ void opt_kernel(FlexPose* out_poses, const int* pose_inds, const Flex
 }
 
 
-
 void optimize_cu(FlexPose* out_poses, const int* pose_inds, const FlexTopo* flex_topos, const FixMol& fix_mol,
                           const FlexParamVina* flex_params, const FixParamVina& fix_param,
                           FlexPose* aux_poses, FlexPoseGradient* aux_gradients, FlexPoseHessian* aux_hessians,
@@ -69,6 +68,6 @@ void optimize_cu(FlexPose* out_poses, const int* pose_inds, const FlexTopo* flex
                           aux_poses, aux_gradients, aux_hessians,
                           aux_forces, refine_steps, npose_per_flex);
     checkCUDA(cudaDeviceSynchronize());
-    spdlog::warn("[Refinement Line Search Steps Count]: {}", funcCallCount);
+    spdlog::info("[Refinement Line Search Steps Count]: {}", funcCallCount);
 
 }

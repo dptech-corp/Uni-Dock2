@@ -55,27 +55,15 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
             flex_coords[i2 * 3 + 2] - flex_coords[i1 * 3 + 2]
         };
         rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
-        // DPrintCPU("Pair: %d %d r2 = %f", i1, i2, rr);
+
         if (rr < SF.r2_cutoff){
             rr = sqrt(rr); // use r2 as a container for |r|
-            // if ((i1 == 17) and i2 == 20){
-            //     int mmm = 1;
-            //     for (int n = 200; n < 500; n++) {
-            //         float r = n * 0.01;
-            //         float tmp_f=0;
-            //         float res = SF.eval_ef(r - udflex_mol.r1_plus_r2_intra[i], udflex_mol.vina_types[i1],
-            //                         udflex_mol.vina_types[i2], &tmp_f);
-            //         // printf("r=%f, e=%f\n", r, res);
-            //     }
-            // }
+
             Real tmp = SF.eval_ef(rr - udflex_mol.r1_plus_r2_intra[i], udflex_mol.vina_types[i1],
                                   udflex_mol.vina_types[i2], &f);
             e_intra += tmp;
-            // DPrintCPU(" e = %f", tmp);
         }
-        // DPrintCPU("\n", 1);
     }
-    // DPrintCPU("\n", 1);
 
     out_pose->center[0] = e_intra;
 
@@ -85,7 +73,6 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
     for (int i = 0; i < udflex_mol.inter_pairs.size() / 2; i++){
         int i1 = udflex_mol.inter_pairs[i * 2], i2 = udflex_mol.inter_pairs[i * 2 + 1];
         if (i1 > atom_id){
-            // DPrintCPU("Atom %d e_inter = %f\n", atom_id, atom_e);
             atom_e = 0;
             atom_id++;
         }
@@ -106,7 +93,6 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
             atom_e += e;
         }
     }
-    // DPrintCPU("Atom %d e_inter = %f\n", atom_id, atom_e);
 
     out_pose->center[1] = e_inter;
 
