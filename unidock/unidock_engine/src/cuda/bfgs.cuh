@@ -276,15 +276,15 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     }
     tile.sync();
 
-    // // -- Compute inter-molecular energy: penalty
-    // for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
-    //     if (flex_param.atom_types[i] != VN_TYPE_H){
-    //         coord_adj[0] = pose->coords[i * 3];
-    //         coord_adj[1] = pose->coords[i * 3 + 1];
-    //         coord_adj[2] = pose->coords[i * 3 + 2];
-    //         energy += cal_box_penalty(coord_adj, CU_BOX, aux_f + i * 3);
-    //     }
-    // }
+    // -- Compute inter-molecular energy: penalty
+    for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
+        if (flex_param.atom_types[i] != VN_TYPE_H){
+            coord_adj[0] = pose->coords[i * 3];
+            coord_adj[1] = pose->coords[i * 3 + 1];
+            coord_adj[2] = pose->coords[i * 3 + 2];
+            energy += cal_box_penalty(coord_adj, CU_BOX, aux_f + i * 3);
+        }
+    }
 
     // -- Compute intra-molecular energy
     for (int i = tile.thread_rank(); i < flex_param.npair_intra; i += tile.num_threads()){

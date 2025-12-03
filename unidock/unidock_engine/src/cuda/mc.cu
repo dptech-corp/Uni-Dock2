@@ -318,7 +318,6 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
             if (tile.thread_rank() == 0){
                 pose_accepted.energy = energy;
             }
-            printf("I am HERE!!\n");
             duplicate_pose_tile(tile, &out_pose, &pose_accepted, dim, flex_topo.natom);
         }
         else{
@@ -388,7 +387,6 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
     int npose = nflex * exhuastiveness;
     int nblock = (npose * TILE_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int nthreads = npose * TILE_SIZE;
-    spdlog::debug("nflex={}, exhuastiveness={}, npose={}, nblock={}, block_size={} ...", nflex, exhuastiveness, npose, nblock, BLOCK_SIZE);
 
     // initilize curand states
     curandStatePhilox4_32_10_t* states;
@@ -404,7 +402,6 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
     }
 
     spdlog::info("MC ...", nblock, BLOCK_SIZE);
-    spdlog::debug(" {} blocks, block_size={} ...", nblock, BLOCK_SIZE);
     mc_kernel<<<nblock, BLOCK_SIZE>>>(out_poses, topos, fix_mol,
                                      flex_param, fix_param,
                                      aux_poses, aux_gradients, aux_hessians, aux_forces,
