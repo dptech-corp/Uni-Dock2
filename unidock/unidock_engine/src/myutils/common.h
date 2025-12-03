@@ -53,18 +53,12 @@ constexpr Real RAD2DEG = 180 / PI;
 #ifdef DEBUG
 #define DPrint1(fmt, ...) if(tile.thread_rank() == 0) {printf(fmt, __VA_ARGS__);}
 #define DPrint(fmt, ...) printf(fmt, __VA_ARGS__)
-#define DPrintCPU(fmt, ...) printf(fmt, __VA_ARGS__)
-#define DExec(stmt) if(tile.thread_rank() == 0){stmt}
-
-// #define DPrint1(fmt, ...) if((blockIdx.x == 0) && (tile.thread_rank() == 0)) {printf("[CUDA info]");printf(fmt, __VA_ARGS__);}
-// #define DPrint(fmt, ...) if(tile.thread_rank() == 0) {printf("[CUDA info]");printf(fmt, __VA_ARGS__);}
 
 #else
 
 #define DPrint1(fmt, ...)
 #define DPrint(fmt, ...)
-#define DPrintCPU(fmt, ...)
-#define DExec(stmt)
+
 
 #endif
 

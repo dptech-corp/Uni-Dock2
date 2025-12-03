@@ -322,8 +322,6 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
         else{
             for (int step = 0; step < mc_steps; step++){
                 // 1. mutate conf, PRODUCE a random conf
-                DPrint1("========= MC step %d \n", step);
-
                 duplicate_pose_tile(tile, &pose_candidate, &pose_accepted, dim, flex_topo.natom);
 
                 mutate_pose_tile(tile, &pose_candidate, &flex_topo, &state);
