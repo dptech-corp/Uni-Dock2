@@ -311,6 +311,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
 
         duplicate_pose_tile(tile, &pose_accepted, &out_pose, dim, flex_topo.natom);
 
+
         if (mc_steps == 0){
             Real energy = cal_e_f_tile(tile, &pose_accepted, flex_topo, fix_mol, flex_param, fix_param, aux_f.f);
 
@@ -384,7 +385,7 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
     //------- perform MC on GPU -------//
 
     int npose = nflex * exhuastiveness;
-    int nblock = npose * TILE_SIZE / BLOCK_SIZE;
+    int nblock = (npose * TILE_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int nthreads = npose * TILE_SIZE;
 
     // initilize curand states
