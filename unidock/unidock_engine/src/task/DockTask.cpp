@@ -207,9 +207,12 @@ void DockTask::run_score(){
 
         int pose_num = 0;
         for (auto& j: filtered_pose_inds_list[i]){
+
+            printf("Energy before: %f", flex_pose_list_res[j].energy);
             score(flex_pose_list_res + j, flex_pose_list_real_res + list_i_real[j * 2], udfix_mol, mol, dock_param.box);
             flex_pose_list_res[j].rot_vec[1] = flex_pose_list_res[j].center[0] + flex_pose_list_res[j].center[1] +
                 flex_pose_list_res[j].center[2]; // Total
+            printf(", after: %f\n", flex_pose_list_res[j].rot_vec[1]);
 
             Real e_inter = flex_pose_list_res[j].rot_vec[1] - e_intra_rank1; // Real adopted inter
             // Free Energy of Binding
