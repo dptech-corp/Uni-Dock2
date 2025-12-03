@@ -103,8 +103,7 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 
             // compute the torque on the atom for the torsion
             cross_product(tmp1, tmp2, tmp3);
-            // DPrint("iat= %d: arm: %f, %f, %f; f: %f, %f, %f; t: %f, %f, %f\n", i_at,
-            //     tmp1[0], tmp1[1], tmp1[2], tmp2[0], tmp2[1], tmp2[2], tmp3[0], tmp3[1], tmp3[2]);
+
             // accumulate the torque for the torsion
             tmp5[0] += tmp3[0];
             tmp5[1] += tmp3[1];
@@ -141,8 +140,6 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 
         // rotate tmp1 to get real rotation coord
         rotate_vec_by_quaternion(tmp1, q);
-        // DPrint("Last coord %d: %f, %f, %f\n", i_at, tmp1[0], tmp1[1], tmp1[2]);
-
 
         // take grad over pos of each atom
         tmp2[0] = aux_f[i_at * 3];
@@ -292,7 +289,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     // -- Compute intra-molecular energy
     for (int i = tile.thread_rank(); i < flex_param.npair_intra; i += tile.num_threads()){
         int i1 = flex_param.pairs_intra[i * 2], i2 = flex_param.pairs_intra[i * 2 + 1];
-        // DPrint1("i1:%d, i2:%d\n", i1, i2);
+
         // Cartesian distances won't be saved
         Real r_vec[3] = {
             pose->coords[i2 * 3] - pose->coords[i1 * 3],
@@ -568,7 +565,6 @@ __device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TIL
         atomicAdd(&funcCallCount, 1);  // todo: for debug, show call count
 
         duplicate_pose_tile(tile, out_x_new, x, dim_x, flex_topo.natom); // x_new = x
-        // DPrint1("coord_0: %f, %f, %f\n\n", out_x_new->coords[0], out_x_new->coords[1], out_x_new->coords[2]);
 
         // apply alpha * gradient, get new x
         apply_grad_update_pose_tile(tile, out_x_new, p, flex_topo, alpha); // apply gradient increment
@@ -576,7 +572,6 @@ __device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TIL
         e_new = cal_e_grad_tile(tile, out_x_new, out_g_new, flex_topo, fix_mol, flex_param, fix_param, aux_f);
 
         if (e_new - e0 < LINE_SEARCH_C0 * alpha * pg){
-            // DPrint1("\nLine search SUCCEED!\n", 1);
             break;
         }
         //todo: Wolfe condition
@@ -654,23 +649,6 @@ SCOPE_INLINE void print_uptri_mat(Real* mat, int dim){
         }
         printf("\n");
     }
-}
-
-SCOPE_INLINE void print_g(const FlexPoseGradient* g, int dim){
-    DPrint("\nG: Center: ", 1);
-    for (int i = 0; i < 3; i ++){
-        DPrint("%f ", g->center_g[i]);
-    }
-    DPrint("Orientation: ", 1);
-    for (int i = 0; i < dof_g - 3; i ++){
-        DPrint("%f ", g->orientation_g[i]);
-    }
-    DPrint("Dihedrals: ", 1);
-    for (int i = 0; i < dim - dof_g; i ++){
-        DPrint("%f ", g->dihedrals_g[i]);
-    }
-    DPrint("\n", 1);
-
 }
 
 

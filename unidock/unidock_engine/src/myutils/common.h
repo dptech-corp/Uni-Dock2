@@ -52,12 +52,10 @@ constexpr Real RAD2DEG = 180 / PI;
 // ------------------------------- DEBUG -------------------------------
 #ifdef DEBUG
 #define DPrint1(fmt, ...) if(tile.thread_rank() == 0) {printf(fmt, __VA_ARGS__);}
-#define DPrint(fmt, ...) printf(fmt, __VA_ARGS__)
 
 #else
-
 #define DPrint1(fmt, ...)
-#define DPrint(fmt, ...)
+
 
 
 #endif

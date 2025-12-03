@@ -36,7 +36,7 @@ void RapidJsonParser::parse_receptor_info(const Box& box_protein, UDFixMol& fix_
         }
     }
     fix_mol.natom = fix_mol.charges.size();
-    spdlog::debug("Json data: Receptor is successfully extracted.");
+    spdlog::info("Json data: Receptor is successfully extracted.");
 }
 
 void RapidJsonParser::parse_ligands_info(UDFlexMolList& flex_mol_list, std::vector<std::string>& fns_flex, bool use_tor_lib) {

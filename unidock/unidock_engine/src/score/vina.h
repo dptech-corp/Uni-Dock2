@@ -235,29 +235,27 @@ public:
         }
 
         e_tmp += weight_gauss1 * vina_gaussian1(d, &f);
-        // DPrintCPU(" gauss1: %f", e_tmp);
+
         e += e_tmp;
         *out_f += weight_gauss1 * f;
 
         e_tmp = weight_gauss2 * vina_gaussian2(d, &f);
-        // DPrintCPU(" gauss2: %f", e_tmp);
+
         e += e_tmp;
         *out_f += weight_gauss2 * f;
 
         e_tmp = weight_repulsion * vina_repulsion(d, &f);
-        // DPrintCPU(" repulsion: %f", e_tmp);
+
         e += e_tmp;
         *out_f += weight_repulsion * f;
 
         if (vn_is_hydrophobic(at1) && vn_is_hydrophobic(at2)){
             e_tmp = weight_hydrophobic * vina_hydrophobic(d, &f);
-            // DPrintCPU(" hydrophobic: %f", e_tmp);
             e += e_tmp;
             *out_f += weight_hydrophobic * f;
         }
         if (xs_h_bond_possible(at1, at2)){
             e_tmp = weight_hbond * vina_hbond(d, &f);
-            // DPrintCPU(" hbond: %f", e_tmp);
             e += e_tmp;
             *out_f += weight_hbond * f;
         }

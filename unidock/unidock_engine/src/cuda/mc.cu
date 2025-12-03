@@ -151,7 +151,7 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         else{
             which = gen_rand_int_within(state, 0, num_mutable - 1);
         }
-        // DPrint1("which is %d\n", which);
+
         // prepare random values for choosing DOF to mutate
         gen_4_rand_in_sphere(rand4, state);
     }
