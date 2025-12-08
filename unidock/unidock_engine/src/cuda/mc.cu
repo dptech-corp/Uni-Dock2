@@ -61,10 +61,12 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
             // printf("[RAND] %f, %f, %f\n", aux_g->orientation_g[0], aux_g->orientation_g[1], aux_g->orientation_g[2]);
         }
     }
+    tile.sync();
 
-    rf4 = curand_uniform4(state);
     // generate random uints for all torsions // todo: change sampling of torsions
     for (int i = tile.thread_rank(); i < flex_topo.ntorsion; i += tile.num_threads()){
+        rf4 = curand_uniform4(state);
+
         // copy dihedrals
         tmp4[3] = out_pose->dihedrals[i];
 
@@ -85,7 +87,7 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
 
 
 __global__ void randomize_pose(FlexPose* out_poses, const FlexTopo* flex_topos, FlexPoseGradient* aux_gradients,
-                               curandStatePhilox4_32_10_t* states, int seed,
+                               curandStatePhilox4_32_10_t* states,
                                int num_pose_per_flex, int max_thread){
     // randomize all poses by given position & orientation
     // but each with different dihedral
@@ -100,20 +102,14 @@ __global__ void randomize_pose(FlexPose* out_poses, const FlexTopo* flex_topos, 
         const FlexTopo& flex_topo = flex_topos[id_flex];
         FlexPoseGradient& aux_g = aux_gradients[id_pose * STRIDE_G];
 
-        curandStatePhilox4_32_10_t& state = states[id_pose];
+        curandStatePhilox4_32_10_t* state = states + id_thread;
 
         // Cooperative group
         auto cta = cg::this_thread_block();
         cg::thread_block_tile<TILE_SIZE> tile = cg::tiled_partition<TILE_SIZE>(cta);
 
-        // Init curand states
-        if (tile.thread_rank() == 0){
-            curand_init(seed, id_pose, 0, &state);
-        }
-        tile.sync();
-
         int id_pose_per_flex = id_pose % num_pose_per_flex;
-        randomize_pose_tile(tile, &out_pose, flex_topo, &aux_g, id_pose_per_flex, num_pose_per_flex, &state);
+        randomize_pose_tile(tile, &out_pose, flex_topo, &aux_g, id_pose_per_flex, num_pose_per_flex, state);
     }
 }
 
@@ -151,27 +147,26 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         else{
             which = gen_rand_int_within(state, 0, num_mutable - 1);
         }
-
-        // prepare random values for choosing DOF to mutate
-        gen_4_rand_in_sphere(rand4, state);
     }
     tile.sync();
-
     which = tile.shfl(which, 0);
-    rand4[0] = tile.shfl(rand4[0], 0);
-    rand4[1] = tile.shfl(rand4[1], 0);
-    rand4[2] = tile.shfl(rand4[2], 0);
-    rand4[3] = tile.shfl(rand4[3], 0);
 
     // 0 for translation
     if (which == 0){
-        // compute a translation under box constraint
-        tmp1[0] = clamp_by_range(amplitude * rand4[0] + out_pose->center[0], CU_BOX.x_hi, CU_BOX.x_lo) - out_pose->center[0];
-        //amplitude * rand_5[0];
-        tmp1[1] = clamp_by_range(amplitude * rand4[1] + out_pose->center[1], CU_BOX.y_hi, CU_BOX.y_lo) - out_pose->center[1];
-        //amplitude * rand_5[1];
-        tmp1[2] = clamp_by_range(amplitude * rand4[2] + out_pose->center[2], CU_BOX.z_hi, CU_BOX.z_lo) - out_pose->center[2];
-        //amplitude * rand_5[2];
+        if (tile.thread_rank() == 0){
+            float4 rf4 = curand_uniform4(state);
+            // compute a translation under box constraint
+            tmp1[0] = clamp_by_range(amplitude * rf4.x + out_pose->center[0], CU_BOX.x_hi, CU_BOX.x_lo) - out_pose->center[0];
+            tmp1[1] = clamp_by_range(amplitude * rf4.y + out_pose->center[1], CU_BOX.y_hi, CU_BOX.y_lo) - out_pose->center[1];
+            tmp1[2] = clamp_by_range(amplitude * rf4.z + out_pose->center[2], CU_BOX.z_hi, CU_BOX.z_lo) - out_pose->center[2];
+            out_pose->center[0] = out_pose->center[0] + tmp1[0];
+            out_pose->center[1] = out_pose->center[1] + tmp1[1];
+            out_pose->center[2] = out_pose->center[2] + tmp1[2];
+        }
+        tile.sync();
+        tmp1[0] = tile.shfl(tmp1[0], 0);
+        tmp1[1] = tile.shfl(tmp1[1], 0);
+        tmp1[2] = tile.shfl(tmp1[2], 0);
 
         for (int i_at = tile.thread_rank(); i_at < flex_topo->natom; i_at += tile.num_threads()){
             // move to the new center
@@ -179,18 +174,11 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
             out_pose->coords[i_at * 3 + 1] = out_pose->coords[i_at * 3 + 1] + tmp1[1];
             out_pose->coords[i_at * 3 + 2] = out_pose->coords[i_at * 3 + 2] + tmp1[2];
         }
-        tile.sync();
 
-        if (tile.thread_rank() == 0){
-            out_pose->center[0] = out_pose->center[0] + tmp1[0];
-            out_pose->center[1] = out_pose->center[1] + tmp1[1];
-            out_pose->center[2] = out_pose->center[2] + tmp1[2];
-        }
-        tile.sync();
-    }
-    else if (which == 1){
+    } else if (which == 1){
         // 1 for rotation
         if (tile.thread_rank() == 0){
+            gen_4_rand_in_sphere(rand4, state);
             //1 for rotation of the whole molecule
             a = gyration_radius(out_pose, flex_topo); // an indicator of the size
             assert(a > EPSILON);
@@ -207,7 +195,6 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
             out_pose->rot_vec[2] = tmp1[2];
         }
         tile.sync();
-
         q[0] = tile.shfl(q[0], 0);
         q[1] = tile.shfl(q[1], 0);
         q[2] = tile.shfl(q[2], 0);
@@ -223,7 +210,6 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
             out_pose->coords[i_at * 3 + 1] = tmp1[1] + out_pose->center[1];
             out_pose->coords[i_at * 3 + 2] = tmp1[2] + out_pose->center[2];
         }
-        tile.sync();
 
     }
     else if (which - 2 < flex_topo->ntorsion){
@@ -231,9 +217,12 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         which -= 2;
         // change lig dihedral
         if (tile.thread_rank() == 0){ // todo: check the continuity of gradient
-            a = get_real_within(rand4[3], -PI, PI) - out_pose->dihedrals[which];
+            float4 rf4 = curand_uniform4(state);
+            a = get_real_within(rf4.x, -PI, PI) - out_pose->dihedrals[which];
         }
+        tile.sync();
         a = tile.shfl(a, 0); // increment of dihedral value
+        
         apply_grad_update_dihe_tile(tile, out_pose, flex_topo, which, a);
     }
     else{
@@ -263,7 +252,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
                           const FlexParamVina* flex_params, const FixParamVina& fix_param,
                           FlexPose* aux_poses, FlexPoseGradient* aux_gradients, FlexPoseHessian* aux_hessians,
                           FlexForce* aux_forces,
-                          curandStatePhilox4_32_10_t* states, int seed,
+                          curandStatePhilox4_32_10_t* states,
                           int mc_steps, int opt_steps, int num_pose_per_flex, int max_thread){
     // Just for ONE best pose
 
@@ -293,17 +282,12 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
 
         FlexForce& aux_f = aux_forces[id_pose]; //todo: use struct or just Real* ?
 
-        curandStatePhilox4_32_10_t& state = states[id_pose];
+        curandStatePhilox4_32_10_t* state = states + id_thread;
 
 
         // Cooperative group
         auto cta = cg::this_thread_block();
         cg::thread_block_tile<TILE_SIZE> tile = cg::tiled_partition<TILE_SIZE>(cta);
-        // Init curand states
-        if (tile.thread_rank() == 0){
-            curand_init(seed, id_pose, 0, &state);
-        }
-        tile.sync();
 
         int dim = 3 + 4 + flex_topo.ntorsion;
         Real best_e = 1e9; // large value for finding minimum energy
@@ -325,7 +309,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
                 // 1. mutate conf, PRODUCE a random conf
                 duplicate_pose_tile(tile, &pose_candidate, &pose_accepted, dim, flex_topo.natom);
 
-                mutate_pose_tile(tile, &pose_candidate, &flex_topo, &state);
+                mutate_pose_tile(tile, &pose_candidate, &flex_topo, state);
 
                 // todo: add clash-detection for efficiency
 
@@ -377,6 +361,13 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
     }
 }
 
+__global__ void init_rand_states(curandStatePhilox4_32_10_t* states, int seed, int nthreads){
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tid < nthreads){
+        curand_init(seed, tid, 0, &states[tid]);
+    }
+}
+
 
 void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
            const FixMol& fix_mol, const FlexParamVina* flex_param, const FixParamVina& fix_param,
@@ -389,14 +380,17 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
     int nthreads = npose * TILE_SIZE;
 
     // initilize curand states
+    spdlog::info("CURAND Initialization ...");
     curandStatePhilox4_32_10_t* states;
-    checkCUDA(cudaMalloc(&states, sizeof(curandStatePhilox4_32_10_t) * npose));
+    checkCUDA(cudaMalloc(&states, sizeof(curandStatePhilox4_32_10_t) * nthreads));
+    init_rand_states<<<nblock, BLOCK_SIZE>>>(states, seed, nthreads);
+    spdlog::info("CURAND Initialization is done.");
 
     // run the kernel
     if (randomize){
         spdlog::info("Randomization ...");
         randomize_pose<<<nblock, BLOCK_SIZE>>>(out_poses, topos, aux_gradients,
-                                              states, seed,
+                                              states,
                                               exhuastiveness, nthreads);
         spdlog::info("Randomization is done.");
     }
@@ -405,7 +399,7 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
     mc_kernel<<<nblock, BLOCK_SIZE>>>(out_poses, topos, fix_mol,
                                      flex_param, fix_param,
                                      aux_poses, aux_gradients, aux_hessians, aux_forces,
-                                     states, seed,
+                                     states,
                                      mc_steps, opt_steps, exhuastiveness, nthreads);
 
     checkCUDA(cudaDeviceSynchronize());
