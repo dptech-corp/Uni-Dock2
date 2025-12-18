@@ -264,10 +264,6 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    if (dock_param.exhaustiveness < ncpu) {
-        spdlog::warn("Low exhaustiveness doesn't utilize all CPUs");
-    }
-
     dock_param.constraint_docking = get_config_with_err<bool>(config, "Settings", "constraint_docking", false);
     if (dock_param.constraint_docking){
         dock_param.randomize = false;

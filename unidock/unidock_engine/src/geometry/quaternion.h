@@ -90,7 +90,6 @@ SCOPE_INLINE void quaternion_increment(Real* out_q1, const Real* q2){
 SCOPE_INLINE void rotvec_to_quaternion(Real* out_q, const Real* rot_vec){
     // the real rotation angle
     Real theta = cal_norm(rot_vec);
-
     if (theta > EPSILON){
         Real axis[3] = {rot_vec[0] / theta, rot_vec[1] / theta, rot_vec[2] / theta};
         Real s = sin(theta / 2);
@@ -98,7 +97,6 @@ SCOPE_INLINE void rotvec_to_quaternion(Real* out_q, const Real* rot_vec){
         out_q[1] = s * axis[0];
         out_q[2] = s * axis[1];
         out_q[3] = s * axis[2];
-
     }
     else{
         out_q[0] = 1;

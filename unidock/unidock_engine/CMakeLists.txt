@@ -16,7 +16,7 @@ set(INPUT_BLOCK_SIZE 128)
 add_compile_definitions(TILE_SIZE=${INPUT_TILE_SIZE})
 add_compile_definitions(BLOCK_SIZE=${INPUT_BLOCK_SIZE})
 file(STRINGS "${CMAKE_SOURCE_DIR}/../VERSION" VERSION_NUMBER)
-#set(VERSION_NUMBER "0.4.3")
+set(VERSION_NUMBER "251208")
 set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math --maxrregcount 64") #  --generate-line-info
 
 # For Building Stage
@@ -41,16 +41,18 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # https://en.wikipedia.org/wiki/CUDA#GPUs_supported
-set(CMAKE_CUDA_ARCHITECTURES # At least 70!
+if(NOT CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES # At least 70!
         60 # 10
         70 # V100
         75 # Turing: RTX 20, T4
         80 # Ampere: A100, A800, L20
         86 # Ampere consumer: RTX 30
         89 # Ada: RTX 40, L4, L40, L40S
-        90 # Hopper / Blackwell: H100, B100/B200
+#        90 # Hopper / Blackwell: H100, B100/B200
 )
-message("Supported Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+endif()
+message(STATUS "Supported Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
 
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
@@ -68,10 +70,10 @@ endif()
 
 if (USE_DOUBLE)
     add_compile_definitions(Real=double)
-    message("  Precision: double")
+    message(STATUS "Precision: double")
 else ()
     add_compile_definitions(Real=float)
-    message("  Precision: float")
+    message(STATUS "Precision: float")
 endif ()
 
 

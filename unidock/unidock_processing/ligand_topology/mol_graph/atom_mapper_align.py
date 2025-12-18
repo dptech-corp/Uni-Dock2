@@ -4,7 +4,6 @@ from unidock_processing.ligand_topology import utils
 from unidock_processing.ligand_topology.rotatable_bond import BaseRotatableBond
 from .generic import GenericMolGraph
 
-
 class AlignMolGraph(GenericMolGraph):
     """
     A class for constructing molecular graph for alignment docking.
@@ -18,14 +17,15 @@ class AlignMolGraph(GenericMolGraph):
         torsion_library_dict:dict,
         reference_mol:Chem.Mol=None,
         core_atom_mapping_dict:dict=None,
+        construct_ff=False,
         working_dir_name:str='.',
     ):
-        super().__init__(mol, torsion_library_dict, working_dir_name)
+        super().__init__(mol, torsion_library_dict, construct_ff, working_dir_name)
         self.reference_mol = reference_mol
         self.core_atom_mapping_dict = core_atom_mapping_dict
         self.core_atom_idx_list = []
 
-    def _preprocess_mol(self):
+    def preprocess_mol(self):
         mol = self.mol
         reference_mol = self.reference_mol
         core_atom_mapping_dict = self.core_atom_mapping_dict
@@ -37,10 +37,10 @@ class AlignMolGraph(GenericMolGraph):
 
         core_atom_idx_list = utils.get_full_ring_core_atoms(mol, list(core_atom_mapping_dict.values()))
 
-        super()._preprocess_mol()
+        super().preprocess_mol()
         self.core_atom_idx_list = core_atom_idx_list
 
-    def _get_rotatable_bond_info(self) -> list[tuple[int,...]]:
+    def get_rotatable_bond_info(self) -> list[tuple[int,...]]:
         mol = self.mol
         core_atom_idx_list = self.core_atom_idx_list
         rotatable_bond_finder = BaseRotatableBond.create('atom_mapper_align')
@@ -88,7 +88,7 @@ class AlignMolGraph(GenericMolGraph):
 
         return filtered_rotatable_bond_info_list
 
-    def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
+    def get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
         core_atom_idx_list = self.core_atom_idx_list
         root_fragment_idx = None

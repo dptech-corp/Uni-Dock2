@@ -73,6 +73,7 @@ def test_yaml_parsing(
                                  'box_size': [30.0, 30.0, 30.0],
                                  'task': 'screen',
                                  'search_mode': 'balance',
+                                 'construct_ff': False,
                                  'template_docking': False,
                                  'reference_sdf_file_name': None,
                                  'compute_center': True,
@@ -81,6 +82,7 @@ def test_yaml_parsing(
                                  'covalent_residue_atom_info_list': None,
                                  'preserve_receptor_hydrogen': False,
                                  'temp_dir_name': '/tmp',
+                                 'engine_checkpoint': False,
                                  'output_receptor_dms_file_name': 'receptor_parameterized.dms',
                                  'output_docking_pose_sdf_file_name': 'unidock2_pose.sdf'}
 

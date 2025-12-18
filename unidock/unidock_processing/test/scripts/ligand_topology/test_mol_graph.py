@@ -49,6 +49,7 @@ def test_build_mol_graph(query_sdf_file:str, ref_sdf_file:str, atom_mapping:dict
         torsion_library_dict=torsion_library_dict,
         reference_mol=reference_mol,
         core_atom_mapping_dict=atom_mapping,
+        construct_ff=False,
         working_dir_name=tmp_path,
     )
     (
@@ -75,10 +76,11 @@ def test_fragment_split(query_sdf_file:str, ref_sdf_file:str, atom_mapping:dict,
         torsion_library_dict=torsion_library_dict,
         reference_mol=reference_mol,
         core_atom_mapping_dict=atom_mapping,
+        construct_ff=False,
         working_dir_name=tmp_path,
     )
-    rot_bonds = mol_graph_builder._get_rotatable_bond_info()
-    filtered_fragments = mol_graph_builder._freeze_bond(rot_bonds)
+    rot_bonds = mol_graph_builder.get_rotatable_bond_info()
+    filtered_fragments = mol_graph_builder.freeze_bond(rot_bonds)
     assert len(filtered_fragments) > 1, "incorrect fragments number after freezing bonds"
 
 
@@ -100,6 +102,7 @@ def test_torsion(query_sdf_file:str, ref_sdf_file:str, atom_mapping:dict, root_a
         torsion_library_dict=torsion_library_dict,
         reference_mol=reference_mol,
         core_atom_mapping_dict=atom_mapping,
+        construct_ff=False,
         working_dir_name=tmp_path,
     )
     (

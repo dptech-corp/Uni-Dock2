@@ -30,6 +30,7 @@ class CLICommand:
         task: screen
         search_mode: balance
     Preprocessing:
+        construct_ff: false
         template_docking: false
         reference_sdf_file_name: null
         core_atom_mapping_dict_list: null
@@ -37,6 +38,7 @@ class CLICommand:
         covalent_residue_atom_info_list: null
         preserve_receptor_hydrogen: false
         temp_dir_name: /tmp
+        engine_checkpoint: false
         output_docking_pose_sdf_file_name: unidock2_pose.sdf
 
     """
@@ -85,12 +87,6 @@ class CLICommand:
             '--configurations',
             default=None,
             help='Uni-Dock2 configuration YAML file recording all other options',
-        )
-
-        parser.add_argument(
-            '--debug',
-            action='store_true',
-            help='Enable debug mode for detailed logging and keep more temporary files',
         )
 
     def run(args):
@@ -211,8 +207,7 @@ class CLICommand:
                 target_center=tuple(docking_center),
                 working_dir_name=temp_dir_name,
                 docking_pose_sdf_file_name=docking_pose_sdf_file_name,
-                **kwargs_dict,
-                debug=args.debug,
+                **kwargs_dict
             )
 
             docking_runner.run_unidock_protocol()

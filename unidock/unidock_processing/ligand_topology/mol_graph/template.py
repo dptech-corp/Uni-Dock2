@@ -19,14 +19,15 @@ class TemplateMolGraph(GenericMolGraph):
         torsion_library_dict:dict,
         reference_mol:Chem.Mol=None,
         core_atom_mapping_dict:dict=None,
+        construct_ff=False,
         working_dir_name:str='.',
     ):
-        super().__init__(mol, torsion_library_dict, working_dir_name)
+        super().__init__(mol, torsion_library_dict, construct_ff, working_dir_name)
         self.reference_mol = reference_mol
         self.core_atom_mapping_dict = core_atom_mapping_dict
         self.core_atom_idx_list = []
 
-    def _preprocess_mol(self):
+    def preprocess_mol(self):
         mol = self.mol
         reference_mol = self.reference_mol
         core_atom_mapping_dict = self.core_atom_mapping_dict
@@ -51,10 +52,10 @@ class TemplateMolGraph(GenericMolGraph):
         with Chem.SDWriter(os.path.join(self.working_dir_name, 'ligand_template_aligned.sdf')) as writer:
             writer.write(mol)
 
-        super()._preprocess_mol()
+        super().preprocess_mol()
         self.core_atom_idx_list = core_atom_idx_list
 
-    def _get_rotatable_bond_info(self) -> list[tuple[int,...]]:
+    def get_rotatable_bond_info(self) -> list[tuple[int,...]]:
         rotatable_bond_finder = BaseRotatableBond.create('generic')
         rotatable_bond_info_list = rotatable_bond_finder.identify_rotatable_bonds(self.mol)
         rotatable_bond_info_list = [bond_info for bond_info in rotatable_bond_info_list \
@@ -62,7 +63,7 @@ class TemplateMolGraph(GenericMolGraph):
                                         and bond_info[1] in self.core_atom_idx_list]
         return rotatable_bond_info_list
 
-    def _get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
+    def get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
                             rotatable_bond_info_list:list[tuple[int,...]]) -> list[int]:
         root_fragment_idx = None
         for fragment_idx, fragment in enumerate(splitted_mol_list):
