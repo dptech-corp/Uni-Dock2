@@ -72,7 +72,6 @@ static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_m
 
     flex_pose_list_manager = new StructArrayManager<FlexPose>(npose);
 
-    // 计算每个 FlexPose 需要的大小
     std::vector<int> list_coords_size(npose);
     std::vector<int> list_dihedrals_size(npose);
 
@@ -84,13 +83,11 @@ static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_m
         }
     }
 
-    // 添加指针字段
     flex_pose_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexPose, Real*>{&FlexPose::coords, sizeof(Real), list_coords_size});
     flex_pose_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexPose, Real*>{&FlexPose::dihedrals, sizeof(Real), list_dihedrals_size});
 
     flex_pose_list_manager->allocate_and_assign();
 
-    // 填充数据并记录索引
     list_i_real->push_back(0);
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
@@ -98,7 +95,6 @@ static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_m
             int idx = i * exhaustiveness + j;
             auto& flex_pose = flex_pose_list_manager->array_host[idx];
 
-            // 设置初始位姿
             flex_pose.center[0] = m.center[0];
             flex_pose.center[1] = m.center[1];
             flex_pose.center[2] = m.center[2];
@@ -107,11 +103,9 @@ static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_m
             flex_pose.rot_vec[2] = 0;
             flex_pose.energy = 999;
 
-            // 复制坐标和二面角数据
             std::memcpy(flex_pose.coords, m.coords.data(), m.coords.size() * sizeof(Real));
             std::memcpy(flex_pose.dihedrals, m.dihedrals.data(), m.dihedrals.size() * sizeof(Real));
 
-            // 记录索引信息
             list_i_real->push_back(list_i_real->back() + list_natom_flex[i] * 3);
             list_i_real->push_back(list_i_real->back() + list_ndihe[i]);
         }
@@ -128,7 +122,6 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
     int nflex = udflex_mols.size();
     flex_param_list_manager = new StructArrayManager<FlexParamVina>(nflex);
 
-    // 计算每个 FlexParamVina 需要的大小
     std::vector<int> list_pairs_intra_size(nflex);
     std::vector<int> list_pairs_inter_size(nflex);
     std::vector<int> list_r1_plus_r2_intra_size(nflex);
@@ -144,7 +137,6 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
         list_atom_types_size[i] = m.natom;
     }
 
-    // 添加指针字段
     flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{&FlexParamVina::pairs_intra, sizeof(int), list_pairs_intra_size});
     flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{&FlexParamVina::pairs_inter, sizeof(int), list_pairs_inter_size});
     flex_param_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexParamVina, Real*>{&FlexParamVina::r1_plus_r2_intra, sizeof(Real), list_r1_plus_r2_intra_size});
@@ -153,7 +145,6 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
 
     flex_param_list_manager->allocate_and_assign();
 
-    // 填充数据
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
         auto& flex_param = flex_param_list_manager->array_host[i];
@@ -161,7 +152,6 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
         flex_param.npair_intra = m.intra_pairs.size() / 2;
         flex_param.npair_inter = m.inter_pairs.size() / 2;
 
-        // 复制数据到 host 内存
         std::memcpy(flex_param.pairs_intra, m.intra_pairs.data(), m.intra_pairs.size() * sizeof(int));
         std::memcpy(flex_param.pairs_inter, m.inter_pairs.data(), m.inter_pairs.size() * sizeof(int));
         std::memcpy(flex_param.r1_plus_r2_intra, m.r1_plus_r2_intra.data(), m.r1_plus_r2_intra.size() * sizeof(Real));
@@ -182,7 +172,6 @@ static void alloc_aux_poses(StructArrayManager<FlexPose>*& aux_poses_manager,
     int total_aux_poses = STRIDE_POSE * npose;
     aux_poses_manager = new StructArrayManager<FlexPose>(total_aux_poses);
 
-    // 计算每个 aux pose 需要的大小
     std::vector<int> list_coords_size(total_aux_poses);
     std::vector<int> list_dihedrals_size(total_aux_poses);
 
@@ -196,7 +185,6 @@ static void alloc_aux_poses(StructArrayManager<FlexPose>*& aux_poses_manager,
         }
     }
 
-    // 添加指针字段
     aux_poses_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexPose, Real*>{&FlexPose::coords, sizeof(Real), list_coords_size});
     aux_poses_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexPose, Real*>{&FlexPose::dihedrals, sizeof(Real), list_dihedrals_size});
 
@@ -297,32 +285,29 @@ static void alloc_fix_mol(FixMol*& fix_mol_cu, Real*& fix_mol_real_cu, const UDF
 
 
 void DockTask::cp_to_cpu(){
-    // 使用 array manager 复制数据回 CPU
     flex_pose_list_manager->copy_to_host();
     
-    // 为了保持兼容性，仍然分配旧格式的内存并复制数据
+    // allocate memory for flex_pose_list_res and flex_pose_list_real_res
     int npose = nflex * dock_param.exhaustiveness;
     checkCUDA(cudaMallocHost(&flex_pose_list_res, npose * sizeof(FlexPose)));
     checkCUDA(
         cudaMallocHost(&flex_pose_list_real_res, dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) *
             sizeof(Real)));
     
-    // 复制结构体数组
     std::memcpy(flex_pose_list_res, flex_pose_list_manager->array_host, npose * sizeof(FlexPose));
     
-    // 复制连续的 Real 数据
     Real* p_real = flex_pose_list_real_res;
     for (int i = 0; i < nflex; i++){
         for (int j = 0; j < dock_param.exhaustiveness; j++){
             int idx = i * dock_param.exhaustiveness + j;
             auto& flex_pose = flex_pose_list_manager->array_host[idx];
             
-            // 复制 coords
+            // coords
             int coords_size = list_i_real[idx * 2 + 1] - list_i_real[idx * 2];
             std::memcpy(p_real, flex_pose.coords, coords_size * sizeof(Real));
             p_real += coords_size;
             
-            // 复制 dihedrals
+            // dihedrals
             int dihedrals_size = list_i_real[idx * 2 + 2] - list_i_real[idx * 2 + 1];
             std::memcpy(p_real, flex_pose.dihedrals, dihedrals_size * sizeof(Real));
             p_real += dihedrals_size;
@@ -336,8 +321,8 @@ void DockTask::alloc_gpu(){
     checkCUDA(cudaDeviceSynchronize());
     //======================= constants =======================
     init_constants(dock_param);
-    //======================= global memory =======================
 
+    //======================= global memory =======================
     // get necessary sizes
     int npose = nflex * dock_param.exhaustiveness;
 
@@ -349,7 +334,6 @@ void DockTask::alloc_gpu(){
 
     std::vector<int> list_n_atom_flex(nflex);
     std::vector<int> list_n_dihe(nflex);
-
     std::vector<int> list_n_range(nflex);
     int list_ndim_trimat[nflex];
     std::vector<int> list_n_rotated_atoms(nflex);
@@ -435,7 +419,7 @@ void DockTask::alloc_gpu(){
     checkCUDA(cudaMalloc(&aux_rmsd_ij_cu, nflex * npair * 2 * sizeof(int)));
     checkCUDA(cudaMalloc(&clustered_pose_inds_cu, nflex * dock_param.exhaustiveness * sizeof(int)));
 
-    //so large ...
+    // todo: so large ...
     std::vector<int> aux_rmsd_ij(nflex * npair * 2, 0); // excluding diagonal line
     for (int i = 0; i < nflex; i++){
         int tmp = 2 * (i * npair);
@@ -463,7 +447,7 @@ void DockTask::alloc_gpu(){
 }
 
 
-void DockTask::free_gpu(){
+void DockTask::free_memory_all(){
     //----- Free all GPU memory -----
 
     spdlog::info("Memory free on GPU...");

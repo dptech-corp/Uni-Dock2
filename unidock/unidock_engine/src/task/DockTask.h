@@ -61,7 +61,7 @@ private:
     // Finally, use center[3] to record intra, inter, penalty
     // then use orientation[4] to record Predicted Free Energy of Binding, Total score, inter(contains penalty) score, conf_independent part
 
-    Real* flex_pose_list_real_res;
+    Real* flex_pose_list_real_res; // todo: replace this structure by StructArrayManager
     std::vector<std::vector<int>> clustered_pose_inds_list; // global ind
     std::vector<std::vector<int>> filtered_pose_inds_list; // global ind
 
@@ -116,8 +116,7 @@ private:
 
     void alloc_gpu();
     void cp_to_cpu();
-    void free_gpu();
-    void free_gpu_mc();
+    void free_memory_all();
 };
 
 

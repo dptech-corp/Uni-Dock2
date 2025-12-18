@@ -25,18 +25,21 @@ void DockTask::run(){
         prepare_vina();
     } catch (const std::exception& e) {
         spdlog::critical("Failed to prepare Vina: {}", e.what());
+        throw;
     }
 
     try {
         alloc_gpu();
     } catch (const std::exception& e) {
         spdlog::critical("Failed to allocate GPU: {}", e.what());
+        throw;
     }
 
     try {
         run_search();
     } catch (const std::exception& e) {
         spdlog::critical("Failed to run search: {}", e.what());
+        throw;
     }
     // todo: free some unnecessary data
 
@@ -45,8 +48,8 @@ void DockTask::run(){
         run_cluster();
     } catch (const std::exception& e) {
         spdlog::critical("Failed to run cluster: {}", e.what());
+        throw;
     }
-
     // todo: free some unnecessary data
 
 
@@ -55,14 +58,19 @@ void DockTask::run(){
             run_refine();
         } catch (const std::exception& e) {
             spdlog::critical("Failed to run refine: {}", e.what());
+            throw;
         }
     }
 
-    // Move to CPU
+    // copy results to cpu
+    cp_to_cpu();
+
+    // Run on CPU
     try{
         run_filter();
     } catch (const std::exception& e) {
-        spdlog::critical("Failed to copy results from GPU to CPU: {}", e.what());
+        spdlog::critical("Failed to filter molecules: {}", e.what());
+        throw;
     }
 
     // Run on CPU
@@ -71,6 +79,7 @@ void DockTask::run(){
         run_score();
     } catch (const std::exception& e) {
         spdlog::critical("Failed to run score: {}", e.what());
+        throw;
     }
 
     // Run on CPU
@@ -80,13 +89,14 @@ void DockTask::run(){
         spdlog::info("Dumping is done.");
     } catch (const std::exception& e) {
         spdlog::critical("Failed to dump poses: {}", e.what());
+        throw;
     }
 
-    // Run on CPU
     try {
-        free_gpu();
+        free_memory_all();
     } catch (const std::exception& e) {
         spdlog::critical("Failed to free GPU: {}", e.what());
+        throw;
     }
 }
 
@@ -150,13 +160,11 @@ void DockTask::run_refine(){
 void DockTask::run_filter(){
     spdlog::info("Filtering by num_pose & energy_range...");
 
-    // copy results to cpu
-    cp_to_cpu();
-
     // Object: all clutered poses
     for (int i = 0; i < nflex; i ++){ // for each flex
         auto& clustered_inds = clustered_pose_inds_list[i];
 
+        assert(clustered_inds.size() > 0); // todo: change this function!!!
         // prepare indices
         std::vector<int> sorted_indices(clustered_inds.size()); // find the best num_modes poses for each flex
         std::iota(sorted_indices.begin(), sorted_indices.end(), 0); // 填充0,1,2,...
@@ -207,7 +215,6 @@ void DockTask::run_score(){
 
         int pose_num = 0;
         for (auto& j: filtered_pose_inds_list[i]){
-
             score(flex_pose_list_res + j, flex_pose_list_real_res + list_i_real[j * 2], udfix_mol, mol, dock_param.box);
             flex_pose_list_res[j].rot_vec[1] = flex_pose_list_res[j].center[0] + flex_pose_list_res[j].center[1] +
                 flex_pose_list_res[j].center[2]; // Total
