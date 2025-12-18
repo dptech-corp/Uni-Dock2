@@ -10,6 +10,9 @@
 #include <cstring>
 #include <stdexcept>
 #include <cuda_runtime.h>
+
+#include <spdlog/fmt/fmt.h>
+
 #include "myutils/errors.h" 
 
 
@@ -60,8 +63,9 @@ public:
     template<typename PtrType>
     void add_ptr_field(StructsMemberPtrField<T, PtrType> f) {
         if (f.list_n_member.size() != array_size) {
-            UD2_FATALF("list_n_member size (%d) must equal array_size (%d)",
-                       f.list_n_member.size(), array_size);
+            throw std::runtime_error(
+                fmt::format("list_n_member size ({}) must equal array_size ({})",
+                           f.list_n_member.size(), array_size));
         }
         // new PtrField
         ptr_fields.push_back(new PtrField<PtrType>(f, array_size));
