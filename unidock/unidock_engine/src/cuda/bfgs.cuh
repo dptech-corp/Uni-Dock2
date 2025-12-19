@@ -117,6 +117,7 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 
         // projection on axis as the gradient on dihedral
         out_g->dihedrals_g[i_tor] = dot_product(tmp5, tmp3) / cal_norm(tmp3);
+
     }
     tile.sync();
 
@@ -264,8 +265,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
 
             if (rr < EPSILON){ // fixme: robust?
                 rr = EPSILON;
-                // CUDA_ERROR("[INTER] Two atoms overlap! i1: %d, i2: %d, r_vec:%f, %f, %f, f: %.10f\n",
-                //            i1, i2, r_vec[0], r_vec[1], r_vec[2], f_div_r);
             }
             f_div_r /= rr; //now it is f / |r|
 
@@ -289,7 +288,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     // -- Compute intra-molecular energy
     for (int i = tile.thread_rank(); i < flex_param.npair_intra; i += tile.num_threads()){
         int i1 = flex_param.pairs_intra[i * 2], i2 = flex_param.pairs_intra[i * 2 + 1];
-
         // Cartesian distances won't be saved
         Real r_vec[3] = {
             pose->coords[i2 * 3] - pose->coords[i1 * 3],
@@ -304,8 +302,6 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
                                     flex_param.atom_types[i2], &f_div_r);
             if (rr < EPSILON){// robust
                 rr = EPSILON;
-                // CUDA_ERROR("[INTRA] Two atoms overlap! i1: %d, i2: %d, r_vec:%f, %f, %f, f: %.10f\n",
-                //            i1, i2, r_vec[0], r_vec[1], r_vec[2], f_div_r);
             }
             f_div_r /= rr; // till now, it is the real f/|r|
             assert(i1 < flex_topo.natom && i2 < flex_topo.natom);
@@ -515,7 +511,6 @@ __device__ __forceinline__ void apply_grad_update_pose_tile(const cg::thread_blo
             tmp2[1] = g->orientation_g[1] * alpha;
             tmp2[2] = g->orientation_g[2] * alpha;
             rotvec_to_quaternion(q, tmp2);
-
             out_x->rot_vec[0] = tmp2[0]; // record rotvec fixme
             out_x->rot_vec[1] = tmp2[1];
             out_x->rot_vec[2] = tmp2[2];
@@ -611,7 +606,6 @@ __forceinline__ __device__ void bfgs_update_hessian_tile(const cg::thread_block_
                                                          FlexPoseGradient* aux_minus_hy, const Real alpha){
     Real yp = 0, yhy = 0;
     yp = g_dot_product_tile(tile, y, p, dim);
-
     if (alpha * yp < EPSILON_cu){
         return;
     }
@@ -727,7 +721,6 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
                 // yp = aux_y * -Hg
                 Real yp = g_dot_product_tile(tile, aux_y, aux_p, dim_g);
                 set_tri_mat_diagonal_tile(tile, aux_h->matrix, dim_g, alpha * yp / yy); // heuristic value
-
             }
 
         }

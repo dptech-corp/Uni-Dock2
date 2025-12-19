@@ -4,3 +4,10 @@ examples
 doc/html
 bin/myapp
 
+
+build/
+.cursor
+.vscode/
+.idea/
+.pytest_cache/
+.pytest_cache/

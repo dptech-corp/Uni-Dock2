@@ -9,6 +9,7 @@ set(sources
         cuda/optimize.cu
         cuda/task.cu
         cuda/vina.cu
+        cuda/struct_array_manager_wrapper.cu
 
         cluster/cluster.h
 
@@ -41,6 +42,7 @@ set(sources
         score/vina.h
 
         task/DockTask.cpp       task/DockTask.h
+        cuda/struct_array_manager.cuh
 )
 
 # compile lib for the bin to link to

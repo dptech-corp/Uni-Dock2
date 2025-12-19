@@ -58,7 +58,6 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
             tmp4[2] = R * sin(beta);
             tmp4[3] = R * cos(beta);
             quaternion_to_rotvec(aux_g->orientation_g, tmp4);
-            // printf("[RAND] %f, %f, %f\n", aux_g->orientation_g[0], aux_g->orientation_g[1], aux_g->orientation_g[2]);
         }
     }
     tile.sync();
@@ -222,7 +221,7 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         }
         tile.sync();
         a = tile.shfl(a, 0); // increment of dihedral value
-        
+
         apply_grad_update_dihe_tile(tile, out_pose, flex_topo, which, a);
     }
     else{

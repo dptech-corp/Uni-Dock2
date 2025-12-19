@@ -9,6 +9,7 @@
 #include "model/model.h"
 #include <string>
 #include "score/vina.h"
+#include "cuda/struct_array_manager.cuh"
 
 
 /**
@@ -60,7 +61,7 @@ private:
     // Finally, use center[3] to record intra, inter, penalty
     // then use orientation[4] to record Predicted Free Energy of Binding, Total score, inter(contains penalty) score, conf_independent part
 
-    Real* flex_pose_list_real_res;
+    Real* flex_pose_list_real_res; // todo: replace this structure by StructArrayManager
     std::vector<std::vector<int>> clustered_pose_inds_list; // global ind
     std::vector<std::vector<int>> filtered_pose_inds_list; // global ind
 
@@ -69,18 +70,17 @@ private:
     Real* fix_mol_real_cu;
 
     FlexPose* flex_pose_list_cu; // size: nflex * exhaustiveness
-    Real* flex_pose_list_real_cu;
+    StructArrayManager<FlexPose>* flex_pose_list_manager = nullptr;
 
     FlexTopo* flex_topo_list_cu; // size: nflex
-    int* flex_topo_list_int_cu;
-    Real* flex_topo_list_real_cu;
+    StructArrayManager<FlexTopo>* flex_topo_list_manager = nullptr;
 
     FlexPoseGradient* flex_grad_list_cu;
     FlexPoseHessian* flex_hessian_list_cu;
 
     FlexParamVina* flex_param_list_cu;
-    int* flex_param_list_int_cu;
-    Real* flex_param_list_real_cu;
+    StructArrayManager<FlexParamVina>* flex_param_list_manager = nullptr;
+    
     FixParamVina* fix_param_cu;
     int* fix_param_int_cu;
 
@@ -90,13 +90,16 @@ private:
 
     // GPU - auxiliary
     FlexPose* aux_poses_cu;
-    Real* aux_poses_real_cu;
+    StructArrayManager<FlexPose>* aux_poses_manager = nullptr;
+    
     FlexPoseGradient* aux_grads_cu;
-    Real* aux_grads_real_cu;
+    StructArrayManager<FlexPoseGradient>* aux_grads_manager = nullptr;
+    
     FlexPoseHessian* aux_hessians_cu;
-    Real* aux_hessians_real_cu;
+    StructArrayManager<FlexPoseHessian>* aux_hessians_manager = nullptr;
+    
     FlexForce* aux_forces_cu;
-    Real* aux_forces_real_cu;
+    StructArrayManager<FlexForce>* aux_forces_manager = nullptr;
 
     int* aux_rmsd_ij_cu; // saves pose indices of tri mat (no diagonal), {(i, j) | 0<= i,j < exhaustiveness; i < j}
     int* aux_list_cluster_cu; // saves all pose state: 1 for left, 0 for abandoned (after merging)
@@ -113,8 +116,7 @@ private:
 
     void alloc_gpu();
     void cp_to_cpu();
-    void free_gpu();
-    void free_gpu_mc();
+    void free_memory_all();
 };
 
 
