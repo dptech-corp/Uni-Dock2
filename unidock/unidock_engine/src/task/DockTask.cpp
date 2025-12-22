@@ -141,14 +141,16 @@ void DockTask::prepare_vina(){
         for (int j = 0; j < flex_mol.intra_pairs.size(); j += 2){
             int i1 = flex_mol.intra_pairs[j];
             int i2 = flex_mol.intra_pairs[j + 1];
-            flex_mol.r1_plus_r2_intra.push_back(VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[flex_mol.vina_types[i2]]);
+            flex_mol.r1_plus_r2_intra.push_back(
+                VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[flex_mol.vina_types[i2]]);
         }
 
         // compute r1 + r2 for all inter pairs
         for (int j = 0; j < flex_mol.inter_pairs.size(); j += 2){
             int i1 = flex_mol.inter_pairs[j];
             int i2 = flex_mol.inter_pairs[j + 1];
-            flex_mol.r1_plus_r2_inter.push_back(VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[udfix_mol.vina_types[i2]]);
+            flex_mol.r1_plus_r2_inter.push_back(
+                VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[udfix_mol.vina_types[i2]]);
         }
     }
 }
@@ -245,6 +247,7 @@ void DockTask::run_score(){
         int j_r1 = filtered_pose_inds_list[i][0];
         score(flex_pose_list_res + j_r1, flex_pose_list_real_res + list_i_real[j_r1 * 2], udfix_mol, mol, dock_param.box);
         Real e_intra_rank1 = flex_pose_list_res[j_r1].center[0];
+        Real e_bias_rank1 = flex_pose_list_res[j_r1].rot_vec[3];
 
         int pose_num = 0;
         for (auto& j: filtered_pose_inds_list[i]){
@@ -254,8 +257,8 @@ void DockTask::run_score(){
 
             Real e_inter = flex_pose_list_res[j].rot_vec[1] - e_intra_rank1; // Real adopted inter
             // Free Energy of Binding
-            flex_pose_list_res[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors);  // Affinity
-            flex_pose_list_res[j].rot_vec[3] = flex_pose_list_res[j].rot_vec[0] - e_inter;  // Conf-Independent
+            flex_pose_list_res[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors); // Affinity
+            flex_pose_list_res[j].rot_vec[2] = flex_pose_list_res[j].rot_vec[0] - e_inter; // Conf-Independent
 
             pose_num ++;
             if(show_score){

@@ -193,8 +193,10 @@ int main(int argc, char* argv[])
     }
 
     // todo: remove these
-    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", true);;
-    if (not use_tor_lib){
+    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", false);;
+    if (use_tor_lib){
+        spdlog::warn("Torsion Library is used.");
+    }else{
         spdlog::warn("Torsion Library is NOT used.");
     }
 
@@ -269,6 +271,20 @@ int main(int argc, char* argv[])
     if (dock_param.constraint_docking){
         dock_param.randomize = false;
     }
+
+    std::string bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
+    if (bias == "no"){
+        dock_param.bias_type = BT_NO;
+    }else if (bias == "pos"){
+        dock_param.bias_type = BT_POS;
+    }else if (bias == "align"){
+        dock_param.bias_type = BT_ALIGN;
+    }else{
+        spdlog::critical("Not supported bias: {} doesn't belong to (no, pos, align)" , bias);
+        exit(1);
+    }
+
+    dock_param.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", dock_param.bias_k);
 
 
     // -------------------------------  Perform Task -------------------------------

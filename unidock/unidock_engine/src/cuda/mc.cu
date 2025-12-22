@@ -33,6 +33,26 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
             aux_g->orientation_g[1] = 0;
             aux_g->orientation_g[2] = 0;
         }
+        else if(BIAS_TYPE == BT_ALIGN){
+            aux_g->center_g[0] = 0;
+            aux_g->center_g[1] = 0;
+            aux_g->center_g[2] = 0;
+
+            // random orientation, set gradient.
+            // Alexa, M. (2022). Super-Fibonacci Spirals: Fast, Low-Discrepancy Sampling of SO(3). Proceedings of the
+            // IEEE Computer Society Conference on Computer Vision and Pattern Recognition, 2022-June(3), 8281–8290.
+            // https://doi.org/10.1109/CVPR52688.2022.00811
+            Real s = idx + 0.5;
+            Real r = sqrt(s / n);
+            Real R = sqrt(1.0 - s / n);
+            Real alpha = 2.0 * PI * s / PHI;
+            Real beta = 2.0 * PI * s / PSI;
+            tmp4[0] = r * sin(alpha);
+            tmp4[1] = r * cos(alpha);
+            tmp4[2] = R * sin(beta);
+            tmp4[3] = R * cos(beta);
+            quaternion_to_rotvec(aux_g->orientation_g, tmp4);
+        }
         else{
             // random center, set gradient
             Real a = gyration_radius(out_pose, &flex_topo);
