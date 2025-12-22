@@ -42,6 +42,14 @@ void prepare_param_by_topo(const FlexTopo* flex_topo, const FixMol* fix_mol, con
             ipair++;
         }
     }
+
+    // Initialize bias fields (added for new bias feature)
+    flex_param->inds_bias = new int[flex_topo->natom * 2];
+    flex_param->params_bias = nullptr;  // No bias data in unit tests
+    // Set all bias indices to 0 (no bias for any atom)
+    for (int i = 0; i < flex_topo->natom * 2; i++){
+        flex_param->inds_bias[i] = 0;
+    }
 }
 
 void prepare_flex_1(FixMol* fix_mol, FixParamVina* fix_param, FlexParamVina* flex_param,
