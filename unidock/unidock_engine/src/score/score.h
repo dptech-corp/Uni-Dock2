@@ -36,7 +36,7 @@ Vina SF;
 
 
 void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mol, const UDFlexMol& udflex_mol,
-           const Box& box){
+           const DockParam& dock_param){
     Real rr = 0;
     Real f = 0;
     Real e_intra = 0., e_inter = 0., e_penalty = 0.;
@@ -95,7 +95,7 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
         if (udflex_mol.vina_types[i] == VN_TYPE_H){
             continue;
         }
-        e_penalty += cal_box_penalty(flex_coords + i * 3, box, tmp3);;
+        e_penalty += cal_box_penalty(flex_coords + i * 3, dock_param.box, tmp3);;
     }
     out_pose->center[2] = e_penalty;
 }
