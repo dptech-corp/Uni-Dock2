@@ -466,9 +466,6 @@ void DockTask::free_memory_all(){
         // flex_topo_list_cu is managed by flex_topo_list_manager
     }
 
-    checkCUDA(cudaFree(fix_mol_cu));
-    checkCUDA(cudaFree(fix_mol_real_cu));
-
     if (flex_param_list_manager){
         flex_param_list_manager->free_all();
         delete flex_param_list_manager;
@@ -518,4 +515,9 @@ void DockTask::free_memory_all(){
     checkCUDA(cudaFreeHost(flex_pose_list_res));
     checkCUDA(cudaFreeHost(flex_pose_list_real_res));
     spdlog::info("Memory free on CPU is done.");
+}
+
+void DockTask::free_fix_mol_gpu(){
+    checkCUDA(cudaFree(fix_mol_cu));
+    checkCUDA(cudaFree(fix_mol_real_cu));
 }
