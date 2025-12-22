@@ -60,7 +60,7 @@ void cal_e_grad_one_gpu(const FixMol& fix_mol, const FixParamVina& fix_param,
     FlexPose* x_cu = alloccp_FlexPose_gpu(x, flex_topo.natom, flex_topo.ntorsion);
     FlexTopo* flex_topo_cu = alloccp_FlexTopo_gpu(flex_topo);
     FlexPoseGradient* out_g_cu = alloccp_FlexPoseGradient_gpu(*out_g, flex_topo.ntorsion);
-    FlexForce* aux_f_cu = alloc_FlexForce_gpu(fix_mol.natom);
+    FlexForce* aux_f_cu = alloc_FlexForce_gpu(flex_topo.natom);
     Real* out_e_cu;
     checkCUDA(cudaMalloc(&out_e_cu, sizeof(Real)));
 
@@ -98,12 +98,12 @@ void line_search_one_gpu(const FixMol& fix_mol, const FixParamVina& fix_param,
     FixMol* fix_mol_cu = alloccp_FixMol_gpu(fix_mol);
     FixParamVina* fix_param_cu = alloccp_FixParamVina_gpu(fix_param, fix_mol.natom);
     FlexParamVina* flex_param_cu = alloccp_FlexParamVina_gpu(flex_param, flex_topo.natom);
-    FlexPose* x_cu = alloccp_FlexPose_gpu(x, fix_mol.natom, flex_topo.ntorsion);
+    FlexPose* x_cu = alloccp_FlexPose_gpu(x, flex_topo.natom, flex_topo.ntorsion);
     FlexTopo* flex_topo_cu = alloccp_FlexTopo_gpu(flex_topo);
     FlexPoseGradient* aux_g_cu = alloccp_FlexPoseGradient_gpu(*out_g_new, flex_topo.ntorsion);
     FlexPoseGradient* aux_p_cu = alloccp_FlexPoseGradient_gpu(*out_g_new, flex_topo.ntorsion);
     FlexPoseHessian* aux_h_cu = alloc_FlexPoseHessian_gpu(flex_topo.ntorsion);
-    FlexForce* aux_f_cu = alloc_FlexForce_gpu(fix_mol.natom );
+    FlexForce* aux_f_cu = alloc_FlexForce_gpu(flex_topo.natom);
     FlexPose* out_x_new_cu = alloccp_FlexPose_gpu(*out_x_new, flex_topo.natom, flex_topo.ntorsion);
 
     FlexPoseGradient* out_g_new_cu = alloccp_FlexPoseGradient_gpu(*out_g_new, flex_topo.ntorsion);

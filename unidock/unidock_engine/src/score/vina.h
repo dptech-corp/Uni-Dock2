@@ -248,6 +248,54 @@ public:
     }
 
 
+    SCOPE_INLINE Real eval_ef_pos(Real* r_, Real V_set, Real r2, Real* out_f){
+        // r_ is bias_position - flex_atom_position
+        // V_set *= bias_scale;
+
+        Real rr = r_[0] * r_[0] + r_[1] * r_[1] + r_[2] * r_[2];
+        Real e_bias = V_set * expf(- rr / r2);
+
+        out_f[0] += e_bias * 2 * r_[0] / r2;
+        out_f[1] += e_bias * 2 * r_[1] / r2;
+        out_f[2] += e_bias * 2 * r_[2] / r2;
+
+        return e_bias;
+    }
+
+
+    /**
+     * @brief Compute Z-align attractive potential.
+     * Wang, Z., Zhou, F., Wang, Z., Hu, Q., Li, Y. Q., Wang, S., Wei, Y., Zheng, L., Li, W., &
+     * Peng, X. (2024). Fully Flexible Molecular Alignment Enables Accurate Ligand Structure
+     * Modeling. Journal of Chemical Information and Modeling, 64(15), 6205–6215.
+     * https://doi.org/10.1021/acs.jcim.4c00669
+     *
+     * @snippet test/unit/score/test_bias.cpp eval_ef_zalign
+     * @param r_ Real[3], vector from biased atom to the bias position
+     * @param a_qt Affinity score between biased atom and the template atom at the bias position
+     * @param vn_type Atom type of the biased atom
+     * @param out_f Output derivative (-force)
+     * @return energy
+     */
+    SCOPE_INLINE Real eval_ef_zalign(Real* r_, Real a_qt, int vn_type, Real* out_f){
+
+        // 1. Attractive
+        const Real s_a = 3.;
+        const Real c_a = 1.;
+        Real k_a = (vn_type == VN_TYPE_H ? 0.1 : 30.); // Hydrogen 0.1
+
+        Real r = cal_norm(r_);
+
+        Real e_item = exp(s_a * (c_a - r));
+        Real e_bias = a_qt * k_a / (1 + e_item);
+        Real f = - e_bias * e_item / (1 + e_item) * s_a;
+
+        out_f[0] += f * r_[0] / r;
+        out_f[1] += f * r_[1] / r;
+        out_f[2] += f * r_[2] / r;
+
+        return e_bias;
+    }
 
 };
 

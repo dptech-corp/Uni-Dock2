@@ -97,6 +97,19 @@ void RapidJsonParser::parse_ligands_info(UDFlexMolList& flex_mol_list, std::vect
                     }
                 }
             }
+
+            // position bias
+            if (atom_line.Size() > 8){
+                for (const auto& a : atom_line[8].GetArray()) {
+                    auto bias_line = a.GetArray(); // each bias
+                    Bias b;
+                    b.i = ia;
+                    for (int kk = 0; kk < 5; kk++){
+                        b.param[kk] = bias_line[kk].GetFloat(); // flex atom index
+                    }
+                    flex_mol.biases.push_back(b);
+                }
+            }
         }
         
         std::set<int> root_atoms;
