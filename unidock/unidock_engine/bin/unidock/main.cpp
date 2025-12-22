@@ -13,6 +13,8 @@
 #include "screening/screening.h"
 #include "main.h"
 
+#include "constants/constants.h"
+
 
 void print_help(){
     const char* STR_HELP = R"(
@@ -197,14 +199,13 @@ int main(int argc, char* argv[])
     }
 
     // todo: write into constants.h
-    Real cutoff = 8.0;
     Box box_protein;
-    box_protein.x_lo = dock_param.box.x_lo - cutoff;
-    box_protein.x_hi = dock_param.box.x_hi + cutoff;
-    box_protein.y_lo = dock_param.box.y_lo - cutoff;
-    box_protein.y_hi = dock_param.box.y_hi + cutoff;
-    box_protein.z_lo = dock_param.box.z_lo - cutoff;
-    box_protein.z_hi = dock_param.box.z_hi + cutoff;
+    box_protein.x_lo = dock_param.box.x_lo - VINA_CUTOFF;
+    box_protein.x_hi = dock_param.box.x_hi + VINA_CUTOFF;
+    box_protein.y_lo = dock_param.box.y_lo - VINA_CUTOFF;
+    box_protein.y_hi = dock_param.box.y_hi + VINA_CUTOFF;
+    box_protein.z_lo = dock_param.box.z_lo - VINA_CUTOFF;
+    box_protein.z_hi = dock_param.box.z_hi + VINA_CUTOFF;
 
     read_ud_from_json(fp_json, box_protein, fix_mol, flex_mol_list, fns_flex, use_tor_lib);
     spdlog::info("Receptor has {:d} atoms in box", fix_mol.natom);

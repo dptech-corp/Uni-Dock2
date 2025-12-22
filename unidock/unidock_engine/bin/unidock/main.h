@@ -20,8 +20,8 @@ Advanced:
   rmsd_limit: !!float 1.0   # minimum RMSD between output poses
   num_pose: !!int 10        # number of the finally generated poses to output
   energy_range: !!float 10  # maximum energy difference between output poses and the best pose
-  tor_lib: !!bool false     # true to use torsion library (Not recommended)
-
+  bias: !!str pos           # default is `no`, `pos` for positio bias (Gaussian), `align` to align two molecules
+  bias_k: !!float 0.1       # scaling coefficient, default is 0.1
 
 Hardware:
   ncpu: !!int 10            # [Not loaded] the number of CPUs to use (the default is to use all detected CPUs)
