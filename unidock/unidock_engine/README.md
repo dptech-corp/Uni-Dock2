@@ -7,8 +7,6 @@ This document serves for Developers, not Users.
 ## Requirements
 * CUDA 11.8+
 
->**NOTICE**
->Third-party `Catch2 v2` and `yaml-cpp 0.8.0` are included. And pre-compiled static libraries can be found inside the folder `lib/`. 
 
 ## Compilation
 There will be a binary `ud2` under `build/bin` and the library it relies on: `build/src/libud_lib.so`.
