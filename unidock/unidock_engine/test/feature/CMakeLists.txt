@@ -13,7 +13,7 @@ foreach(CASE ${TEST_CASES})
     set(TEMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/${CASE_DIR}/${CASE})
     add_test(
             NAME feature_${CASE}
-            COMMAND ${TEMP_DIR}/run_test.sh
+            COMMAND bash ${TEMP_DIR}/run_test.sh
             $<TARGET_FILE:${BIN_NAME}>  # binary path
             ${TEMP_DIR} # case directory path
             WORKING_DIRECTORY "${TEMP_DIR}"  # perform ud2 inside the case

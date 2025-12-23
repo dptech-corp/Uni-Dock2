@@ -98,6 +98,7 @@ endif ()
 
 if (BUILD_TEST) # Compile libs on the fly
     add_subdirectory("include")
+    enable_testing()
     add_subdirectory("test")
 endif ()
 
