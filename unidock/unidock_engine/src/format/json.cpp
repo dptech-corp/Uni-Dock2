@@ -80,9 +80,9 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
 constexpr float MAX_SAFE_ENERGY = 1e6f;
 
 auto safe_val = [](float v) -> float {
-    if (std::isnan(v) || std::isinf(v)) return MAX_SAFE_ENERGY; // 异常值
-    if (v > MAX_SAFE_ENERGY) return MAX_SAFE_ENERGY;                   // 极大值截断
-    if (v < -MAX_SAFE_ENERGY) return -MAX_SAFE_ENERGY;                // 极小值截断（可选）
+    if (std::isnan(v) || std::isinf(v)) return MAX_SAFE_ENERGY;
+    if (v > MAX_SAFE_ENERGY) return MAX_SAFE_ENERGY;        
+    if (v < -MAX_SAFE_ENERGY) return -MAX_SAFE_ENERGY;
     return v;
 };
 
