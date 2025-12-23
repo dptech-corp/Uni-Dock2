@@ -16,7 +16,7 @@ set(INPUT_BLOCK_SIZE 128)
 add_compile_definitions(TILE_SIZE=${INPUT_TILE_SIZE})
 add_compile_definitions(BLOCK_SIZE=${INPUT_BLOCK_SIZE})
 file(STRINGS "${CMAKE_SOURCE_DIR}/../VERSION" VERSION_NUMBER)
-set(VERSION_NUMBER "251218")
+set(VERSION_NUMBER "251223")
 set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math --maxrregcount 64") #  --generate-line-info
 
 # For Building Stage

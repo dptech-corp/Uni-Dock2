@@ -77,6 +77,16 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
     spdlog::debug("Json is Done.");
 }
 
+constexpr float MAX_SAFE_ENERGY = 1e6f;
+
+auto safe_val = [](float v) -> float {
+    if (std::isnan(v) || std::isinf(v)) return MAX_SAFE_ENERGY; // 异常值
+    if (v > MAX_SAFE_ENERGY) return MAX_SAFE_ENERGY;                   // 极大值截断
+    if (v < -MAX_SAFE_ENERGY) return -MAX_SAFE_ENERGY;                // 极小值截断（可选）
+    return v;
+};
+
+
 void write_poses_to_json(std::string fp_json, const std::vector<std::string>& flex_names,
                          const std::vector<std::vector<int>>& filtered_pose_inds_list,
                          const FlexPose* flex_pose_list_res,
@@ -96,14 +106,13 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
             pose_obj.SetObject();
 
             rj::Value energy(rj::kArrayType);
-            energy.PushBack(flex_pose_list_res[j].rot_vec[0], doc.GetAllocator()); // affinity
-            energy.PushBack(flex_pose_list_res[j].rot_vec[1], doc.GetAllocator()); // total = intra + inter
-            energy.PushBack(flex_pose_list_res[j].center[0], doc.GetAllocator()); // intra
-            energy.PushBack(flex_pose_list_res[j].center[1], doc.GetAllocator()); // inter
-            energy.PushBack(flex_pose_list_res[j].center[2], doc.GetAllocator()); // penalty
-            energy.PushBack(flex_pose_list_res[j].rot_vec[2], doc.GetAllocator()); // conf independent contribution
-            // FIXME: Check the unidock_processing part for adding one item
-            energy.PushBack(flex_pose_list_res[j].rot_vec[3], doc.GetAllocator()); // bias
+            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[0]), doc.GetAllocator()); // affinity
+            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[1]), doc.GetAllocator()); // total = intra + inter
+            energy.PushBack(safe_val(flex_pose_list_res[j].center[0]), doc.GetAllocator()); // intra
+            energy.PushBack(safe_val(flex_pose_list_res[j].center[1]), doc.GetAllocator()); // inter
+            energy.PushBack(safe_val(flex_pose_list_res[j].center[2]), doc.GetAllocator()); // penalty
+            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[2]), doc.GetAllocator()); // conf independent contribution
+            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[3]), doc.GetAllocator()); // bias
 
             // energy.PushBack(flex_pose_list_res[j].rot_vec[3], doc.GetAllocator()); // bias reward
             pose_obj.AddMember("energy", energy.Move(), doc.GetAllocator());
