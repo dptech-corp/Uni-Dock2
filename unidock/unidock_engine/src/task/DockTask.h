@@ -35,11 +35,24 @@ public:
     std::string fp_json;
 
     // Construction
+
+    DockTask(const UDFixMol& fix_mol, DockParam dock_param) :
+        udfix_mol(fix_mol), dock_param(dock_param){
+    };
+
     DockTask(const UDFixMol& fix_mol, const UDFlexMolList& flex_mol_list, DockParam dock_param,
-             std::vector<std::string> fns_flex, std::string fp_json):
+             std::vector<std::string> fns_flex, std::string fp_json) :
         udfix_mol(fix_mol), udflex_mols(flex_mol_list), dock_param(dock_param), fns_flex(fns_flex), fp_json(fp_json){
         nflex = flex_mol_list.size();
     };
+
+    void set_flex(const UDFlexMolList& flex_mol_list, DockParam dock_param,
+                  std::vector<std::string> fns_flex,
+                  std::string fp_json);
+
+    void initialize(const UDFixMol& fix_mol, const UDFlexMolList& flex_mol_list, DockParam dock_param,
+                    std::vector<std::string> fns_flex, std::string fp_json);
+
 
     /**
      * @brief Run a whole process: global search, cluster by RMSD, refinement by optimization and final output.
@@ -51,6 +64,7 @@ public:
 
     // Output
     void dump_poses_to_json(std::string fp_json);
+    void free_fix_mol_gpu();
 
 private:
     // CPU

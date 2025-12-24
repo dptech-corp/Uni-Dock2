@@ -3,8 +3,11 @@
 //
 
 #include <spdlog/spdlog.h>
-#include <algorithm>  // 为std::sort
-#include <numeric>  // 为std::iota
+#include <algorithm>
+#include <numeric>
+#include <fstream>
+#include <thread>
+#include <chrono>
 
 #include "DockTask.h"
 #include "search/mc.h"
@@ -13,6 +16,36 @@
 #include "optimize/optimize.h"
 #include "score/vina.h"
 #include "score/score.h"
+
+
+void DockTask::initialize(const UDFixMol& fix_mol, const UDFlexMolList& flex_mol_list,
+                          DockParam dock_param,
+                          std::vector<std::string> fns_flex,
+                          std::string fp_json){
+    udfix_mol = fix_mol;
+
+    udflex_mols = flex_mol_list;
+    this->fns_flex = std::move(fns_flex);
+    this->fp_json = std::move(fp_json);
+    nflex = flex_mol_list.size();
+}
+
+void DockTask::set_flex(const UDFlexMolList& flex_mol_list,
+                        DockParam dock_param,
+                        std::vector<std::string> fns_flex,
+                        std::string fp_json){
+    this->dock_param = dock_param;
+    udflex_mols = flex_mol_list;
+    this->fns_flex = std::move(fns_flex);
+    this->fp_json = std::move(fp_json);
+    nflex = flex_mol_list.size();
+
+    // TODO: 清理与 flex 相关的临时/结果列表，防止旧状态影响新一次运行
+    list_i_real.clear();
+    clustered_pose_inds_list.clear();
+    filtered_pose_inds_list.clear();
+    npose_clustered = 0;
+}
 
 void DockTask::run(){
     spdlog::debug("All file names of this Task: ");
@@ -108,14 +141,16 @@ void DockTask::prepare_vina(){
         for (int j = 0; j < flex_mol.intra_pairs.size(); j += 2){
             int i1 = flex_mol.intra_pairs[j];
             int i2 = flex_mol.intra_pairs[j + 1];
-            flex_mol.r1_plus_r2_intra.push_back(VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[flex_mol.vina_types[i2]]);
+            flex_mol.r1_plus_r2_intra.push_back(
+                VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[flex_mol.vina_types[i2]]);
         }
 
         // compute r1 + r2 for all inter pairs
         for (int j = 0; j < flex_mol.inter_pairs.size(); j += 2){
             int i1 = flex_mol.inter_pairs[j];
             int i2 = flex_mol.inter_pairs[j + 1];
-            flex_mol.r1_plus_r2_inter.push_back(VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[udfix_mol.vina_types[i2]]);
+            flex_mol.r1_plus_r2_inter.push_back(
+                VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[udfix_mol.vina_types[i2]]);
         }
     }
 }
@@ -195,14 +230,14 @@ void DockTask::run_score(){
     spdlog::info("Scoring...");
     // only score once
     Vina v;
-    std::string show_format = "{:<10}{:<20}";
+    std::string show_format = "{:<10}{:<20}{:<20}{:<20}";
 
     for (int i = 0; i < nflex; i ++){
         auto mol = udflex_mols[i];
         int n_tors = mol.torsions.size();
         if(show_score){
             spdlog::info("-------------------------------------------");
-            spdlog::info(show_format, "Rank", "Affinity (kcal/mol)");
+            spdlog::info(show_format, "Rank", "Affinity (kcal/mol)", "Bias (kcal/mol)", "RBias (kcal/mol)");
             spdlog::info("-------------------------------------------");
         }
 
@@ -210,26 +245,28 @@ void DockTask::run_score(){
         // use center[3] to record intra, inter, penalty
         // then use orientation[4] to record Predicted Free Energy of Binding, Total score, inter(contains penalty) score, conf_independent part
         int j_r1 = filtered_pose_inds_list[i][0];
-        score(flex_pose_list_res + j_r1, flex_pose_list_real_res + list_i_real[j_r1 * 2], udfix_mol, mol, dock_param.box);
+        score(flex_pose_list_res + j_r1, flex_pose_list_real_res + list_i_real[j_r1 * 2], udfix_mol, mol, dock_param);
         Real e_intra_rank1 = flex_pose_list_res[j_r1].center[0];
+        Real e_bias_rank1 = flex_pose_list_res[j_r1].rot_vec[3];
 
         int pose_num = 0;
-        for (auto& j: filtered_pose_inds_list[i]){
-            score(flex_pose_list_res + j, flex_pose_list_real_res + list_i_real[j * 2], udfix_mol, mol, dock_param.box);
+        for (auto& j : filtered_pose_inds_list[i]){
+            score(flex_pose_list_res + j, flex_pose_list_real_res + list_i_real[j * 2], udfix_mol, mol, dock_param);
             flex_pose_list_res[j].rot_vec[1] = flex_pose_list_res[j].center[0] + flex_pose_list_res[j].center[1] +
                 flex_pose_list_res[j].center[2]; // Total
 
             Real e_inter = flex_pose_list_res[j].rot_vec[1] - e_intra_rank1; // Real adopted inter
             // Free Energy of Binding
-            flex_pose_list_res[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors);  // Affinity
-            flex_pose_list_res[j].rot_vec[3] = flex_pose_list_res[j].rot_vec[0] - e_inter;  // Conf-Independent
+            flex_pose_list_res[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors); // Affinity
+            flex_pose_list_res[j].rot_vec[2] = flex_pose_list_res[j].rot_vec[0] - e_inter; // Conf-Independent
 
-            pose_num ++;
-            if(show_score){
-                spdlog::info(show_format, pose_num, flex_pose_list_res[j].rot_vec[0]);
+            pose_num++;
+            if (show_score){
+                spdlog::info(show_format, pose_num, flex_pose_list_res[j].rot_vec[0], flex_pose_list_res[j].rot_vec[3],
+                             flex_pose_list_res[j].rot_vec[3] - e_bias_rank1);
             }
         }
-        if(show_score){
+        if (show_score){
             spdlog::info("-------------------------------------------");
         }
     }
@@ -238,13 +275,52 @@ void DockTask::run_score(){
 }
 
 
-
 void DockTask::dump_poses(){
     // prepare flex names
+    const int max_retries = 5;
+    int retry_count = 0;
+    int wait_seconds = 5;  // 5 seconds at the beginning, x2 each time
+    bool success = false;
 
-    write_poses_to_json(fp_json, fns_flex, filtered_pose_inds_list,
-        flex_pose_list_res, flex_pose_list_real_res, list_i_real);
+    while (retry_count < max_retries && !success) {
+        try {
+            write_poses_to_json(fp_json, fns_flex, filtered_pose_inds_list,
+                                flex_pose_list_res, flex_pose_list_real_res, list_i_real);
 
-    // output poses all info to json
+            // check whether the json file is complete
+            std::ifstream file(fp_json, std::ios::binary | std::ios::ate);
+            if (!file.is_open()) {
+                throw std::runtime_error("can't open the json file for checking the completeness");
+            }
+
+            std::streampos file_size = file.tellg();
+            if (file_size == 0) {
+                throw std::runtime_error("json file is empty");
+            }
+
+            file.seekg(-1, std::ios::end);
+            char last_char;
+            file.get(last_char);
+            file.close();
+
+            if (last_char == '}') {
+                success = true;
+            } else {
+                throw std::runtime_error("JSON file is incomplete.");
+            }
+
+        } catch (const std::exception& e) {
+            retry_count++;
+            if (retry_count < max_retries) {
+                spdlog::warn("The {}th attempt failed: {}，will retry in {} seconds...",
+                           retry_count, e.what(), wait_seconds);
+                std::this_thread::sleep_for(std::chrono::seconds(wait_seconds));
+                wait_seconds *= 2;
+            } else {
+                spdlog::critical("The {}th attempt failed: {}，can't dump poses to json: {}",
+                               max_retries, e.what());
+                throw;
+            }
+        }
+    }
 }
-

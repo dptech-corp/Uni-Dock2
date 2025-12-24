@@ -17,6 +17,7 @@ set(sources unit_test.cpp
 
         search/test_mc.cpp
         myutils/test_matrix.cpp
+        score/test_bias.cpp
 )
 
 add_executable(${TESTS_NAME} ${sources})

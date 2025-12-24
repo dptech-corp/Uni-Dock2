@@ -142,6 +142,12 @@ struct Box{
     }
 };
 
+enum BiasType{
+    BT_NO,
+    BT_POS,
+    BT_ALIGN
+};
+
 struct DockParam{
     int seed = 12345;
     bool constraint_docking = false;
@@ -157,6 +163,8 @@ struct DockParam{
     ScoreFunc search_score = vina;
     ScoreFunc opt_score = vina;
     Box box;
+    BiasType bias_type;
+    Real bias_k = 0.1;
     DockParam() = default;
 
     void show() const{
@@ -164,12 +172,14 @@ struct DockParam{
                      "box: x_lo={} Angstrom, x_hi={} Angstrom, y_lo={} Angstrom, y_hi={} Angstrom, z_lo={} Angstrom, z_hi={} Angstrom, \n"
                      "constraint_docking={}, exhaustiveness={}, \n"
                      "mc_steps={}, opt_steps={}, refine_steps={}, \n"
-                     "num_pose={}, rmsd_limit={} Angstrom, \n",
+                     "num_pose={}, rmsd_limit={} Angstrom, \n"
+                     "bias_type={}, bias_k={}\n",
                      seed, static_cast<int>(search_score), static_cast<int>(opt_score),
                      box.x_lo, box.x_hi, box.y_lo, box.y_hi, box.z_lo, box.z_hi,
                      constraint_docking, exhaustiveness,
                      mc_steps, opt_steps, refine_steps,
-                     num_pose, rmsd_limit);
+                     num_pose, rmsd_limit,
+                     int(bias_type), bias_k);
     }
 };
 
@@ -187,6 +197,11 @@ struct UDTorsion{
     std::vector<Real> param_gaff2; // each 4 elements are one group 
 };
 
+
+struct Bias{
+    int i;
+    float param[5]; // [x, y, z, V_set, r]
+};
 
 /**
  * @brief Redundant Data Model for flexible molecule, including the ligand and those flexible chains connected to it.
@@ -208,6 +223,7 @@ struct UDFlexMol{
     std::vector<int> inter_pairs; // each in ligand x each in protein (they both count their own atoms from zero)
     std::vector<Real> r1_plus_r2_intra; // vdW radii summations of each pair, intra part
     std::vector<Real> r1_plus_r2_inter; // vdW radii summations of each pair, inter part
+    std::vector<Bias> biases;
 };
 
 typedef std::vector<UDFlexMol> UDFlexMolList;

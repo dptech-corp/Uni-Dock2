@@ -127,6 +127,8 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
     std::vector<int> list_r1_plus_r2_intra_size(nflex);
     std::vector<int> list_r1_plus_r2_inter_size(nflex);
     std::vector<int> list_atom_types_size(nflex);
+    std::vector<int> list_inds_bias_size(nflex);
+    std::vector<int> list_params_bias_size(nflex);
 
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
@@ -135,13 +137,25 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
         list_r1_plus_r2_intra_size[i] = m.r1_plus_r2_intra.size();
         list_r1_plus_r2_inter_size[i] = m.r1_plus_r2_inter.size();
         list_atom_types_size[i] = m.natom;
+
+        list_inds_bias_size[i]   = m.natom * 2;
+        list_params_bias_size[i] = m.biases.size() * 5;
     }
 
-    flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{&FlexParamVina::pairs_intra, sizeof(int), list_pairs_intra_size});
-    flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{&FlexParamVina::pairs_inter, sizeof(int), list_pairs_inter_size});
-    flex_param_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexParamVina, Real*>{&FlexParamVina::r1_plus_r2_intra, sizeof(Real), list_r1_plus_r2_intra_size});
-    flex_param_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexParamVina, Real*>{&FlexParamVina::r1_plus_r2_inter, sizeof(Real), list_r1_plus_r2_inter_size});
-    flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{&FlexParamVina::atom_types, sizeof(int), list_atom_types_size});
+    flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{
+        &FlexParamVina::pairs_intra, sizeof(int), list_pairs_intra_size});
+    flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{
+        &FlexParamVina::pairs_inter, sizeof(int), list_pairs_inter_size});
+    flex_param_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexParamVina, Real*>{
+        &FlexParamVina::r1_plus_r2_intra, sizeof(Real), list_r1_plus_r2_intra_size});
+    flex_param_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexParamVina, Real*>{
+        &FlexParamVina::r1_plus_r2_inter, sizeof(Real), list_r1_plus_r2_inter_size});
+    flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{
+        &FlexParamVina::atom_types, sizeof(int), list_atom_types_size});
+    flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{
+        &FlexParamVina::inds_bias, sizeof(int), list_inds_bias_size});
+    flex_param_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexParamVina, Real*>{
+        &FlexParamVina::params_bias, sizeof(Real), list_params_bias_size});
 
     flex_param_list_manager->allocate_and_assign();
 
@@ -157,6 +171,22 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
         std::memcpy(flex_param.r1_plus_r2_intra, m.r1_plus_r2_intra.data(), m.r1_plus_r2_intra.size() * sizeof(Real));
         std::memcpy(flex_param.r1_plus_r2_inter, m.r1_plus_r2_inter.data(), m.r1_plus_r2_inter.size() * sizeof(Real));
         std::memcpy(flex_param.atom_types, m.vina_types.data(), m.natom * sizeof(int));
+
+        std::vector<int> inds_bias(m.natom * 2, 0);
+        std::vector<Real> params_bias;
+
+        int last_i = -1;
+        for (auto& b : m.biases){
+            if (b.i != last_i){
+                inds_bias[b.i * 2] = params_bias.size();
+            }
+            params_bias.insert(params_bias.end(), b.param, b.param + 5);
+            inds_bias[b.i * 2 + 1] = params_bias.size();
+            last_i = b.i;
+        }
+
+        std::memcpy(flex_param.inds_bias, inds_bias.data(), inds_bias.size() * sizeof(int));
+        std::memcpy(flex_param.params_bias, params_bias.data(), params_bias.size() * sizeof(Real));
     }
 
     flex_param_list_manager->copy_to_gpu();
@@ -466,9 +496,6 @@ void DockTask::free_memory_all(){
         // flex_topo_list_cu is managed by flex_topo_list_manager
     }
 
-    checkCUDA(cudaFree(fix_mol_cu));
-    checkCUDA(cudaFree(fix_mol_real_cu));
-
     if (flex_param_list_manager){
         flex_param_list_manager->free_all();
         delete flex_param_list_manager;
@@ -518,4 +545,9 @@ void DockTask::free_memory_all(){
     checkCUDA(cudaFreeHost(flex_pose_list_res));
     checkCUDA(cudaFreeHost(flex_pose_list_real_res));
     spdlog::info("Memory free on CPU is done.");
+}
+
+void DockTask::free_fix_mol_gpu(){
+    checkCUDA(cudaFree(fix_mol_cu));
+    checkCUDA(cudaFree(fix_mol_real_cu));
 }

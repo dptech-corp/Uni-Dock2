@@ -1,14 +1,4 @@
-//
-// Created by Congcong Liu on 25-6-10.
-//
-
-#ifndef MAIN_H
-#define MAIN_H
-
-const char* STR_CONFIG_TEMPLATE = R"(
 # For each item with type tag (!!), the value is REQUIRED
-
-
 Advanced:
   seed: !!int 1234567       # explicit random seed
   exhaustiveness: !!int 512 # MC candidates count (roughly proportional to time).
@@ -16,12 +6,13 @@ Advanced:
   randomize: !!bool true    # whether to randomize input pose before performing the global search
   mc_steps: !!int 40        # Monte Carlo random walk steps
   opt_steps: !!int -1       # optimization steps after each MC walk step; -1 to use heuristic strategy
-  refine_steps: !!int 5     # refinement steps after clustering
+  refine_steps: !!int 0     # refinement steps after clustering
   rmsd_limit: !!float 1.0   # minimum RMSD between output poses
   num_pose: !!int 10        # number of the finally generated poses to output
   energy_range: !!float 10  # maximum energy difference between output poses and the best pose
-  bias: !!str pos           # default is `no`, `pos` for positio bias (Gaussian), `align` to align two molecules
-  bias_k: !!float 0.1       # scaling coefficient, default is 0.1
+  tor_lib: !!bool false     # true to use torsion library (Not recommended)
+  bias: !!str pos
+  bias_k: 1.0
 
 Hardware:
   ncpu: !!int 10            # [Not loaded] the number of CPUs to use (the default is to use all detected CPUs)
@@ -40,22 +31,17 @@ Settings:
                             # use recommended settings of exhaustiveness and search steps
 
   constraint_docking: !!bool false # if True, cancel the translation & orientation DOFs
-  center_x: !!float -22.3   # X coordinate of the center (Angstrom)
-  center_y: !!float 1
-  center_z: !!float 27.3
+  center_x: !!float 2   # X coordinate of the center (Angstrom)
+  center_y: !!float 60
+  center_z: !!float 10
   size_x: !!float 30        # size in the X dimension (Angstrom)
   size_y: !!float 30.0
   size_z: !!float 30
 
 
 Outputs:
-  dir: !!str ./res2         # output directory, default is `./res`
-
+  dir: !!str ./         # output directory, default is `./res`
 
 Inputs:
-  json: !!str ./5S8I.json   # Input json file containing receptor & ligands info.
+  json: !!str ./input.json   # Input json file containing receptor & ligands info.
 
-)";
-
-
-#endif //MAIN_H

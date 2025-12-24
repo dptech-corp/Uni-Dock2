@@ -36,6 +36,12 @@ __device__ __forceinline__ void duplicate_grad_tile(const cg::thread_block_tile<
 __device__ __forceinline__ void duplicate_pose_tile(const cg::thread_block_tile<TILE_SIZE>& tile,
                                                     FlexPose* out_pose_new, const FlexPose* pose_old, int dim,
                                                     int natom){
+
+    // copy cartesian coordinates
+    for (int i = tile.thread_rank(); i < natom * 3; i += tile.num_threads()){
+        out_pose_new->coords[i] = pose_old->coords[i];
+    }
+
     for (int i = tile.thread_rank(); i < dim; i += tile.num_threads()){
         if (i < 3){
             out_pose_new->center[i] = pose_old->center[i];
@@ -47,13 +53,6 @@ __device__ __forceinline__ void duplicate_pose_tile(const cg::thread_block_tile<
             out_pose_new->dihedrals[i - dof_x] = pose_old->dihedrals[i - dof_x];
         }
     }
-    tile.sync();
-
-    // copy cartesian coordinates
-    for (int i = tile.thread_rank(); i < natom * 3; i += tile.num_threads()){
-        out_pose_new->coords[i] = pose_old->coords[i];
-    }
-    tile.sync();
 
     // set energy
     if (tile.thread_rank() == 0){
@@ -117,7 +116,6 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 
         // projection on axis as the gradient on dihedral
         out_g->dihedrals_g[i_tor] = dot_product(tmp5, tmp3) / cal_norm(tmp3);
-
     }
     tile.sync();
 
@@ -315,8 +313,40 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
     }
     tile.sync();
 
-    // 2. Compute energy and forces by dihedral
-    //bla bla...
+    // 1.4. Compute position-bias
+    if (BIAS_TYPE != BT_NO){
+        for (int i = tile.thread_rank(); i < flex_topo.natom; i += tile.num_threads()){
+            int i1 = flex_param.inds_bias[i * 2]; // get bias for each atom
+            int i2 = flex_param.inds_bias[i * 2 + 1];
+
+            if (i1 < i2){
+                Real f_bias[3] = {0.};
+
+                coord_adj[0] = pose->coords[i * 3];
+                coord_adj[1] = pose->coords[i * 3 + 1];
+                coord_adj[2] = pose->coords[i * 3 + 2];
+
+                for (int j = i1; j < i2; j += 5){
+                    Real r_[3] = {
+                        flex_param.params_bias[j] -  coord_adj[0],
+                        flex_param.params_bias[j + 1] -  coord_adj[1],
+                        flex_param.params_bias[j + 2] -  coord_adj[2]
+                    };
+
+                    if (BIAS_TYPE == BT_POS){
+                        energy += Score.eval_ef_pos(r_, flex_param.params_bias[j + 3] * BIAS_K, flex_param.params_bias[j + 4], f_bias);
+                    } else if (BIAS_TYPE == BT_ALIGN){
+                        energy += Score.eval_ef_zalign(r_, flex_param.params_bias[j + 3] * BIAS_K, flex_param.atom_types[i], f_bias);
+                    }
+                }
+
+                aux_f[i * 3] += f_bias[0];
+                aux_f[i * 3 + 1] += f_bias[1];
+                aux_f[i * 3 + 2] += f_bias[2];
+            }
+        }
+        tile.sync();
+    }
 
     // Sum the total energy of all threads in this warp
     energy = cg::reduce(tile, energy, cg::plus<Real>());
@@ -511,6 +541,7 @@ __device__ __forceinline__ void apply_grad_update_pose_tile(const cg::thread_blo
             tmp2[1] = g->orientation_g[1] * alpha;
             tmp2[2] = g->orientation_g[2] * alpha;
             rotvec_to_quaternion(q, tmp2);
+
             out_x->rot_vec[0] = tmp2[0]; // record rotvec fixme
             out_x->rot_vec[1] = tmp2[1];
             out_x->rot_vec[2] = tmp2[2];
@@ -606,6 +637,7 @@ __forceinline__ __device__ void bfgs_update_hessian_tile(const cg::thread_block_
                                                          FlexPoseGradient* aux_minus_hy, const Real alpha){
     Real yp = 0, yhy = 0;
     yp = g_dot_product_tile(tile, y, p, dim);
+
     if (alpha * yp < EPSILON_cu){
         return;
     }
@@ -721,6 +753,7 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
                 // yp = aux_y * -Hg
                 Real yp = g_dot_product_tile(tile, aux_y, aux_p, dim_g);
                 set_tri_mat_diagonal_tile(tile, aux_h->matrix, dim_g, alpha * yp / yy); // heuristic value
+
             }
 
         }

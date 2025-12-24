@@ -10,6 +10,6 @@ add_definitions(-DTEST_DATA_DIR="${TEST_DATA_DIR}")
 include_directories(.)
 
 add_subdirectory(unit)
-#add_subdirectory(component)
+add_subdirectory(feature)
 
 message("   [Section Done] TEST !")

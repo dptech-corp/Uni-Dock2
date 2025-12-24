@@ -77,6 +77,16 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
     spdlog::debug("Json is Done.");
 }
 
+constexpr float MAX_SAFE_ENERGY = 1e6f;
+
+auto safe_val = [](float v) -> float {
+    if (std::isnan(v) || std::isinf(v)) return MAX_SAFE_ENERGY;
+    if (v > MAX_SAFE_ENERGY) return MAX_SAFE_ENERGY;        
+    if (v < -MAX_SAFE_ENERGY) return -MAX_SAFE_ENERGY;
+    return v;
+};
+
+
 void write_poses_to_json(std::string fp_json, const std::vector<std::string>& flex_names,
                          const std::vector<std::vector<int>>& filtered_pose_inds_list,
                          const FlexPose* flex_pose_list_res,
@@ -96,12 +106,15 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
             pose_obj.SetObject();
 
             rj::Value energy(rj::kArrayType);
-            energy.PushBack(flex_pose_list_res[j].rot_vec[0], doc.GetAllocator()); // affinity
-            energy.PushBack(flex_pose_list_res[j].rot_vec[1], doc.GetAllocator()); // total = intra + inter
-            energy.PushBack(flex_pose_list_res[j].center[0], doc.GetAllocator()); // intra
-            energy.PushBack(flex_pose_list_res[j].center[1], doc.GetAllocator()); // inter
-            energy.PushBack(flex_pose_list_res[j].center[2], doc.GetAllocator()); // penalty
-            energy.PushBack(flex_pose_list_res[j].rot_vec[3], doc.GetAllocator()); // conf independent contribution
+            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[0]), doc.GetAllocator()); // affinity
+            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[1]), doc.GetAllocator()); // total = intra + inter
+            energy.PushBack(safe_val(flex_pose_list_res[j].center[0]), doc.GetAllocator()); // intra
+            energy.PushBack(safe_val(flex_pose_list_res[j].center[1]), doc.GetAllocator()); // inter
+            energy.PushBack(safe_val(flex_pose_list_res[j].center[2]), doc.GetAllocator()); // penalty
+            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[2]), doc.GetAllocator()); // conf independent contribution
+            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[3]), doc.GetAllocator()); // bias
+
+            // energy.PushBack(flex_pose_list_res[j].rot_vec[3], doc.GetAllocator()); // bias reward
             pose_obj.AddMember("energy", energy.Move(), doc.GetAllocator());
 
             rj::Value coords(rj::kArrayType);
@@ -126,10 +139,34 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
     // write to file
     char writeBuffer[65536];
     FILE* f = fopen(fp_json.c_str(), "w");
+    if (!f) {
+        throw std::runtime_error("Failed to open file for writing: " + fp_json +
+                                " Error: " + std::string(strerror(errno)));
+    }
+
     rj::FileWriteStream os(f, writeBuffer, sizeof(writeBuffer));
     rj::Writer<rj::FileWriteStream> writer(os);
     writer.SetMaxDecimalPlaces(3);
     doc.Accept(writer);
 
-    fclose(f);
+    os.Flush(); // FileWriteStream
+
+    if (fflush(f) != 0) {
+        int saved_errno = errno;
+        fclose(f);
+        throw std::runtime_error("fflush failed for: " + fp_json +
+                                " Error: " + std::string(strerror(saved_errno)));
+    }
+
+    if (fsync(fileno(f)) != 0) {
+        int saved_errno = errno;
+        fclose(f);
+        throw std::runtime_error("fsync failed for: " + fp_json +
+                                " Error: " + std::string(strerror(saved_errno)));
+    }
+
+    if (fclose(f) != 0) {
+        throw std::runtime_error("fclose failed for: " + fp_json +
+                                " Error: " + std::string(strerror(errno)));
+    }
 }

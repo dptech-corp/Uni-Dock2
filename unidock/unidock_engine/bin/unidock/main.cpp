@@ -13,6 +13,8 @@
 #include "screening/screening.h"
 #include "main.h"
 
+#include "constants/constants.h"
+
 
 void print_help(){
     const char* STR_HELP = R"(
@@ -191,20 +193,21 @@ int main(int argc, char* argv[])
     }
 
     // todo: remove these
-    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", true);;
-    if (not use_tor_lib){
+    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", false);;
+    if (use_tor_lib){
+        spdlog::warn("Torsion Library is used.");
+    }else{
         spdlog::warn("Torsion Library is NOT used.");
     }
 
     // todo: write into constants.h
-    Real cutoff = 8.0;
     Box box_protein;
-    box_protein.x_lo = dock_param.box.x_lo - cutoff;
-    box_protein.x_hi = dock_param.box.x_hi + cutoff;
-    box_protein.y_lo = dock_param.box.y_lo - cutoff;
-    box_protein.y_hi = dock_param.box.y_hi + cutoff;
-    box_protein.z_lo = dock_param.box.z_lo - cutoff;
-    box_protein.z_hi = dock_param.box.z_hi + cutoff;
+    box_protein.x_lo = dock_param.box.x_lo - VINA_CUTOFF;
+    box_protein.x_hi = dock_param.box.x_hi + VINA_CUTOFF;
+    box_protein.y_lo = dock_param.box.y_lo - VINA_CUTOFF;
+    box_protein.y_hi = dock_param.box.y_hi + VINA_CUTOFF;
+    box_protein.z_lo = dock_param.box.z_lo - VINA_CUTOFF;
+    box_protein.z_hi = dock_param.box.z_hi + VINA_CUTOFF;
 
     read_ud_from_json(fp_json, box_protein, fix_mol, flex_mol_list, fns_flex, use_tor_lib);
     spdlog::info("Receptor has {:d} atoms in box", fix_mol.natom);
@@ -268,6 +271,20 @@ int main(int argc, char* argv[])
     if (dock_param.constraint_docking){
         dock_param.randomize = false;
     }
+
+    std::string bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
+    if (bias == "no"){
+        dock_param.bias_type = BT_NO;
+    }else if (bias == "pos"){
+        dock_param.bias_type = BT_POS;
+    }else if (bias == "align"){
+        dock_param.bias_type = BT_ALIGN;
+    }else{
+        spdlog::critical("Not supported bias: {} doesn't belong to (no, pos, align)" , bias);
+        exit(1);
+    }
+
+    dock_param.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", dock_param.bias_k);
 
 
     // -------------------------------  Perform Task -------------------------------
