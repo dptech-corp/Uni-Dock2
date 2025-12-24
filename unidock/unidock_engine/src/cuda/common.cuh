@@ -114,7 +114,10 @@ SCOPE_INLINE Real gyration_radius(const FlexPose* flex_pose, const FlexTopo* fle
             ++natom;
         }
     }
-    return natom > 0 ? sqrtf(d_sq_sum / natom) : 0;
+    Real result = natom > 0 ? sqrtf(d_sq_sum / natom) : 0;
+
+    // Guard against very small or zero gyration radius todo: is this ok?
+    return result > 0 ? result : 1.0;
 }
 
 

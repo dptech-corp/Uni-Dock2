@@ -80,6 +80,8 @@ endif ()
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
     add_definitions(-DDEBUG)
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G -g")
+else()
+    add_definitions(-DNDEBUG)
 endif ()
 
 # ------------------------------ Start building
