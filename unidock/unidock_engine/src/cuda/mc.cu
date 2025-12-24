@@ -201,6 +201,7 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
             //1 for rotation of the whole molecule
             a = gyration_radius(out_pose, flex_topo); // an indicator of the size
             assert(a > EPSILON);
+
             // add a random rotation to temporary quaternion
             // the movement step of an atom is roughly amplitude Angstrom
             tmp1[0] = amplitude / a * rand4[0];
