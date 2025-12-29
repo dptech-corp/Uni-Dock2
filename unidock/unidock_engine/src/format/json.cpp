@@ -119,13 +119,13 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
 
             rj::Value coords(rj::kArrayType);
             for (int k = list_i_real[j * 2]; k < list_i_real[j * 2 + 1]; k++){
-                coords.PushBack(flex_pose_list_real_res[k], doc.GetAllocator());
+                coords.PushBack(safe_val(flex_pose_list_real_res[k]), doc.GetAllocator());
             }
             pose_obj.AddMember("coords", coords.Move(), doc.GetAllocator());
 
             rj::Value dihedrals(rj::kArrayType);
             for (int k = list_i_real[j * 2 + 1]; k < list_i_real[j * 2 + 2]; k++){
-                dihedrals.PushBack(rad_to_ang(flex_pose_list_real_res[k]), doc.GetAllocator());
+                dihedrals.PushBack(safe_val(rad_to_ang(flex_pose_list_real_res[k])), doc.GetAllocator());
             }
             pose_obj.AddMember("dihedrals", dihedrals.Move(), doc.GetAllocator());
 
