@@ -238,7 +238,10 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
         // change lig dihedral
         if (tile.thread_rank() == 0){ // todo: check the continuity of gradient
             float4 rf4 = curand_uniform4(state);
-            a = get_real_within(rf4.x, -PI, PI) - out_pose->dihedrals[which];
+            // a = get_real_within(rf4.x, -PI, PI) - out_pose->dihedrals[which];
+            float twof[2] = {rf4.x, rf4.y};
+            a = get_radian_in_ranges(flex_topo->range_list + flex_topo->range_inds[2 * which],
+                                     flex_topo->range_inds[2 * which + 1], twof) - out_pose->dihedrals[which];
         }
         tile.sync();
         a = tile.shfl(a, 0); // increment of dihedral value
