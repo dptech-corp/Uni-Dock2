@@ -121,7 +121,6 @@ SCOPE_INLINE Real gyration_radius(const FlexPose* flex_pose, const FlexTopo* fle
 }
 
 
-
 #endif //COMMON_CUH
 
 

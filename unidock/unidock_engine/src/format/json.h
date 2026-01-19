@@ -17,6 +17,6 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
                          const std::vector<std::vector<int>>& filtered_pose_inds_list,
                          const FlexPose* flex_pose_list_res,
                          const Real* flex_pose_list_real_res,
-                         const std::vector<int>& list_i_real);
+                         const std::vector<size_t>& list_i_real);
 
 #endif //JSON_H

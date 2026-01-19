@@ -398,9 +398,9 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
            int mc_steps, int opt_steps, int nflex, int exhuastiveness, int seed, bool randomize){
     //------- perform MC on GPU -------//
 
-    int npose = nflex * exhuastiveness;
-    int nblock = (npose * TILE_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int nthreads = npose * TILE_SIZE;
+    size_t npose = (size_t)nflex * exhuastiveness;
+    size_t nblock = (npose * TILE_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    size_t nthreads = npose * TILE_SIZE;
 
     // initilize curand states
     spdlog::info("CURAND Initialization ...");
@@ -408,6 +408,7 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
     checkCUDA(cudaMalloc(&states, sizeof(curandStatePhilox4_32_10_t) * nthreads));
     init_rand_states<<<nblock, BLOCK_SIZE>>>(states, seed, nthreads);
     spdlog::info("CURAND Initialization is done.");
+
 
     // run the kernel
     if (randomize){
