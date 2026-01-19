@@ -12,7 +12,7 @@ The easiest way to install UniDock2 is via conda:
 
 ```sh
 #You can modify the cuda-version to fit your environment.
-conda install unidock2 cuda-version=12.0 msys_viparr_lpsolve55=1.7.359=py310h1eb418a_4 -c http://quetz.dp.tech:8088/get/baymax -c conda-forge
+conda install unidock2 cuda-version=12.0 -c http://quetz.dp.tech:8088/get/baymax -c conda-forge
 ```
 
 ## Manual Build
