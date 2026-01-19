@@ -24,7 +24,7 @@
 template<typename StructType, typename PtrType>
 struct StructsMemberPtrField {
     PtrType StructType::* member_ptr;
-    int type_size; //size_t
+    size_t type_size; //size_t
     std::vector<int> list_n_member;    // member lengths of all objects
 };
 
@@ -202,16 +202,16 @@ private:
         StructsMemberPtrField<T, PtrType> field;
         PtrType device_data = nullptr;
         PtrType host_data = nullptr;
-        int sum_n_member = 0;
+        size_t sum_n_member = 0;
         // per-object starting offsets into the flattened buffer
-        std::vector<int> offsets;
+        std::vector<size_t> offsets;
         PtrField(StructsMemberPtrField<T, PtrType> f, int nobj) : field(f) {}
 
         void allocate() override {
             // allocate memory on GPU and host for the pointer field.
             sum_n_member = 0;
             offsets.resize(field.list_n_member.size());
-            int off = 0;
+            size_t off = 0;
             for (int i = 0; i < field.list_n_member.size(); ++i){
                 offsets[i] = off;
                 off += field.list_n_member[i];

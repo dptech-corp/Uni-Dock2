@@ -52,15 +52,15 @@ int predict_gpu_fix(UDFixMol& udfix_mol){
 
 size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool print_detail=false){
     // Only consider > 1 MB
-    int nflex = udflex_mols.size();
-    int npose = exhaustiveness * nflex;
+    size_t nflex = udflex_mols.size();
+    size_t npose = exhaustiveness * nflex;
 
-    int n_range_all_flex = 0, n_rotated_atoms_all_flex = 0;
-    int n_dim_all_flex = 0, n_dim_tri_mat_all_flex = 0;
-    int size_inter_all_flex = 0, size_intra_all_flex = 0;
-    int n_atom_all_flex = 0;
-    int n_dihe_all_flex = 0;
-    int n_bias_all_flex = 0;
+    size_t n_range_all_flex = 0, n_rotated_atoms_all_flex = 0;
+    size_t n_dim_all_flex = 0, n_dim_tri_mat_all_flex = 0;
+    size_t size_inter_all_flex = 0, size_intra_all_flex = 0;
+    size_t n_atom_all_flex = 0;
+    size_t n_dihe_all_flex = 0;
+    size_t n_bias_all_flex = 0;
 
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
@@ -100,12 +100,12 @@ size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool pri
             ((size_intra_all_flex + size_inter_all_flex) / 2 + n_bias_all_flex * 5) * sizeof(Real);
 
     // aux_pose_cu
-    size_t s4 = STRIDE_POSE * npose * sizeof(FlexPose) +
-        STRIDE_POSE * exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real);
+    size_t s4 = npose * STRIDE_POSE * sizeof(FlexPose) +
+        exhaustiveness * STRIDE_POSE * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real);
 
     // aux_grads_cu
-    size_t s5 = STRIDE_G * npose * sizeof(FlexPoseGradient) +
-        STRIDE_G * exhaustiveness * n_dihe_all_flex * sizeof(Real);
+    size_t s5 = npose * STRIDE_G * sizeof(FlexPoseGradient) +
+        exhaustiveness * STRIDE_G * n_dihe_all_flex * sizeof(Real);
 
     // aux_hessians_cu
     size_t s6 = npose * sizeof(FlexPoseHessian) +

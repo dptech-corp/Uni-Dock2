@@ -398,9 +398,9 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
            int mc_steps, int opt_steps, int nflex, int exhuastiveness, int seed, bool randomize){
     //------- perform MC on GPU -------//
 
-    int npose = nflex * exhuastiveness;
-    int nblock = (npose * TILE_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    int nthreads = npose * TILE_SIZE;
+    size_t npose = (size_t)nflex * exhuastiveness;
+    size_t nblock = (npose * TILE_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    size_t nthreads = npose * TILE_SIZE;
 
     // initilize curand states
     spdlog::info("CURAND Initialization ...");
