@@ -50,7 +50,7 @@ int predict_gpu_fix(UDFixMol& udfix_mol){
     return (s1 + s2) / 1048576;
 }
 
-int predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness){
+size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool print_detail=false){
     // Only consider > 1 MB
     int nflex = udflex_mols.size();
     int npose = exhaustiveness * nflex;
@@ -60,6 +60,7 @@ int predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness){
     int size_inter_all_flex = 0, size_intra_all_flex = 0;
     int n_atom_all_flex = 0;
     int n_dihe_all_flex = 0;
+    int n_bias_all_flex = 0;
 
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
@@ -77,38 +78,56 @@ int predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness){
             n_rotated_atoms_all_flex += t.rotated_atoms.size();
             n_range_all_flex += t.range_list.size() / 2;
         }
+
+        n_bias_all_flex += m.biases.size();
     }
 
+    // mc curand
+    size_t s0 = npose * TILE_SIZE * sizeof(curandStatePhilox4_32_10_t);
 
-    //
-    int s1 = npose * sizeof(FlexPose) + exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real);
-    int s2 = nflex * sizeof(FlexTopo) + (n_atom_all_flex + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 +
+
+    // flex_pose_list_cu
+    size_t s1 = npose * sizeof(FlexPose) + exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real);
+
+    // flex_topo_list_cu
+    size_t s2 = nflex * sizeof(FlexTopo) + (n_atom_all_flex + n_dihe_all_flex * 2 + n_dihe_all_flex * 2 +
         n_dihe_all_flex * 2 + n_rotated_atoms_all_flex) * sizeof(int) +
             n_range_all_flex * 2 * sizeof(Real);
+
     // flex_param_list_cu
-    int s3 = nflex * sizeof(FlexParamVina) +
-        (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex) * sizeof(int) +
-            (size_intra_all_flex + size_inter_all_flex) / 2 * sizeof(Real);
+    size_t s3 = nflex * sizeof(FlexParamVina) +
+        (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex + n_atom_all_flex*2) * sizeof(int) +
+            ((size_intra_all_flex + size_inter_all_flex) / 2 + n_bias_all_flex * 5) * sizeof(Real);
+
     // aux_pose_cu
-    int s4 = STRIDE_POSE * npose * sizeof(FlexPose) +
+    size_t s4 = STRIDE_POSE * npose * sizeof(FlexPose) +
         STRIDE_POSE * exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real);
+
     // aux_grads_cu
-    int s5 = STRIDE_G * npose * sizeof(FlexPoseGradient) +
+    size_t s5 = STRIDE_G * npose * sizeof(FlexPoseGradient) +
         STRIDE_G * exhaustiveness * n_dihe_all_flex * sizeof(Real);
 
     // aux_hessians_cu
-    int s6 = npose * sizeof(FlexPoseHessian) +
+    size_t s6 = npose * sizeof(FlexPoseHessian) +
         exhaustiveness * n_dim_tri_mat_all_flex * sizeof(Real);
+
     // aux_forces_cu
-    int s7 = npose * sizeof(FlexForce) +
+    size_t s7 = npose * sizeof(FlexForce) +
         exhaustiveness * n_atom_all_flex * 3 * sizeof(Real);
+
     // Clustering
     int npair = exhaustiveness * (exhaustiveness - 1) / 2; // tri-mat with diagonal
-    int s8 = npose * sizeof(Real) +
+    size_t s8 = npose * sizeof(Real) +
         nflex * exhaustiveness * sizeof(int) +
             nflex * npair * 2 * sizeof(int) +
                 nflex * exhaustiveness * sizeof(int);
-    int total = (s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8) / 1048576;
+
+    size_t total = (s0 + s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8) / 1048576;
+
+
+    if (print_detail){
+        spdlog::debug(  "s0-8:%zu, %zu, %zu, %zu, %zu, %zu, %zu, %zu, %zu\n", s0, s1, s2, s3, s4, s5, s6, s7, s8);
+    }
     return total;
 }
 
@@ -171,6 +190,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
                     batch_size++;
                 }else{
                     batch_flex_mol_list.pop_back();
+                    predict_gpu_flex(batch_flex_mol_list, dock_param.exhaustiveness, true);
                     break;
                 }
             }

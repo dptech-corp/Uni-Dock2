@@ -7,7 +7,7 @@
 
 #include <limits>
 #include <cuda_runtime.h>
-
+#include <stdio.h>
 
 // ------------------------------- CPU or CUDA -------------------------------
 const Real EPSILON_c = std::numeric_limits<Real>::epsilon();
@@ -56,10 +56,20 @@ constexpr Real RAD2DEG = 180 / PI;
 #else
 #define DPrint1(fmt, ...)
 
-
-
 #endif
 
+
+inline void print_gpu_mem(const char* tag){
+    size_t free_b = 0, total_b = 0;
+    cudaMemGetInfo(&free_b, &total_b);
+
+    double free_mb  = free_b  / 1024.0 / 1024.0;
+    double total_mb = total_b / 1024.0 / 1024.0;
+    double used_mb  = total_mb - free_mb;
+
+    printf("[GPU MEM] %-25s | used = %8.2f MB | free = %8.2f MB | total = %8.2f MB\n",
+           tag, used_mb, free_mb, total_mb);
+}
 
 
 

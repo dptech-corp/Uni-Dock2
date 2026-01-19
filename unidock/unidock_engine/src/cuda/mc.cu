@@ -409,6 +409,7 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
     init_rand_states<<<nblock, BLOCK_SIZE>>>(states, seed, nthreads);
     spdlog::info("CURAND Initialization is done.");
 
+
     // run the kernel
     if (randomize){
         spdlog::info("Randomization ...");

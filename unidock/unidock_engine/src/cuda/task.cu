@@ -40,19 +40,19 @@ static void alloc_flex_topo_list(StructArrayManager<FlexTopo>*& flex_topo_list_m
         auto& flex_topo = flex_topo_list_manager->array_host[i];
         flex_topo.natom = list_n_atom_flex[i];
         flex_topo.ntorsion = list_n_dihe[i];
-        std::memcpy(flex_topo.vn_types, m.vina_types.data(), m.natom * sizeof(int));
+        std::memcpy(flex_topo.vn_types, m.vina_types.data(), sizeof(int) * m.natom);
         int ind_range = 0, ind_rotated = 0;
         for (int j = 0; j < (int)m.torsions.size(); j++){
-            std::memcpy(flex_topo.axis_atoms + j * 2, m.torsions[j].axis, 2 * sizeof(int));
+            std::memcpy(flex_topo.axis_atoms + j * 2, m.torsions[j].axis, sizeof(int) * 2);
             flex_topo.range_inds[j * 2] = ind_range;
             int n = m.torsions[j].range_list.size();
-            std::memcpy(flex_topo.range_list + ind_range, m.torsions[j].range_list.data(), n * sizeof(Real));
+            std::memcpy(flex_topo.range_list + ind_range, m.torsions[j].range_list.data(), sizeof(Real) * n);
             ind_range += n;
             int nrange = n / 2;
             flex_topo.range_inds[j * 2 + 1] = nrange;
             flex_topo.rotated_inds[j * 2] = ind_rotated;
             std::memcpy(flex_topo.rotated_atoms + ind_rotated, m.torsions[j].rotated_atoms.data(),
-                        m.torsions[j].rotated_atoms.size() * sizeof(int));
+                        sizeof(int) * m.torsions[j].rotated_atoms.size());
             ind_rotated += (int)m.torsions[j].rotated_atoms.size() - 1;
             flex_topo.rotated_inds[j * 2 + 1] = ind_rotated;
             ind_rotated += 1;
@@ -66,7 +66,7 @@ static void alloc_flex_topo_list(StructArrayManager<FlexTopo>*& flex_topo_list_m
 
 static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_manager,
                              FlexPose*& flex_pose_list_cu,
-                             std::vector<int>* list_i_real,
+                             std::vector<size_t>* list_i_real,
                              const UDFlexMolList& udflex_mols, int npose, int nflex, int exhaustiveness,
                              const std::vector<int>& list_natom_flex, const std::vector<int>& list_ndihe){
 
@@ -103,8 +103,8 @@ static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_m
             flex_pose.rot_vec[2] = 0;
             flex_pose.energy = 999;
 
-            std::memcpy(flex_pose.coords, m.coords.data(), m.coords.size() * sizeof(Real));
-            std::memcpy(flex_pose.dihedrals, m.dihedrals.data(), m.dihedrals.size() * sizeof(Real));
+            std::memcpy(flex_pose.coords, m.coords.data(), sizeof(Real) * m.coords.size());
+            std::memcpy(flex_pose.dihedrals, m.dihedrals.data(), sizeof(Real) * m.dihedrals.size());
 
             list_i_real->push_back(list_i_real->back() + list_natom_flex[i] * 3);
             list_i_real->push_back(list_i_real->back() + list_ndihe[i]);
@@ -166,11 +166,11 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
         flex_param.npair_intra = m.intra_pairs.size() / 2;
         flex_param.npair_inter = m.inter_pairs.size() / 2;
 
-        std::memcpy(flex_param.pairs_intra, m.intra_pairs.data(), m.intra_pairs.size() * sizeof(int));
-        std::memcpy(flex_param.pairs_inter, m.inter_pairs.data(), m.inter_pairs.size() * sizeof(int));
-        std::memcpy(flex_param.r1_plus_r2_intra, m.r1_plus_r2_intra.data(), m.r1_plus_r2_intra.size() * sizeof(Real));
-        std::memcpy(flex_param.r1_plus_r2_inter, m.r1_plus_r2_inter.data(), m.r1_plus_r2_inter.size() * sizeof(Real));
-        std::memcpy(flex_param.atom_types, m.vina_types.data(), m.natom * sizeof(int));
+        std::memcpy(flex_param.pairs_intra, m.intra_pairs.data(), sizeof(int) * m.intra_pairs.size());
+        std::memcpy(flex_param.pairs_inter, m.inter_pairs.data(), sizeof(int) * m.inter_pairs.size());
+        std::memcpy(flex_param.r1_plus_r2_intra, m.r1_plus_r2_intra.data(), sizeof(Real) * m.r1_plus_r2_intra.size());
+        std::memcpy(flex_param.r1_plus_r2_inter, m.r1_plus_r2_inter.data(), sizeof(Real) * m.r1_plus_r2_inter.size());
+        std::memcpy(flex_param.atom_types, m.vina_types.data(), sizeof(int) * m.natom);
 
         std::vector<int> inds_bias(m.natom * 2, 0);
         std::vector<Real> params_bias;
@@ -185,8 +185,8 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
             last_i = b.i;
         }
 
-        std::memcpy(flex_param.inds_bias, inds_bias.data(), inds_bias.size() * sizeof(int));
-        std::memcpy(flex_param.params_bias, params_bias.data(), params_bias.size() * sizeof(Real));
+        std::memcpy(flex_param.inds_bias, inds_bias.data(), sizeof(int) * inds_bias.size());
+        std::memcpy(flex_param.params_bias, params_bias.data(), sizeof(Real) * params_bias.size());
     }
 
     flex_param_list_manager->copy_to_gpu();
@@ -303,12 +303,12 @@ static void alloc_aux_forces(StructArrayManager<FlexForce>*& aux_forces_manager,
 
 static void alloc_fix_mol(FixMol*& fix_mol_cu, Real*& fix_mol_real_cu, const UDFixMol& udfix_mol){
     checkCUDA(cudaMalloc(&fix_mol_cu, sizeof(FixMol)));
-    checkCUDA(cudaMalloc(&fix_mol_real_cu, udfix_mol.coords.size() * sizeof(Real)));
+    checkCUDA(cudaMalloc(&fix_mol_real_cu, sizeof(Real) * udfix_mol.coords.size()));
     FixMol fix_mol;
     fix_mol.natom = udfix_mol.natom;
     fix_mol.coords = fix_mol_real_cu;
     checkCUDA(
-        cudaMemcpy(fix_mol.coords, udfix_mol.coords.data(), udfix_mol.coords.size() * sizeof(Real),
+        cudaMemcpy(fix_mol.coords, udfix_mol.coords.data(), sizeof(Real) * udfix_mol.coords.size(),
             cudaMemcpyHostToDevice));
     checkCUDA(cudaMemcpy(fix_mol_cu, &fix_mol, sizeof(FixMol), cudaMemcpyHostToDevice));
 }
@@ -319,12 +319,11 @@ void DockTask::cp_to_cpu(){
     
     // allocate memory for flex_pose_list_res and flex_pose_list_real_res
     int npose = nflex * dock_param.exhaustiveness;
-    checkCUDA(cudaMallocHost(&flex_pose_list_res, npose * sizeof(FlexPose)));
+    checkCUDA(cudaMallocHost(&flex_pose_list_res, sizeof(FlexPose) * npose));
     checkCUDA(
-        cudaMallocHost(&flex_pose_list_real_res, dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) *
-            sizeof(Real)));
+        cudaMallocHost(&flex_pose_list_real_res, sizeof(Real) * dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex)));
     
-    std::memcpy(flex_pose_list_res, flex_pose_list_manager->array_host, npose * sizeof(FlexPose));
+    std::memcpy(flex_pose_list_res, flex_pose_list_manager->array_host, sizeof(FlexPose) * npose);
     
     Real* p_real = flex_pose_list_real_res;
     for (int i = 0; i < nflex; i++){
@@ -334,12 +333,12 @@ void DockTask::cp_to_cpu(){
             
             // coords
             int coords_size = list_i_real[idx * 2 + 1] - list_i_real[idx * 2];
-            std::memcpy(p_real, flex_pose.coords, coords_size * sizeof(Real));
+            std::memcpy(p_real, flex_pose.coords, sizeof(Real) * coords_size);
             p_real += coords_size;
             
             // dihedrals
             int dihedrals_size = list_i_real[idx * 2 + 2] - list_i_real[idx * 2 + 1];
-            std::memcpy(p_real, flex_pose.dihedrals, dihedrals_size * sizeof(Real));
+            std::memcpy(p_real, flex_pose.dihedrals, sizeof(Real) * dihedrals_size);
             p_real += dihedrals_size;
         }
     }
@@ -416,11 +415,11 @@ void DockTask::alloc_gpu(){
     //----- fix_param_cu -----
     // GPU cost: sizeof(FixParamVina) + udfix_mol.natom * sizeof(int)
     checkCUDA(cudaMalloc(&fix_param_cu, sizeof(FixParamVina)));
-    checkCUDA(cudaMalloc(&fix_param_int_cu, udfix_mol.natom * sizeof(int)));
+    checkCUDA(cudaMalloc(&fix_param_int_cu, sizeof(int) * udfix_mol.natom));
     FixParamVina fix_param;
     fix_param.atom_types = fix_param_int_cu;
     checkCUDA(
-        cudaMemcpy(fix_param.atom_types, udfix_mol.vina_types.data(), udfix_mol.natom * sizeof(int),
+        cudaMemcpy(fix_param.atom_types, udfix_mol.vina_types.data(), sizeof(int) * udfix_mol.natom,
             cudaMemcpyHostToDevice));
     checkCUDA(cudaMemcpy(fix_param_cu, &fix_param, sizeof(FixParamVina), cudaMemcpyHostToDevice));
 
@@ -444,10 +443,10 @@ void DockTask::alloc_gpu(){
 
     //----- Clustering -----
     int npair = dock_param.exhaustiveness * (dock_param.exhaustiveness - 1) / 2; // tri-mat with diagonal
-    checkCUDA(cudaMalloc(&aux_list_e_cu, npose * sizeof(Real)));
-    checkCUDA(cudaMalloc(&aux_list_cluster_cu, nflex * dock_param.exhaustiveness * sizeof(int)));
-    checkCUDA(cudaMalloc(&aux_rmsd_ij_cu, nflex * npair * 2 * sizeof(int)));
-    checkCUDA(cudaMalloc(&clustered_pose_inds_cu, nflex * dock_param.exhaustiveness * sizeof(int)));
+    checkCUDA(cudaMalloc(&aux_list_e_cu, sizeof(Real) * npose));
+    checkCUDA(cudaMalloc(&aux_list_cluster_cu, sizeof(int) * nflex * dock_param.exhaustiveness));
+    checkCUDA(cudaMalloc(&aux_rmsd_ij_cu, sizeof(int) * nflex * npair * 2));
+    checkCUDA(cudaMalloc(&clustered_pose_inds_cu, sizeof(int) * nflex * dock_param.exhaustiveness));
 
     // todo: so large ...
     std::vector<int> aux_rmsd_ij(nflex * npair * 2, 0); // excluding diagonal line
@@ -462,12 +461,12 @@ void DockTask::alloc_gpu(){
             }
         }
     }
-    checkCUDA(cudaMemcpy(aux_rmsd_ij_cu, aux_rmsd_ij.data(), nflex * npair * 2 * sizeof(int), cudaMemcpyHostToDevice));
+    checkCUDA(cudaMemcpy(aux_rmsd_ij_cu, aux_rmsd_ij.data(), sizeof(int) * nflex * npair * 2, cudaMemcpyHostToDevice));
 
     // set diagonal to 1 for aux_list_cluster_cu
     std::vector<int> aux_cluster_mat(nflex * dock_param.exhaustiveness, 1);
     checkCUDA(
-        cudaMemcpy(aux_list_cluster_cu, aux_cluster_mat.data(), nflex * dock_param.exhaustiveness * sizeof(int),
+        cudaMemcpy(aux_list_cluster_cu, aux_cluster_mat.data(), sizeof(int) * nflex * dock_param.exhaustiveness,
             cudaMemcpyHostToDevice));
 
 
