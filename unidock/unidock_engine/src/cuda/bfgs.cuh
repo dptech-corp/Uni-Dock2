@@ -417,7 +417,14 @@ __device__ __forceinline__ void apply_grad_update_dihe_tile(const cg::thread_blo
         dihe_incre = normalize_angle(dihe_incre_raw);
 
         // apply constraint by Torsion Library
-        Real dihe_new = normalize_angle(out_x->dihedrals[i_tor] + dihe_incre);
+        // Real dihe_new = normalize_angle(out_x->dihedrals[i_tor] + dihe_incre);
+
+        int i_lo = flex_topo->range_inds[i_tor * 2];
+        tmp1[0] = normalize_angle(out_x->dihedrals[i_tor] + dihe_incre);
+
+        Real dihe_new = clamp_by_ranges(tmp1[0],
+                                        flex_topo->range_list + i_lo, flex_topo->range_inds[i_tor * 2 + 1]);
+
 
         // update dihedral value
         dihe_incre = dihe_new - out_x->dihedrals[i_tor];
