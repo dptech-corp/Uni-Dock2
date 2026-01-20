@@ -11,6 +11,8 @@
 #include "model/model.h"
 #include "format/json.h"
 #include "screening/screening.h"
+#include "screening/core.h"
+
 #include "main.h"
 
 #include "constants/constants.h"
@@ -27,23 +29,6 @@ Options:
   --log <path>          Specify log file path, only take effects when [config_path] is given
 )";
     std::cout << STR_HELP;
-}
-
-void print_sign() {
-    // ANSI Shadow
-        std::cout << R"(
-    ██╗ccc██╗██████╗c██████╗c
-    ██║ccc██║██╔══██╗╚════██╗
-    ██║ccc██║██║cc██║c█████╔╝
-    ██║ccc██║██║cc██║██╔═══╝c
-    ╚██████╔╝██████╔╝███████╗
-    c╚═════╝c╚═════╝c╚══════╝
-    )" << std::endl;
-
-}
-
-void print_version(){
-    std::cout << "UD2 C++ Engine Version: " << VERSION_NUMBER << "\n";
 }
 
 
@@ -76,6 +61,8 @@ void dump_config_template(const std::string& p){
 
 int main(int argc, char* argv[])
 {
+    print_sign();
+    print_version();
 #ifdef DEBUG
     int log_level = 0;
 #else
@@ -134,8 +121,6 @@ int main(int argc, char* argv[])
     init_logger(fp_log, log_level);
     spdlog::info("Using config file: {}", fp_config);
 
-    print_sign();
-    print_version();
 
     spdlog::info("==================== UD2 Starts! ======================\n");
     auto start = std::chrono::high_resolution_clock::now();

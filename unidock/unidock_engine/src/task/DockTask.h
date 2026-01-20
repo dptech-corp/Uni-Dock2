@@ -50,8 +50,6 @@ public:
                   std::vector<std::string> fns_flex,
                   std::string fp_json);
 
-    void initialize(const UDFixMol& fix_mol, const UDFlexMolList& flex_mol_list, DockParam dock_param,
-                    std::vector<std::string> fns_flex, std::string fp_json);
 
 
     /**
