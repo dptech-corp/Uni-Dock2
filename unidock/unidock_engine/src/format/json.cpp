@@ -52,10 +52,22 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
     RapidJsonParser parser(doc);
 
     // Parse receptor
-    parser.parse_receptor_info(box, out_fix);
+    Box box_protein;
+    box_protein.x_lo = box.x_lo - VINA_CUTOFF;
+    box_protein.x_hi = box.x_hi + VINA_CUTOFF;
+    box_protein.y_lo = box.y_lo - VINA_CUTOFF;
+    box_protein.y_hi = box.y_hi + VINA_CUTOFF;
+    box_protein.z_lo = box.z_lo - VINA_CUTOFF;
+    box_protein.z_hi = box.z_hi + VINA_CUTOFF;
+    parser.parse_receptor_info(box_protein, out_fix);
+    spdlog::info("Receptor has {:d} atoms in box", out_fix.natom);
 
     // Parse ligands
     parser.parse_ligands_info(out_flex_list, out_fns_flex, use_tor_lib);
+    spdlog::info("Flexible molecules count: {:d}", out_flex_list.size());
+    if (out_flex_list.size() == 0){
+        spdlog::error("No flexible molecules are found");
+    }
 
     // Add inter pairs for each ligand (this needs to be done after receptor is parsed)
     for (auto& flex_mol : out_flex_list) {

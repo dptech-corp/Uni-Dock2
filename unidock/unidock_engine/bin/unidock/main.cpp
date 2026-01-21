@@ -121,10 +121,6 @@ int main(int argc, char* argv[])
     init_logger(fp_log, log_level);
     spdlog::info("Using config file: {}", fp_config);
 
-
-    spdlog::info("==================== UD2 Starts! ======================\n");
-    auto start = std::chrono::high_resolution_clock::now();
-
     int mc_steps = 0;
     DockParam dock_param;
     std::string fp_score;
@@ -134,16 +130,17 @@ int main(int argc, char* argv[])
 
 
     // -------------------------------  Parse Advanced -------------------------------
-    dock_param.exhaustiveness = get_config_with_err<int>(config, "Advanced", "exhaustiveness", dock_param.exhaustiveness);;
-    dock_param.randomize = get_config_with_err<bool>(config, "Advanced", "randomize", dock_param.randomize);
-    dock_param.mc_steps = get_config_with_err<int>(config, "Advanced", "mc_steps", mc_steps);
-    dock_param.opt_steps = get_config_with_err<int>(config, "Advanced", "opt_steps", dock_param.opt_steps);
-    if (dock_param.opt_steps < 0){ //heuristic
-        dock_param.opt_steps = -1;
-        spdlog::info("Use heuristic method to decide opt_steps");
-    }
-
-    dock_param.refine_steps = get_config_with_err<int>(config, "Advanced", "refine_steps", dock_param.refine_steps);
+    // Advanced
+    ctx.num_pose = get_config_with_err<int>(config, "Advanced", "num_pose", dock_param.num_pose);
+    ctx.rmsd_limit = get_config_with_err<Real>(config, "Advanced", "rmsd_limit", dock_param.rmsd_limit);
+    ctx.energy_range = get_config_with_err<Real>(config, "Advanced", "energy_range", dock_param.energy_range);
+    ctx.seed = get_config_with_err<int>(config, "Advanced", "seed", dock_param.seed);
+    ctx.exhaustiveness = get_config_with_err<int>(config, "Advanced", "exhaustiveness", dock_param.exhaustiveness);;
+    ctx.randomize = get_config_with_err<bool>(config, "Advanced", "randomize", dock_param.randomize);
+    ctx.mc_steps = get_config_with_err<int>(config, "Advanced", "mc_steps", mc_steps);
+    ctx.opt_steps = get_config_with_err<int>(config, "Advanced", "opt_steps", dock_param.opt_steps);
+    ctx.refine_steps = get_config_with_err<int>(config, "Advanced", "refine_steps", dock_param.refine_steps);
+    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", false);;
 
     // box
     Real center_x = get_config_with_err<Real>(config, "Settings", "center_x");
@@ -156,10 +153,10 @@ int main(int argc, char* argv[])
     dock_param.box.x_hi = center_x + size_x / 2;
     dock_param.box.y_lo = center_y - size_y / 2;
     dock_param.box.y_hi = center_y + size_y / 2;
-    dock_param.box.z_lo = center_z - size_z / 2;
+    // dock_param.box.z_lo = center_z - size_z / 2;
     dock_param.box.z_hi = center_z + size_z / 2;
 
-    std::string task = get_config_with_err<std::string>(config, "Settings", "task", "screen");
+    ctx.task = get_config_with_err<std::string>(config, "Settings", "task", "screen");
 
     // Input
     std::string fp_json = get_config_with_err<std::string>(config, "Inputs", "json");
@@ -174,44 +171,17 @@ int main(int argc, char* argv[])
     // get input json name
     std::string name_json = std::filesystem::path(fp_json).filename().string();
     if (name_json.size() >= 5 && name_json.substr(name_json.size() - 5) == ".json") {
-        name_json = name_json.substr(0, name_json.size() - 5);
-    }
-
-    // todo: remove these
-    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", false);;
-    if (use_tor_lib){
-        spdlog::warn("Torsion Library is used.");
+        ctx.name_json = name_json.substr(0, name_json.size() - 5);
     }else{
-        spdlog::warn("Torsion Library is NOT used.");
+        spdlog::error("Wrong JSON file name: ", name_json);
+        exit(1);
     }
 
-    // todo: write into constants.h
-    Box box_protein;
-    box_protein.x_lo = dock_param.box.x_lo - VINA_CUTOFF;
-    box_protein.x_hi = dock_param.box.x_hi + VINA_CUTOFF;
-    box_protein.y_lo = dock_param.box.y_lo - VINA_CUTOFF;
-    box_protein.y_hi = dock_param.box.y_hi + VINA_CUTOFF;
-    box_protein.z_lo = dock_param.box.z_lo - VINA_CUTOFF;
-    box_protein.z_hi = dock_param.box.z_hi + VINA_CUTOFF;
 
-    read_ud_from_json(fp_json, box_protein, fix_mol, flex_mol_list, fns_flex, use_tor_lib);
-    spdlog::info("Receptor has {:d} atoms in box", fix_mol.natom);
-    spdlog::info("Flexible molecules count: {:d}", flex_mol_list.size());
-    if (flex_mol_list.size() == 0){
-        spdlog::error("No flexible molecules found in {}", fp_json);
-    }
-
-    // get total memory in MB and leave 5%
-    float max_memory = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 1024 / 1024 * 0.95;
+    read_ud_from_json(fp_json, dock_param.box, fix_mol, flex_mol_list, fns_flex, use_tor_lib);
 
     ctx.gpu_device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", 0);
 
-
-    // Advanced
-    dock_param.num_pose = get_config_with_err<int>(config, "Advanced", "num_pose", dock_param.num_pose);
-    dock_param.rmsd_limit = get_config_with_err<Real>(config, "Advanced", "rmsd_limit", dock_param.rmsd_limit);
-    dock_param.energy_range = get_config_with_err<Real>(config, "Advanced", "energy_range", dock_param.energy_range);
-    dock_param.seed = get_config_with_err<int>(config, "Advanced", "seed", dock_param.seed);
 
 
     // -------------------------------  Parse Settings -------------------------------
@@ -256,28 +226,13 @@ int main(int argc, char* argv[])
 
 
     // -------------------------------  Perform Task -------------------------------
-    std::string dp_out = get_config_with_err<std::string>(config, "Outputs", "dir");
-    if (!std::filesystem::exists(dp_out)) {
-        try {
-            std::filesystem::create_directories(dp_out);
-        } catch (const std::filesystem::filesystem_error& e) {
-            spdlog::critical("Failed to create output directory {}: {}", dp_out, e.what());
-            exit(1);
-        }
-    }
-
-    ctx.task = task;
+    ctx.output_dir = get_config_with_err<std::string>(config, "Outputs", "dir");
     ctx.dock_param = dock_param;
     ctx.fix_mol = std::move(fix_mol);
     ctx.flex_mol_list = std::move(flex_mol_list);
     ctx.fns_flex = std::move(fns_flex);
-    ctx.output_dir = dp_out;
-    ctx.max_memory = max_memory;
-    ctx.name_json = name_json;
     core_pipeline(ctx);
 
-    std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() - start;
-    spdlog::info("UD2 Total Cost: {:.1f} ms", duration.count());
 
     return 0;
 }

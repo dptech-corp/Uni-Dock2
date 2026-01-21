@@ -103,27 +103,27 @@ CoreContext prepare_context_by_input(CoreContext& ipt) {
 
     ctx.name_json = ipt.name_json;
     ctx.max_memory = resolve_max_memory_mb(ipt.gpu_device_id);
-    ctx.fix_mol = ipt.fix_mol;
-    ctx.flex_mol_list = ipt.flex_mol_list;
-    ctx.fns_flex = ipt.fns_flex;
+    ctx.fix_mol = std::move(ipt.fix_mol);
+    ctx.flex_mol_list = std::move(ipt.flex_mol_list);
+    ctx.fns_flex = std::move(ipt.fns_flex);
 
-    //
-    // ctx.dock_param.seed = ipt.seed;
-    // ctx.dock_param.constraint_docking = ipt.constraint_docking;
-    // ctx.dock_param.exhaustiveness = ipt.exhaustiveness;
-    // ctx.dock_param.randomize = ipt.randomize;
-    // ctx.dock_param.mc_steps = ipt.mc_steps;
-    // ctx.dock_param.opt_steps = ipt.opt_steps;
-    // if (ctx.dock_param.opt_steps < 0){ //heuristic
-    //     ctx.dock_param.opt_steps = -1;
-    //     spdlog::info("Use heuristic method to decide opt_steps");
-    // }
+
+    ctx.dock_param.seed = ipt.seed;
+    ctx.dock_param.constraint_docking = ipt.constraint_docking;
+    ctx.dock_param.exhaustiveness = ipt.exhaustiveness;
+    ctx.dock_param.randomize = ipt.randomize;
+    ctx.dock_param.mc_steps = ipt.mc_steps;
+    ctx.dock_param.opt_steps = ipt.opt_steps;
+    if (ctx.dock_param.opt_steps < 0){ //heuristic
+        ctx.dock_param.opt_steps = -1;
+        spdlog::info("Use heuristic method to decide opt_steps");
+    }
     // apply_search_mode(ctx.dock_param, ipt.search_mode);
-    // ctx.dock_param.refine_steps = ipt.refine_steps;
-    // ctx.dock_param.num_pose = ipt.num_pose;
-    // ctx.dock_param.energy_range = ipt.energy_range;
-    // ctx.dock_param.rmsd_limit = ipt.rmsd_limit;
-    //
+    ctx.dock_param.refine_steps = ipt.refine_steps;
+    ctx.dock_param.num_pose = ipt.num_pose;
+    ctx.dock_param.energy_range = ipt.energy_range;
+    ctx.dock_param.rmsd_limit = ipt.rmsd_limit;
+
     // ctx.dock_param.constraint_docking = ipt.constraint_docking;
     // if (ctx.dock_param.constraint_docking) {
     //     ctx.dock_param.randomize = false;
