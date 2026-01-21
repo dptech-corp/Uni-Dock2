@@ -7,10 +7,7 @@
 #include <unistd.h>
 #include "myutils/errors.h"
 #include "model/model.h"
-#include "format/json.h"
-#include "screening/screening.h"
-
-#include "constants/constants.h"
+#include "screening.h"
 #include "core.h"
 
 
@@ -123,6 +120,10 @@ CoreContext prepare_context_by_input(CoreInput& ipt) {
     ctx.dock_param.energy_range = ipt.energy_range;
     ctx.dock_param.rmsd_limit = ipt.rmsd_limit;
 
+    ctx.dock_param.box = ipt.box;
+
+    apply_bias(ctx.dock_param, ipt.bias, ipt.bias_k);
+
     // apply searching mode
     apply_search_mode(ctx.dock_param, ipt.search_mode);
 
@@ -131,12 +132,8 @@ CoreContext prepare_context_by_input(CoreInput& ipt) {
         ctx.dock_param.randomize = false;
     }
 
-    ctx.dock_param.box = ipt.box;
-    apply_bias(ctx.dock_param, ipt.bias, ipt.bias_k);
-
     return ctx;
 }
-
 
 }
 

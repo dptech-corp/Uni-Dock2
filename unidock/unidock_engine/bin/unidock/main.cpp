@@ -61,8 +61,7 @@ void dump_config_template(const std::string& p){
 
 int main(int argc, char* argv[])
 {
-    print_sign();
-    print_version();
+
 #ifdef DEBUG
     int log_level = 0;
 #else
@@ -70,6 +69,8 @@ int main(int argc, char* argv[])
 #endif
     std::string fp_log = "ud.log"; // default under working directory
     std::string fp_config;
+
+    print_sign();
 
     // parse arguments
     for (int i = 1; i < argc; ++i){
@@ -88,6 +89,7 @@ int main(int argc, char* argv[])
                 fp_dump = argv[++i];
             }
             dump_config_template(fp_dump);
+            printf("Dump config template file: %s\n", fp_dump.c_str());
             return 0;
         }
 
@@ -118,6 +120,8 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
+    print_version();
+
     init_logger(fp_log, log_level);
     spdlog::info("Using config file: {}", fp_config);
 
@@ -126,28 +130,28 @@ int main(int argc, char* argv[])
     std::string fp_score;
 
     YAML::Node config = YAML::LoadFile(fp_config);
-    CoreInput ctx;
+    CoreInput cipt;
 
 
     // -------------------------------  Parse Advanced -------------------------------
     // Advanced
-    ctx.num_pose = get_config_with_err<int>(config, "Advanced", "num_pose", dock_param.num_pose);
-    ctx.rmsd_limit = get_config_with_err<Real>(config, "Advanced", "rmsd_limit", dock_param.rmsd_limit);
-    ctx.energy_range = get_config_with_err<Real>(config, "Advanced", "energy_range", dock_param.energy_range);
-    ctx.seed = get_config_with_err<int>(config, "Advanced", "seed", dock_param.seed);
-    ctx.exhaustiveness = get_config_with_err<int>(config, "Advanced", "exhaustiveness", dock_param.exhaustiveness);;
-    ctx.randomize = get_config_with_err<bool>(config, "Advanced", "randomize", dock_param.randomize);
-    ctx.mc_steps = get_config_with_err<int>(config, "Advanced", "mc_steps", mc_steps);
-    ctx.opt_steps = get_config_with_err<int>(config, "Advanced", "opt_steps", dock_param.opt_steps);
-    ctx.refine_steps = get_config_with_err<int>(config, "Advanced", "refine_steps", dock_param.refine_steps);
+    cipt.num_pose = get_config_with_err<int>(config, "Advanced", "num_pose", dock_param.num_pose);
+    cipt.rmsd_limit = get_config_with_err<Real>(config, "Advanced", "rmsd_limit", dock_param.rmsd_limit);
+    cipt.energy_range = get_config_with_err<Real>(config, "Advanced", "energy_range", dock_param.energy_range);
+    cipt.seed = get_config_with_err<int>(config, "Advanced", "seed", dock_param.seed);
+    cipt.exhaustiveness = get_config_with_err<int>(config, "Advanced", "exhaustiveness", dock_param.exhaustiveness);;
+    cipt.randomize = get_config_with_err<bool>(config, "Advanced", "randomize", dock_param.randomize);
+    cipt.mc_steps = get_config_with_err<int>(config, "Advanced", "mc_steps", mc_steps);
+    cipt.opt_steps = get_config_with_err<int>(config, "Advanced", "opt_steps", dock_param.opt_steps);
+    cipt.refine_steps = get_config_with_err<int>(config, "Advanced", "refine_steps", dock_param.refine_steps);
     bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", false);;
-    ctx.bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
-    ctx.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", dock_param.bias_k);
+    cipt.bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
+    cipt.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", dock_param.bias_k);
 
     // -------------------------------  Parse Settings -------------------------------
-    ctx.task = get_config_with_err<std::string>(config, "Settings", "task", "screen");
-    ctx.search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", "balance");
-    ctx.constraint_docking = get_config_with_err<bool>(config, "Settings", "constraint_docking", false);
+    cipt.task = get_config_with_err<std::string>(config, "Settings", "task", "screen");
+    cipt.search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", "balance");
+    cipt.constraint_docking = get_config_with_err<bool>(config, "Settings", "constraint_docking", false);
     // box
     Real center_x = get_config_with_err<Real>(config, "Settings", "center_x");
     Real center_y = get_config_with_err<Real>(config, "Settings", "center_y");
@@ -155,19 +159,19 @@ int main(int argc, char* argv[])
     Real size_x = get_config_with_err<Real>(config, "Settings", "size_x");
     Real size_y = get_config_with_err<Real>(config, "Settings", "size_y");
     Real size_z = get_config_with_err<Real>(config, "Settings", "size_z");
-    ctx.box.x_lo = center_x - size_x / 2;
-    ctx.box.x_hi = center_x + size_x / 2;
-    ctx.box.y_lo = center_y - size_y / 2;
-    ctx.box.y_hi = center_y + size_y / 2;
-    ctx.box.z_lo = center_z - size_z / 2;
-    ctx.box.z_hi = center_z + size_z / 2;
+    cipt.box.x_lo = center_x - size_x / 2;
+    cipt.box.x_hi = center_x + size_x / 2;
+    cipt.box.y_lo = center_y - size_y / 2;
+    cipt.box.y_hi = center_y + size_y / 2;
+    cipt.box.z_lo = center_z - size_z / 2;
+    cipt.box.z_hi = center_z + size_z / 2;
 
 
     // -------------------------------  Parse Hardware -------------------------------
-    ctx.gpu_device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", 0);
+    cipt.gpu_device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", 0);
 
     // -------------------------------  Parse Outputs -------------------------------
-    ctx.output_dir = get_config_with_err<std::string>(config, "Outputs", "dir");
+    cipt.output_dir = get_config_with_err<std::string>(config, "Outputs", "dir");
 
     // -------------------------------  Parse Inputs -------------------------------
     std::string fp_json = get_config_with_err<std::string>(config, "Inputs", "json");
@@ -178,7 +182,7 @@ int main(int argc, char* argv[])
     // get input json name
     std::string name_json = std::filesystem::path(fp_json).filename().string();
     if (name_json.size() >= 5 && name_json.substr(name_json.size() - 5) == ".json") {
-        ctx.name_json = name_json.substr(0, name_json.size() - 5);
+        cipt.name_json = name_json.substr(0, name_json.size() - 5);
     }else{
         spdlog::error("Wrong JSON file name: ", name_json);
         exit(1);
@@ -187,14 +191,14 @@ int main(int argc, char* argv[])
     UDFlexMolList flex_mol_list;
     UDFixMol fix_mol;
     std::vector<std::string>fns_flex;
-    read_ud_from_json(fp_json, ctx.box, fix_mol, flex_mol_list, fns_flex, use_tor_lib);
+    read_ud_from_json(fp_json, cipt.box, fix_mol, flex_mol_list, fns_flex, use_tor_lib);
 
-    ctx.fix_mol = std::move(fix_mol);
-    ctx.flex_mol_list = std::move(flex_mol_list);
-    ctx.fns_flex = std::move(fns_flex);
+    cipt.fix_mol = std::move(fix_mol);
+    cipt.flex_mol_list = std::move(flex_mol_list);
+    cipt.fns_flex = std::move(fns_flex);
 
     // -------------------------------  Run Pipeline -------------------------------
-    core_pipeline(ctx);
+    core_pipeline(cipt);
 
     return 0;
 }

@@ -21,24 +21,25 @@
 
 namespace rj = rapidjson;
 
-rj::Document parse_json(const std::string& fp){
-    rj::Document doc;
+void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix, UDFlexMolList& out_flex_list,
+                       std::vector<std::string>& out_fns_flex, bool use_tor_lib){
+
     std::ifstream ifs(fp);
     std::string json_str((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-    doc.Parse(json_str.c_str());
+    read_ud_from_json_string(json_str, box,  out_fix, out_flex_list, out_fns_flex, use_tor_lib);
 
-    if (doc.HasParseError()){
-        throw std::runtime_error("rapidjson: Failed to parse JSON file: " + fp);
-    }
-
-    return doc;
 }
 
 
-
-void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix, UDFlexMolList& out_flex_list,
+void read_ud_from_json_string(const std::string& json_str, const Box& box, UDFixMol& out_fix, UDFlexMolList& out_flex_list,
                        std::vector<std::string>& out_fns_flex, bool use_tor_lib) {
-    rj::Document doc = parse_json(fp);
+
+    rj::Document doc;
+    doc.Parse(json_str.c_str());
+    if (doc.HasParseError()){
+        throw std::runtime_error("rapidjson: Failed to parse JSON string.");
+    }
+
     spdlog::info("Json is successfully parsed");
 
     //---------------- Parse score types ----------------

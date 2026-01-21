@@ -8,16 +8,11 @@
 #include <pybind11/stl.h>
 
 #include <spdlog/spdlog.h>
-
-#include "constants/constants.h"
 #include "model/model.h"
-#include "format/pybind_parser.h"
-#include "myutils/errors.h"
-#include "screening/screening.h"
-
+#include "format/json.h"
+#include "screening/core.h"
 
 namespace py = pybind11;
-
 
 class DockingPipeline {
 public:
@@ -38,156 +33,68 @@ public:
         int seed = 1234567,
         bool constraint_docking = false,
         bool use_tor_lib = false,
-        int gpu_device_id = 0
-    ) : _output_dir(output_dir), _use_tor_lib(use_tor_lib), _gpu_device_id(gpu_device_id), _name_json("from_python_obj") {
-        
-        _dock_param.box.x_lo = center_x - size_x / 2;
-        _dock_param.box.x_hi = center_x + size_x / 2;
-        _dock_param.box.y_lo = center_y - size_y / 2;
-        _dock_param.box.y_hi = center_y + size_y / 2;
-        _dock_param.box.z_lo = center_z - size_z / 2;
-        _dock_param.box.z_hi = center_z + size_z / 2;
+        int gpu_device_id = 0,
+        std::string name_json = "from_python_obj"
+    ) : _use_tor_lib(use_tor_lib){
 
-        _dock_param.randomize = randomize;
-        _dock_param.refine_steps = refine_steps;
-        _dock_param.num_pose = num_pose;
-        _dock_param.rmsd_limit = rmsd_limit;
-        _dock_param.energy_range = energy_range;
-        _dock_param.seed = seed;
-        _dock_param.constraint_docking = constraint_docking;
+        ipt.gpu_device_id = gpu_device_id;
+        ipt.output_dir = output_dir;
+        ipt.name_json = name_json;
 
-        if (opt_steps < 0){ //heuristic
-            opt_steps = -1;
-            spdlog::info("Use heuristic method to decide opt_steps");
-        }
+        ipt.box.x_lo = center_x - size_x / 2;
+        ipt.box.x_hi = center_x + size_x / 2;
+        ipt.box.y_lo = center_y - size_y / 2;
+        ipt.box.y_hi = center_y + size_y / 2;
+        ipt.box.z_lo = center_z - size_z / 2;
+        ipt.box.z_hi = center_z + size_z / 2;
 
-        if (search_mode == "free"){
-            _dock_param.exhaustiveness = exhaustiveness;
-            _dock_param.mc_steps = mc_steps;
-            _dock_param.opt_steps = opt_steps;
-        } else if (search_mode == "fast"){
-            _dock_param.exhaustiveness = 128;
-            _dock_param.mc_steps = 20;
-            _dock_param.opt_steps = -1;
-        } else if (search_mode == "balance"){
-            _dock_param.exhaustiveness = 256;
-            _dock_param.mc_steps = 30;
-            _dock_param.opt_steps = -1;
-        } else if (search_mode == "detail"){
-            _dock_param.exhaustiveness = 512;
-            _dock_param.mc_steps = 40;
-            _dock_param.opt_steps = -1;
-        } else {
-            throw std::runtime_error("Not supported search_mode: " + search_mode);
-        }
+        ipt.exhaustiveness = exhaustiveness;
+        ipt.mc_steps = mc_steps;
+        ipt.opt_steps = opt_steps;
+        ipt.randomize = randomize;
+        ipt.refine_steps = refine_steps;
+        ipt.num_pose = num_pose;
+        ipt.rmsd_limit = rmsd_limit;
+        ipt.energy_range = energy_range;
+        ipt.seed = seed;
 
-        if (task == "screen"){ // allow changing every parameter
-            spdlog::info("----------------------- RUN Screening -----------------------");
-        } else if (task == "score"){
-            spdlog::info("----------------------- RUN Only Scoring -----------------------");
-            _dock_param.randomize = false;
-            _dock_param.exhaustiveness = 1;
-            _dock_param.mc_steps = 0;
-            _dock_param.opt_steps = 0;
-            _dock_param.refine_steps = 0;
-            _dock_param.num_pose = 1;
-            _dock_param.energy_range = 999;
-            _dock_param.rmsd_limit = 999;
-
-        } else if (task == "benchmark_one"){
-            spdlog::warn("benchmark task is not implemented");
-            spdlog::info("----------------------- RUN Benchmark on One-Crystal-Ligand Cases -----------------------");
-            spdlog::info("----------------------- Given poses are deemed as reference poses -----------------------");
-
-        } else if (task == "mc"){
-            _dock_param.randomize = true;
-            _dock_param.opt_steps = 0;
-            _dock_param.refine_steps = 0;
-            spdlog::info("----------------------- RUN Only Monte Carlo Random Walking -----------------------");
-
-        } else{
-            spdlog::critical("Not supported task: {} doesn't belong to (screen, local_only, mc)", task);
-            exit(1);
-        }
+        ipt.constraint_docking = constraint_docking;
+        ipt.task = task;
+        ipt.search_mode = search_mode;
     }
 
     void set_receptor(py::list receptor_info) {
-        Real cutoff = 8.0;
-        Box box_protein;
-        box_protein.x_lo = _dock_param.box.x_lo - cutoff;
-        box_protein.x_hi = _dock_param.box.x_hi + cutoff;
-        box_protein.y_lo = _dock_param.box.y_lo - cutoff;
-        box_protein.y_hi = _dock_param.box.y_hi + cutoff;
-        box_protein.z_lo = _dock_param.box.z_lo - cutoff;
-        box_protein.z_hi = _dock_param.box.z_hi + cutoff;
-
-        // Use PybindParser to parse receptor info
-        PybindParser parser(receptor_info, py::dict());  // Empty dict for ligands, will be set separately
-        parser.parse_receptor_info(box_protein, _fix_mol);
-        spdlog::info("Receptor loaded: {:d} atoms in box", _fix_mol.natom);
+        json_data["receptor"] = receptor_info;
+        spdlog::info("Receptor data loaded into JSON cache");
     }
 
     void add_ligands(py::dict ligands_info) {
-        // Use PybindParser to parse ligands info
-        if (_fix_mol.natom == 0) {
-            throw std::runtime_error("Receptor has not been set or is empty, You need to set receptor first.");
+        for (const auto& item : ligands_info) {
+            json_data[item.first] = item.second;
         }
-        PybindParser parser(py::list(), ligands_info);  // Empty list for receptor, will be set separately
-        parser.parse_ligands_info(_flex_mol_list, _fns_flex, _use_tor_lib);
-    
-        // Add inter pairs for each ligand (this needs to be done after receptor is parsed)
-        for (auto& flex_mol : _flex_mol_list) {
-            // inter pairs: flex v.s. receptor
-            for (int i = 0; i < flex_mol.natom; i++) {
-                if (flex_mol.vina_types[i] == VN_TYPE_H) { // ignore Hydrogen on ligand and protein
-                    continue;
-                }
-                for (int j = 0; j < _fix_mol.natom; j++) {
-                    if (_fix_mol.vina_types[j] == VN_TYPE_H) {
-                        continue;
-                    }
-                    flex_mol.inter_pairs.push_back(i);
-                    flex_mol.inter_pairs.push_back(j);
-                }
-            }
-        }
-        spdlog::info("Ligands loaded. Total count: {:d}", _flex_mol_list.size());
+        spdlog::info("Ligands data loaded into JSON cache");
     }
 
     void run() {
-        if (_fix_mol.natom == 0) {
-            throw std::runtime_error("Receptor has not been set or is empty.");
+        // generate json string
+        std::string json_str;
+        {
+            py::gil_scoped_acquire acquire;
+            py::module_ json = py::module_::import("json");
+            json_str = py::str(json.attr("dumps")(json_data));
         }
-        if (_flex_mol_list.empty()) {
-            throw std::runtime_error("No ligands have been added.");
-        }
+        py::gil_scoped_release release;
 
-        auto start = std::chrono::high_resolution_clock::now();
+        // run screening
+        ipt.fix_mol = UDFixMol();
+        ipt.flex_mol_list.clear();
+        ipt.fns_flex.clear();
+        read_ud_from_json_string(json_str, ipt.box, ipt.fix_mol, ipt.flex_mol_list, ipt.fns_flex, _use_tor_lib);
 
-        float max_memory = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 1024 / 1024 * 0.95;
-        int deviceCount = 0;
-        checkCUDA(cudaGetDeviceCount(&deviceCount));
-        if (deviceCount == 0) {
-            spdlog::critical("No CUDA device is found!");
-            exit(1);
-        }
-        checkCUDA(cudaSetDevice(_gpu_device_id));
-        size_t avail, total;
-        cudaMemGetInfo(&avail, &total);
-        int max_gpu_memory = avail / 1024 / 1024 * 0.95;
-        if (max_gpu_memory > 0 && max_gpu_memory < max_memory) {
-            max_memory = (float) max_gpu_memory;
+        if (core_pipeline(ipt) != 0) {
+            throw std::runtime_error("Core pipeline failed.");
         }
 
-        if (!std::filesystem::exists(_output_dir)) {
-            std::filesystem::create_directories(_output_dir);
-        }
-
-        spdlog::info("----------------------- RUN Screening -----------------------");
-        run_screening(_fix_mol, _flex_mol_list, _fns_flex, _output_dir, _dock_param, max_memory, _name_json);
-
-        std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() - start;
-        spdlog::info("UD2 Total Cost: {:.1f} ms", duration.count());
     }
 
 private:
@@ -195,10 +102,11 @@ private:
     UDFixMol _fix_mol;
     UDFlexMolList _flex_mol_list;
     std::vector<std::string> _fns_flex;
-    std::string _output_dir;
-    bool _use_tor_lib;
-    int _gpu_device_id;
-    std::string _name_json;
+
+    bool _use_tor_lib = false;
+    CoreInput ipt;
+    py::dict json_data;
+    bool use_tor_lib;
 };
 
 
