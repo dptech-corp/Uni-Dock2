@@ -118,19 +118,21 @@ CoreContext prepare_context_by_input(CoreContext& ipt) {
         ctx.dock_param.opt_steps = -1;
         spdlog::info("Use heuristic method to decide opt_steps");
     }
-    // apply_search_mode(ctx.dock_param, ipt.search_mode);
     ctx.dock_param.refine_steps = ipt.refine_steps;
     ctx.dock_param.num_pose = ipt.num_pose;
     ctx.dock_param.energy_range = ipt.energy_range;
     ctx.dock_param.rmsd_limit = ipt.rmsd_limit;
 
-    // ctx.dock_param.constraint_docking = ipt.constraint_docking;
-    // if (ctx.dock_param.constraint_docking) {
-    //     ctx.dock_param.randomize = false;
-    // }
-    //
+    // apply searching mode
+    apply_search_mode(ctx.dock_param, ipt.search_mode);
+
+    ctx.dock_param.constraint_docking = ipt.constraint_docking;
+    if (ctx.dock_param.constraint_docking) {
+        ctx.dock_param.randomize = false;
+    }
+
     // ctx.dock_param.box = ipt.box;
-    // apply_bias(ctx.dock_param, ipt.bias, ipt.bias_k);
+    apply_bias(ctx.dock_param, ipt.bias, ipt.bias_k);
 
     return ctx;
 }

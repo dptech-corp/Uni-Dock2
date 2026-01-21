@@ -142,6 +142,8 @@ int main(int argc, char* argv[])
     ctx.refine_steps = get_config_with_err<int>(config, "Advanced", "refine_steps", dock_param.refine_steps);
     bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", false);;
 
+    // Settings
+    ctx.task = get_config_with_err<std::string>(config, "Settings", "task", "screen");
     // box
     Real center_x = get_config_with_err<Real>(config, "Settings", "center_x");
     Real center_y = get_config_with_err<Real>(config, "Settings", "center_y");
@@ -153,10 +155,12 @@ int main(int argc, char* argv[])
     dock_param.box.x_hi = center_x + size_x / 2;
     dock_param.box.y_lo = center_y - size_y / 2;
     dock_param.box.y_hi = center_y + size_y / 2;
-    // dock_param.box.z_lo = center_z - size_z / 2;
+    dock_param.box.z_lo = center_z - size_z / 2;
     dock_param.box.z_hi = center_z + size_z / 2;
 
-    ctx.task = get_config_with_err<std::string>(config, "Settings", "task", "screen");
+    // Hardware
+    ctx.gpu_device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", 0);
+
 
     // Input
     std::string fp_json = get_config_with_err<std::string>(config, "Inputs", "json");
@@ -177,51 +181,13 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-
     read_ud_from_json(fp_json, dock_param.box, fix_mol, flex_mol_list, fns_flex, use_tor_lib);
 
-    ctx.gpu_device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", 0);
-
-
-
     // -------------------------------  Parse Settings -------------------------------
-    std::string search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", "balance");
-    if (search_mode == "fast"){
-        dock_param.exhaustiveness = 128;
-        dock_param.mc_steps = 20;
-        dock_param.opt_steps = -1;
-    } else if (search_mode == "balance"){
-        dock_param.exhaustiveness = 256;
-        dock_param.mc_steps = 30;
-        dock_param.opt_steps = -1;
-    } else if (search_mode == "detail"){
-        dock_param.exhaustiveness = 512;
-        dock_param.mc_steps = 40;
-        dock_param.opt_steps = -1;
-    } else if (search_mode == "free"){
-        //
-    } else{
-        spdlog::critical("Not supported search_mode: {} doesn't belong to (fast, balance, detail, free)" , search_mode);
-        exit(1);
-    }
+    ctx.search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", "balance");
+    ctx.constraint_docking = get_config_with_err<bool>(config, "Settings", "constraint_docking", false);
 
-    dock_param.constraint_docking = get_config_with_err<bool>(config, "Settings", "constraint_docking", false);
-    if (dock_param.constraint_docking){
-        dock_param.randomize = false;
-    }
-
-    std::string bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
-    if (bias == "no"){
-        dock_param.bias_type = BT_NO;
-    }else if (bias == "pos"){
-        dock_param.bias_type = BT_POS;
-    }else if (bias == "align"){
-        dock_param.bias_type = BT_ALIGN;
-    }else{
-        spdlog::critical("Not supported bias: {} doesn't belong to (no, pos, align)" , bias);
-        exit(1);
-    }
-
+    ctx.bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
     dock_param.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", dock_param.bias_k);
 
 

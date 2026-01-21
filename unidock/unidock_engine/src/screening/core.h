@@ -54,7 +54,9 @@ struct CoreContext {
     int num_pose = 10;
     Real energy_range = 10.0;
     Real rmsd_limit = 1.0; // a limit to judge whether two poses are the same during clustering
-
+    std::string bias = "no";
+    Real bias_k = 0.1;
+    std::string search_mode = "balance";
 
 };
 
