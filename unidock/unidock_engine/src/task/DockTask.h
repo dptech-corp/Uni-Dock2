@@ -50,8 +50,6 @@ public:
                   std::vector<std::string> fns_flex,
                   std::string fp_json);
 
-
-
     /**
      * @brief Run a whole process: global search, cluster by RMSD, refinement by optimization and final output.
      */

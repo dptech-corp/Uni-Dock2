@@ -51,7 +51,6 @@ Settings:
 Outputs:
   dir: !!str ./res2         # output directory, default is `./res`
 
-
 Inputs:
   json: !!str ./5S8I.json   # Input json file containing receptor & ligands info.
 

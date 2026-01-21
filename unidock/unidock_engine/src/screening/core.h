@@ -42,9 +42,12 @@ struct CoreContext {
     std::vector<std::string> fns_flex;
     DockParam dock_param;
 
+    int gpu_device_id = 0;
+
 };
 
-int core_pipeline(CoreInput& ctx);
+int core_pipeline(CoreContext& ctx);
+// int core_pipeline(CoreInput& ipt);
 
 
 

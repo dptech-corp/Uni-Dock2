@@ -128,9 +128,9 @@ int main(int argc, char* argv[])
     int mc_steps = 0;
     DockParam dock_param;
     std::string fp_score;
-    int ncpu = std::thread::hardware_concurrency();
 
     YAML::Node config = YAML::LoadFile(fp_config);
+    CoreContext ctx;
 
 
     // -------------------------------  Parse Advanced -------------------------------
@@ -203,26 +203,9 @@ int main(int argc, char* argv[])
 
     // get total memory in MB and leave 5%
     float max_memory = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 1024 / 1024 * 0.95;
-    int deviceCount = 0;
-    
-    checkCUDA(cudaGetDeviceCount(&deviceCount));
-    if (deviceCount > 0) {
-        int device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", 0);
-        checkCUDA(cudaSetDevice(device_id));
-        spdlog::info("Set GPU device id to {:d}", device_id);
-        size_t avail, total;
-        cudaMemGetInfo(&avail, &total);
-        spdlog::info("Available Memory = {:d} MB   Total Memory = {:d} MB",
-            avail / 1024 / 1024, total / 1024 / 1024);
-        int max_gpu_memory = avail / 1024 / 1024 * 0.95; // leave 5%
-        if (max_gpu_memory > 0 && max_gpu_memory < max_memory) {
-            max_memory = (float) max_gpu_memory;
-        }
 
-    } else{
-        spdlog::critical("No CUDA device is found!");
-        exit(1);
-    }
+    ctx.gpu_device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", 0);
+
 
     // Advanced
     dock_param.num_pose = get_config_with_err<int>(config, "Advanced", "num_pose", dock_param.num_pose);
@@ -283,60 +266,15 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (task == "screen"){ // allow changing every parameter
-        spdlog::info("----------------------- RUN Screening -----------------------");
-        run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
-
-    } else if (task == "score"){
-        spdlog::info("----------------------- RUN Only Scoring -----------------------");
-        dock_param.randomize = false;
-        dock_param.exhaustiveness = 1;
-        dock_param.mc_steps = 0;
-        dock_param.opt_steps = 0;
-        dock_param.refine_steps = 0;
-        dock_param.num_pose = 1;
-        dock_param.energy_range = 999;
-        dock_param.rmsd_limit = 999;
-        run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
-
-    } else if (task == "benchmark_one"){
-        spdlog::warn("benchmark task is not implemented");
-        spdlog::info("----------------------- RUN Benchmark on One-Crystal-Ligand Cases -----------------------");
-        spdlog::info("----------------------- Given poses are deemed as reference poses -----------------------");
-
-    } else if (task == "mc"){
-        dock_param.randomize = true;
-        dock_param.opt_steps = 0;
-        dock_param.refine_steps = 0;
-        spdlog::info("----------------------- RUN Only Monte Carlo Random Walking (With Clustering) -----------------------");
-        run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
-
-    } else if (task == "randomize"){
-        dock_param.randomize = true;
-        dock_param.mc_steps = 0;
-        dock_param.opt_steps = 0;
-        dock_param.refine_steps = 0;
-        dock_param.num_pose = dock_param.exhaustiveness;
-        dock_param.energy_range = 1e9;
-        dock_param.rmsd_limit = 0.;
-        spdlog::info("----------------------- RUN Only Randomization (No Clustering) -----------------------");
-        run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
-
-    } else if (task == "optimize"){
-        dock_param.randomize = false;
-        dock_param.exhaustiveness = 1;
-        dock_param.mc_steps = 0;
-        dock_param.opt_steps = 0;
-        dock_param.num_pose = 1;
-        dock_param.energy_range = 1e9;
-        dock_param.rmsd_limit = 0.;
-        spdlog::info("----------------------- RUN Only Optimization on Input Pose (for `refine_steps) -----------------------");
-        run_screening(fix_mol, flex_mol_list, fns_flex, dp_out, dock_param, max_memory, name_json);
-
-    } else{
-        spdlog::critical("Not supported task: {} doesn't belong to (screen, local_only, mc)", task);
-        exit(1);
-    }
+    ctx.task = task;
+    ctx.dock_param = dock_param;
+    ctx.fix_mol = std::move(fix_mol);
+    ctx.flex_mol_list = std::move(flex_mol_list);
+    ctx.fns_flex = std::move(fns_flex);
+    ctx.output_dir = dp_out;
+    ctx.max_memory = max_memory;
+    ctx.name_json = name_json;
+    core_pipeline(ctx);
 
     std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() - start;
     spdlog::info("UD2 Total Cost: {:.1f} ms", duration.count());

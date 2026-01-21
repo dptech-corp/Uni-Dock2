@@ -86,7 +86,7 @@ void apply_bias(DockParam& dock_param, const std::string& bias, Real bias_k) {
     dock_param.bias_k = bias_k;
 }
 
-CoreContext prepare_context_by_input(CoreInput& ipt) {
+CoreContext prepare_context_by_input(CoreContext& ipt) {
     CoreContext ctx;
 
     ctx.task = ipt.task;
@@ -107,30 +107,30 @@ CoreContext prepare_context_by_input(CoreInput& ipt) {
     ctx.flex_mol_list = ipt.flex_mol_list;
     ctx.fns_flex = ipt.fns_flex;
 
-
-    ctx.dock_param.seed = ipt.seed;
-    ctx.dock_param.constraint_docking = ipt.constraint_docking;
-    ctx.dock_param.exhaustiveness = ipt.exhaustiveness;
-    ctx.dock_param.randomize = ipt.randomize;
-    ctx.dock_param.mc_steps = ipt.mc_steps;
-    ctx.dock_param.opt_steps = ipt.opt_steps;
-    if (ctx.dock_param.opt_steps < 0){ //heuristic
-        ctx.dock_param.opt_steps = -1;
-        spdlog::info("Use heuristic method to decide opt_steps");
-    }
-    apply_search_mode(ctx.dock_param, ipt.search_mode);
-    ctx.dock_param.refine_steps = ipt.refine_steps;
-    ctx.dock_param.num_pose = ipt.num_pose;
-    ctx.dock_param.energy_range = ipt.energy_range;
-    ctx.dock_param.rmsd_limit = ipt.rmsd_limit;
-
-    ctx.dock_param.constraint_docking = ipt.constraint_docking;
-    if (ctx.dock_param.constraint_docking) {
-        ctx.dock_param.randomize = false;
-    }
-
-    ctx.dock_param.box = ipt.box;
-    apply_bias(ctx.dock_param, ipt.bias, ipt.bias_k);
+    //
+    // ctx.dock_param.seed = ipt.seed;
+    // ctx.dock_param.constraint_docking = ipt.constraint_docking;
+    // ctx.dock_param.exhaustiveness = ipt.exhaustiveness;
+    // ctx.dock_param.randomize = ipt.randomize;
+    // ctx.dock_param.mc_steps = ipt.mc_steps;
+    // ctx.dock_param.opt_steps = ipt.opt_steps;
+    // if (ctx.dock_param.opt_steps < 0){ //heuristic
+    //     ctx.dock_param.opt_steps = -1;
+    //     spdlog::info("Use heuristic method to decide opt_steps");
+    // }
+    // apply_search_mode(ctx.dock_param, ipt.search_mode);
+    // ctx.dock_param.refine_steps = ipt.refine_steps;
+    // ctx.dock_param.num_pose = ipt.num_pose;
+    // ctx.dock_param.energy_range = ipt.energy_range;
+    // ctx.dock_param.rmsd_limit = ipt.rmsd_limit;
+    //
+    // ctx.dock_param.constraint_docking = ipt.constraint_docking;
+    // if (ctx.dock_param.constraint_docking) {
+    //     ctx.dock_param.randomize = false;
+    // }
+    //
+    // ctx.dock_param.box = ipt.box;
+    // apply_bias(ctx.dock_param, ipt.bias, ipt.bias_k);
 
     return ctx;
 }
@@ -140,14 +140,14 @@ CoreContext prepare_context_by_input(CoreInput& ipt) {
 
 
 
-int core_pipeline(CoreInput& cti) {
+int core_pipeline(CoreContext& ipt) {
     try {
 
         spdlog::info("==================== UD2 Starts! ======================\n");
         auto start = std::chrono::high_resolution_clock::now();
 
         // ------------------------------- Prepare Context -------------------------------
-        auto ctx = prepare_context_by_input(cti);
+        auto ctx = prepare_context_by_input(ipt);
 
         // ------------------------------- Run Task -------------------------------
         if (ctx.task == "screen") { // allow changing every parameter

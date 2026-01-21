@@ -29,7 +29,7 @@ void DockTask::set_flex(const UDFlexMolList& flex_mol_list,
     this->fp_json = std::move(fp_json);
     nflex = flex_mol_list.size();
 
-    // TODO: clear flex-related varibales
+    // TODO: clear flex-related
     list_i_real.clear();
     clustered_pose_inds_list.clear();
     filtered_pose_inds_list.clear();
