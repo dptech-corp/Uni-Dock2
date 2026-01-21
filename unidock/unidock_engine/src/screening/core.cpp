@@ -86,7 +86,7 @@ void apply_bias(DockParam& dock_param, const std::string& bias, Real bias_k) {
     dock_param.bias_k = bias_k;
 }
 
-CoreContext prepare_context_by_input(CoreContext& ipt) {
+CoreContext prepare_context_by_input(CoreInput& ipt) {
     CoreContext ctx;
 
     ctx.task = ipt.task;
@@ -131,7 +131,7 @@ CoreContext prepare_context_by_input(CoreContext& ipt) {
         ctx.dock_param.randomize = false;
     }
 
-    // ctx.dock_param.box = ipt.box;
+    ctx.dock_param.box = ipt.box;
     apply_bias(ctx.dock_param, ipt.bias, ipt.bias_k);
 
     return ctx;
@@ -142,7 +142,7 @@ CoreContext prepare_context_by_input(CoreContext& ipt) {
 
 
 
-int core_pipeline(CoreContext& ipt) {
+int core_pipeline(CoreInput& ipt) {
     try {
 
         spdlog::info("==================== UD2 Starts! ======================\n");

@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
     std::string fp_score;
 
     YAML::Node config = YAML::LoadFile(fp_config);
-    CoreContext ctx;
+    CoreInput ctx;
 
 
     // -------------------------------  Parse Advanced -------------------------------
@@ -141,9 +141,13 @@ int main(int argc, char* argv[])
     ctx.opt_steps = get_config_with_err<int>(config, "Advanced", "opt_steps", dock_param.opt_steps);
     ctx.refine_steps = get_config_with_err<int>(config, "Advanced", "refine_steps", dock_param.refine_steps);
     bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", false);;
+    ctx.bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
+    ctx.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", dock_param.bias_k);
 
-    // Settings
+    // -------------------------------  Parse Settings -------------------------------
     ctx.task = get_config_with_err<std::string>(config, "Settings", "task", "screen");
+    ctx.search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", "balance");
+    ctx.constraint_docking = get_config_with_err<bool>(config, "Settings", "constraint_docking", false);
     // box
     Real center_x = get_config_with_err<Real>(config, "Settings", "center_x");
     Real center_y = get_config_with_err<Real>(config, "Settings", "center_y");
@@ -151,23 +155,22 @@ int main(int argc, char* argv[])
     Real size_x = get_config_with_err<Real>(config, "Settings", "size_x");
     Real size_y = get_config_with_err<Real>(config, "Settings", "size_y");
     Real size_z = get_config_with_err<Real>(config, "Settings", "size_z");
-    dock_param.box.x_lo = center_x - size_x / 2;
-    dock_param.box.x_hi = center_x + size_x / 2;
-    dock_param.box.y_lo = center_y - size_y / 2;
-    dock_param.box.y_hi = center_y + size_y / 2;
-    dock_param.box.z_lo = center_z - size_z / 2;
-    dock_param.box.z_hi = center_z + size_z / 2;
+    ctx.box.x_lo = center_x - size_x / 2;
+    ctx.box.x_hi = center_x + size_x / 2;
+    ctx.box.y_lo = center_y - size_y / 2;
+    ctx.box.y_hi = center_y + size_y / 2;
+    ctx.box.z_lo = center_z - size_z / 2;
+    ctx.box.z_hi = center_z + size_z / 2;
 
-    // Hardware
+
+    // -------------------------------  Parse Hardware -------------------------------
     ctx.gpu_device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", 0);
 
+    // -------------------------------  Parse Outputs -------------------------------
+    ctx.output_dir = get_config_with_err<std::string>(config, "Outputs", "dir");
 
-    // Input
+    // -------------------------------  Parse Inputs -------------------------------
     std::string fp_json = get_config_with_err<std::string>(config, "Inputs", "json");
-    UDFlexMolList flex_mol_list;
-    UDFixMol fix_mol;
-    std::vector<std::string>fns_flex;
-
     if (fp_json.empty()){
         spdlog::critical("Empty json file path");
         exit(1);
@@ -181,24 +184,17 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    read_ud_from_json(fp_json, dock_param.box, fix_mol, flex_mol_list, fns_flex, use_tor_lib);
+    UDFlexMolList flex_mol_list;
+    UDFixMol fix_mol;
+    std::vector<std::string>fns_flex;
+    read_ud_from_json(fp_json, ctx.box, fix_mol, flex_mol_list, fns_flex, use_tor_lib);
 
-    // -------------------------------  Parse Settings -------------------------------
-    ctx.search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", "balance");
-    ctx.constraint_docking = get_config_with_err<bool>(config, "Settings", "constraint_docking", false);
-
-    ctx.bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
-    dock_param.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", dock_param.bias_k);
-
-
-    // -------------------------------  Perform Task -------------------------------
-    ctx.output_dir = get_config_with_err<std::string>(config, "Outputs", "dir");
-    ctx.dock_param = dock_param;
     ctx.fix_mol = std::move(fix_mol);
     ctx.flex_mol_list = std::move(flex_mol_list);
     ctx.fns_flex = std::move(fns_flex);
-    core_pipeline(ctx);
 
+    // -------------------------------  Run Pipeline -------------------------------
+    core_pipeline(ctx);
 
     return 0;
 }
