@@ -1,21 +1,28 @@
 """
 @author Congcong Liu
 @date 2026/1/21
-@brief
+@brief pytest tests for pipeline module
 """
-import os.path
+# === Setup sys.path FIRST (before any project imports) ===
 import sys
-import json
+import os
 from pathlib import Path
 
-import yaml
-
-# Add build directory to sys.path
 project_root = Path(__file__).resolve().parents[2]
 example_dir = project_root / "examples" / "1W1P"
 build_path = project_root / "cmake-build-release" / "api" / "python"
-sys.path.insert(0, str(build_path))
 
+# Add build directory to sys.path (for pipeline.so)
+if str(build_path) not in sys.path:
+    sys.path.insert(0, str(build_path))
+# Also check PYTHONPATH from CTest
+for p in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+    if p and p not in sys.path:
+        sys.path.insert(0, p)
+
+# === Now import project modules ===
+import json
+import yaml
 import pipeline
 
 
@@ -116,15 +123,14 @@ def run_docking(example_dir: Path):
     print(f"Results saved to: {output_dir}")
 
 
-
-if __name__ == "__main__":
+def test_pipeline():
+    """Test the pipeline module"""
     print("\n" + "=" * 60)
-    if example_dir.exists():
-        run_docking(example_dir)
-    else:
-        print(f"Example directory not found: {example_dir}")
-        print("Skipping full docking test.")
-    
+    run_docking(example_dir)
     print("\n" + "=" * 60)
     print("All tests passed!")
     print("=" * 60)
+
+
+if __name__ == "__main__":
+    test_pipeline()
