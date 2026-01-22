@@ -29,8 +29,8 @@ void print_version(){
 }
 
 namespace {
-float resolve_max_memory_mb(int gpu_device_id) {
-    float max_memory = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 1024 / 1024 * 0.95f;
+int decide_memory_limit_mb(int gpu_device_id, int vram_lim_user) {
+    int ram_lim = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 1024 / 1024 * 0.95f;
 
     int deviceCount = 0;
     checkCUDA(cudaGetDeviceCount(&deviceCount));
@@ -38,15 +38,28 @@ float resolve_max_memory_mb(int gpu_device_id) {
 
     checkCUDA(cudaSetDevice(gpu_device_id));
     spdlog::info("Set GPU device id to {:d}", gpu_device_id);
-    size_t avail, total;
-    cudaMemGetInfo(&avail, &total);
-    spdlog::info("Available Memory = {:d} MB   Total Memory = {:d} MB",
-                 avail / 1024 / 1024, total / 1024 / 1024);
-    int max_gpu_memory = avail / 1024 / 1024 * 0.95; // leave 5%
-    if (max_gpu_memory > 0 && max_gpu_memory < max_memory) {
-        max_memory = static_cast<float>(max_gpu_memory);
+    size_t vram_avail, vram_total;
+    cudaMemGetInfo(&vram_avail, &vram_total);
+    vram_avail = vram_avail / 1024 / 1024;
+    vram_total = vram_total / 1024 / 1024;
+    int vram_lim = vram_avail * 0.95; // leave 5%
+
+    spdlog::info("GPU Memory: Total = {:d} MB, Available = {:d} MB, 95% as Limit = {:d} MB",
+                  vram_total, vram_avail, vram_lim);
+
+    if (ram_lim < vram_lim) {
+        vram_lim = ram_lim;
+        spdlog::info("System Memory Limit = {:d} MB is smaller, so Final GPU Memory Limit: {:d} MB",
+    ram_lim, vram_lim);
     }
-    return max_memory;
+
+    if (vram_lim_user > 0 and vram_lim_user < vram_lim){
+        vram_lim = vram_lim_user;
+        spdlog::info("User Memory Limit = {:d} MB is smaller, so Final GPU Memory Limit: {:d} MB",
+    vram_lim_user, vram_lim);
+    }
+
+    return vram_lim;
 }
 
 void apply_search_mode(DockParam& dock_param, const std::string& search_mode) {
@@ -99,7 +112,7 @@ CoreContext prepare_context_by_input(CoreInput& ipt) {
     }
 
     ctx.name_json = ipt.name_json;
-    ctx.max_memory = resolve_max_memory_mb(ipt.gpu_device_id);
+    ctx.max_memory = decide_memory_limit_mb(ipt.gpu_device_id, ipt.max_gpu_memory);
     ctx.fix_mol = std::move(ipt.fix_mol);
     ctx.flex_mol_list = std::move(ipt.flex_mol_list);
     ctx.fns_flex = std::move(ipt.fns_flex);
