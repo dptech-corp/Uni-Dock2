@@ -104,7 +104,9 @@ def run_docking(example_dir: Path):
         seed=advanced.get("seed", 1234567),
         use_tor_lib=advanced.get("tor_lib", False),
         constraint_docking=settings.get("constraint_docking", False),
-        gpu_device_id=hardware.get("gpu_device_id", 0)
+        gpu_device_id=hardware.get("gpu_device_id", 0),
+        max_gpu_mem=hardware.get("max_gpu_memory", 0)
+
     )
     
     # Set receptor

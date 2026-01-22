@@ -22,9 +22,10 @@ Advanced:
   energy_range: !!float 10  # maximum energy difference between output poses and the best pose
   bias: !!str pos           # default is `no`, `pos` for positio bias (Gaussian), `align` to align two molecules
   bias_k: !!float 0.1       # scaling coefficient, default is 0.1
+  tor_lib: !!bool false     # whether to use torsion angle library
+
 
 Hardware:
-  ncpu: !!int 10            # [Not loaded] the number of CPUs to use (the default is to use all detected CPUs)
   gpu_device_id: !!int 0    # GPU device id (default 0)
   max_gpu_memory: !!int 0   # maximum gpu memory (MB) to use (default=0, use all available GPU memory)
 
@@ -50,6 +51,7 @@ Settings:
 
 Outputs:
   dir: !!str ./res2         # output directory, default is `./res`
+
 
 Inputs:
   json: !!str ./5S8I.json   # Input json file containing receptor & ligands info.

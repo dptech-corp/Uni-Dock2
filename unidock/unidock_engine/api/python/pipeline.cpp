@@ -34,10 +34,12 @@ public:
         bool constraint_docking,
         bool use_tor_lib,
         int gpu_device_id,
-        std::string name_json
-    ) : _use_tor_lib(use_tor_lib) {
+        std::string name_json,
+        int max_gpu_mem
+    ) : use_tor_lib(use_tor_lib) {
 
         ipt.gpu_device_id = gpu_device_id;
+        ipt.max_gpu_memory = max_gpu_mem;
         ipt.output_dir = output_dir;
         ipt.name_json = name_json;
 
@@ -89,7 +91,7 @@ public:
         ipt.fix_mol = UDFixMol();
         ipt.flex_mol_list.clear();
         ipt.fns_flex.clear();
-        read_ud_from_json_string(json_str, ipt.box, ipt.fix_mol, ipt.flex_mol_list, ipt.fns_flex, _use_tor_lib);
+        read_ud_from_json_string(json_str, ipt.box, ipt.fix_mol, ipt.flex_mol_list, ipt.fns_flex, use_tor_lib);
 
         if (core_pipeline(ipt) != 0) {
             throw std::runtime_error("Core pipeline failed.");
@@ -97,7 +99,7 @@ public:
     }
 
 private:
-    bool _use_tor_lib = false;
+    bool use_tor_lib = false;
     CoreInput ipt;
     py::dict json_data;
 };
@@ -111,7 +113,7 @@ PYBIND11_MODULE(pipeline, m) { // shared lib name: "pipeline.<py_version>-<platf
         .def(py::init<
                 std::string, Real, Real, Real, Real, Real, Real, std::string, std::string, 
                 int, bool, int, int, int, int, Real, Real, int, bool, bool, int,
-                std::string>(),
+                std::string, int>(),
             R"pbdoc(
 Initialize a molecular docking pipeline.
 
@@ -138,25 +140,27 @@ Args:
     use_tor_lib (bool): Use torsion angle library. Default: False.
     gpu_device_id (int): GPU device ID to use. Default: 0.
     name_json (str): JSON identifier name for output. Default: "from_python_obj".
+    max_gpu_mem (int): Maximum GPU memory to use in MB (0 for all the memory). Default: 0.
             )pbdoc",
             py::arg("output_dir"),
             py::arg("center_x"), py::arg("center_y"), py::arg("center_z"),
             py::arg("size_x"), py::arg("size_y"), py::arg("size_z"),
-            py::arg("task") = "screen",
-            py::arg("search_mode") = "balance",
-            py::arg("exhaustiveness") = 512,
-            py::arg("randomize") = true,
-            py::arg("mc_steps") = 20,
-            py::arg("opt_steps") = -1,
-            py::arg("refine_steps") = 5,
-            py::arg("num_pose") = 10,
-            py::arg("rmsd_limit") = 1.0,
-            py::arg("energy_range") = 10.0,
-            py::arg("seed") = 1234567,
-            py::arg("constraint_docking") = false,
-            py::arg("use_tor_lib") = false,
-            py::arg("gpu_device_id") = 0,
-            py::arg("name_json") = "from_python_obj"
+            py::arg("task") = CoreInputDefaults::task,
+            py::arg("search_mode") = CoreInputDefaults::search_mode,
+            py::arg("exhaustiveness") = CoreInputDefaults::exhaustiveness,
+            py::arg("randomize") = CoreInputDefaults::randomize,
+            py::arg("mc_steps") = CoreInputDefaults::mc_steps,
+            py::arg("opt_steps") = CoreInputDefaults::opt_steps,
+            py::arg("refine_steps") = CoreInputDefaults::refine_steps,
+            py::arg("num_pose") = CoreInputDefaults::num_pose,
+            py::arg("rmsd_limit") = CoreInputDefaults::rmsd_limit,
+            py::arg("energy_range") = CoreInputDefaults::energy_range,
+            py::arg("seed") = CoreInputDefaults::seed,
+            py::arg("constraint_docking") = CoreInputDefaults::constraint_docking,
+            py::arg("use_tor_lib") = CoreInputDefaults::use_tor_lib,
+            py::arg("gpu_device_id") = CoreInputDefaults::gpu_device_id,
+            py::arg("name_json") = CoreInputDefaults::name_json,
+            py::arg("max_gpu_mem") = CoreInputDefaults::max_gpu_memory
         )
 
         .def("set_receptor", &DockingPipeline::set_receptor,

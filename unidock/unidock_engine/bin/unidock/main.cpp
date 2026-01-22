@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
     if (fp_config.empty()){
         print_help();
         printf("Missing argument: config file path\n");
-        exit(1);
+        return 1;
     }
 
     print_version();
@@ -125,33 +125,27 @@ int main(int argc, char* argv[])
     init_logger(fp_log, log_level);
     spdlog::info("Using config file: {}", fp_config);
 
-    int mc_steps = 0;
-    DockParam dock_param;
-    std::string fp_score;
-
     YAML::Node config = YAML::LoadFile(fp_config);
     CoreInput cipt;
 
-
     // -------------------------------  Parse Advanced -------------------------------
-    // Advanced
-    cipt.num_pose = get_config_with_err<int>(config, "Advanced", "num_pose", dock_param.num_pose);
-    cipt.rmsd_limit = get_config_with_err<Real>(config, "Advanced", "rmsd_limit", dock_param.rmsd_limit);
-    cipt.energy_range = get_config_with_err<Real>(config, "Advanced", "energy_range", dock_param.energy_range);
-    cipt.seed = get_config_with_err<int>(config, "Advanced", "seed", dock_param.seed);
-    cipt.exhaustiveness = get_config_with_err<int>(config, "Advanced", "exhaustiveness", dock_param.exhaustiveness);;
-    cipt.randomize = get_config_with_err<bool>(config, "Advanced", "randomize", dock_param.randomize);
-    cipt.mc_steps = get_config_with_err<int>(config, "Advanced", "mc_steps", mc_steps);
-    cipt.opt_steps = get_config_with_err<int>(config, "Advanced", "opt_steps", dock_param.opt_steps);
-    cipt.refine_steps = get_config_with_err<int>(config, "Advanced", "refine_steps", dock_param.refine_steps);
-    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", false);;
-    cipt.bias = get_config_with_err<std::string>(config, "Advanced", "bias", "no");
-    cipt.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", dock_param.bias_k);
+    cipt.num_pose = get_config_with_err<int>(config, "Advanced", "num_pose", CoreInputDefaults::num_pose);
+    cipt.rmsd_limit = get_config_with_err<Real>(config, "Advanced", "rmsd_limit", CoreInputDefaults::rmsd_limit);
+    cipt.energy_range = get_config_with_err<Real>(config, "Advanced", "energy_range", CoreInputDefaults::energy_range);
+    cipt.seed = get_config_with_err<int>(config, "Advanced", "seed", CoreInputDefaults::seed);
+    cipt.exhaustiveness = get_config_with_err<int>(config, "Advanced", "exhaustiveness", CoreInputDefaults::exhaustiveness);
+    cipt.randomize = get_config_with_err<bool>(config, "Advanced", "randomize", CoreInputDefaults::randomize);
+    cipt.mc_steps = get_config_with_err<int>(config, "Advanced", "mc_steps", CoreInputDefaults::mc_steps);
+    cipt.opt_steps = get_config_with_err<int>(config, "Advanced", "opt_steps", CoreInputDefaults::opt_steps);
+    cipt.refine_steps = get_config_with_err<int>(config, "Advanced", "refine_steps", CoreInputDefaults::refine_steps);
+    bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", CoreInputDefaults::use_tor_lib);
+    cipt.bias = get_config_with_err<std::string>(config, "Advanced", "bias", std::string(CoreInputDefaults::bias));
+    cipt.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", CoreInputDefaults::bias_k);
 
     // -------------------------------  Parse Settings -------------------------------
-    cipt.task = get_config_with_err<std::string>(config, "Settings", "task", "screen");
-    cipt.search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", "balance");
-    cipt.constraint_docking = get_config_with_err<bool>(config, "Settings", "constraint_docking", false);
+    cipt.task = get_config_with_err<std::string>(config, "Settings", "task", std::string(CoreInputDefaults::task));
+    cipt.search_mode = get_config_with_err<std::string>(config, "Settings", "search_mode", std::string(CoreInputDefaults::search_mode));
+    cipt.constraint_docking = get_config_with_err<bool>(config, "Settings", "constraint_docking", CoreInputDefaults::constraint_docking);
     // box
     Real center_x = get_config_with_err<Real>(config, "Settings", "center_x");
     Real center_y = get_config_with_err<Real>(config, "Settings", "center_y");
@@ -168,7 +162,8 @@ int main(int argc, char* argv[])
 
 
     // -------------------------------  Parse Hardware -------------------------------
-    cipt.gpu_device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", 0);
+    cipt.gpu_device_id = get_config_with_err<int>(config, "Hardware", "gpu_device_id", CoreInputDefaults::gpu_device_id);
+    cipt.max_gpu_memory = get_config_with_err<int>(config, "Hardware", "max_gpu_memory", CoreInputDefaults::max_gpu_memory);
 
     // -------------------------------  Parse Outputs -------------------------------
     cipt.output_dir = get_config_with_err<std::string>(config, "Outputs", "dir");
@@ -177,7 +172,7 @@ int main(int argc, char* argv[])
     std::string fp_json = get_config_with_err<std::string>(config, "Inputs", "json");
     if (fp_json.empty()){
         spdlog::critical("Empty json file path");
-        exit(1);
+        return 1;
     }
     // get input json name
     std::string name_json = std::filesystem::path(fp_json).filename().string();
@@ -185,7 +180,7 @@ int main(int argc, char* argv[])
         cipt.name_json = name_json.substr(0, name_json.size() - 5);
     }else{
         spdlog::error("Wrong JSON file name: ", name_json);
-        exit(1);
+        return 1;
     }
 
     UDFlexMolList flex_mol_list;
@@ -198,7 +193,10 @@ int main(int argc, char* argv[])
     cipt.fns_flex = std::move(fns_flex);
 
     // -------------------------------  Run Pipeline -------------------------------
-    core_pipeline(cipt);
+    if (core_pipeline(cipt) != 0) {
+        spdlog::critical("Docking pipeline failed");
+        return 1;
+    }
 
     return 0;
 }
