@@ -47,15 +47,7 @@ T get_config_with_err(const YAML::Node& config, const std::string& section, cons
     }
 }
 
-void dump_config_template(const std::string& p){
-    std::ofstream f(p);
-    if (!f){
-        std::cout << "Failed to create config template file: " << p.c_str() << "\n";
-        exit(1);
-    }
-
-    f << STR_CONFIG_TEMPLATE;
-}
+// dump_config_template is now defined in main.h using YAML::Emitter
 
 
 

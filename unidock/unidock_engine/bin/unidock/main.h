@@ -5,58 +5,112 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-const char* STR_CONFIG_TEMPLATE = R"(
-# For each item with type tag (!!), the value is REQUIRED
+#include <yaml-cpp/yaml.h>
+#include <fstream>
+#include <iostream>
+#include "screening/core.h"
 
+// Macro to emit a parameter with its default value and documentation
+#define EMIT_PARAM_DEFAULT(emitter, name) \
+    emitter << YAML::Key << #name \
+            << YAML::Value << CoreInputDefaults::name \
+            << YAML::Comment(CoreInputDocs::name)
 
-Advanced:
-  seed: !!int 1234567       # explicit random seed
-  exhaustiveness: !!int 512 # MC candidates count (roughly proportional to time).
-                            # For `screen` task, it's only considered for `free` mode
-  randomize: !!bool true    # whether to randomize input pose before performing the global search
-  mc_steps: !!int 40        # Monte Carlo random walk steps
-  opt_steps: !!int -1       # optimization steps after each MC walk step; -1 to use heuristic strategy
-  refine_steps: !!int 5     # refinement steps after clustering
-  rmsd_limit: !!float 1.0   # minimum RMSD between output poses
-  num_pose: !!int 10        # number of the finally generated poses to output
-  energy_range: !!float 10  # maximum energy difference between output poses and the best pose
-  bias: !!str pos           # default is `no`, `pos` for positio bias (Gaussian), `align` to align two molecules
-  bias_k: !!float 0.1       # scaling coefficient, default is 0.1
-  tor_lib: !!bool false     # whether to use torsion angle library
+#define EMIT_PARAM(emitter, name, value, comment) \
+    emitter << YAML::Key << #name \
+            << YAML::Value << value \
+            << YAML::Comment(comment)
 
+#define EMIT_PARAM_REQUIRED(emitter, name, comment) \
+    emitter << YAML::Key << #name \
+            << YAML::Comment(comment)
 
-Hardware:
-  gpu_device_id: !!int 0    # GPU device id (default 0)
-  max_gpu_memory: !!int 0   # maximum gpu memory (MB) to use (default=0, use all available GPU memory)
+/**
+ * @brief Generate and dump the default config template using YAML::Emitter.
+ * Documentation and default values come from CoreInputDefaults and CoreInputDocs.
+ */
+inline void dump_config_template(const std::string& path) {
+    YAML::Emitter out;
+    out << YAML::BeginMap;
 
+    // ==================== Advanced ====================
+    out << YAML::Key << "Advanced";
+    out << YAML::Value << YAML::BeginMap;
 
-Settings:
-  task: !!str screen        # screen | score | mc
-                            # screen: The most common mode, perform randomize(if true) + MC(mc_steps) +
-                            #         optimization(opt_steps) + cluster(if true) + refinement(refine_steps)
-                            # score: Only provide scores for input ligands, no searching or optimization
-                            # mc: only perform pure mc, namely opt_steps=0; no refinement, neither
+    EMIT_PARAM_DEFAULT(out, seed);
+    EMIT_PARAM_DEFAULT(out, exhaustiveness);
+    EMIT_PARAM_DEFAULT(out, randomize);
+    EMIT_PARAM_DEFAULT(out, mc_steps);
+    EMIT_PARAM_DEFAULT(out, opt_steps);
+    EMIT_PARAM_DEFAULT(out, refine_steps);
+    EMIT_PARAM_DEFAULT(out, rmsd_limit);
+    EMIT_PARAM_DEFAULT(out, num_pose);
+    EMIT_PARAM_DEFAULT(out, energy_range);
+    EMIT_PARAM_DEFAULT(out, bias);
+    EMIT_PARAM_DEFAULT(out, bias_k);
+    out << YAML::Key << "tor_lib"
+        << YAML::Value << CoreInputDefaults::use_tor_lib
+        << YAML::Comment(CoreInputDocs::use_tor_lib);
 
-  search_mode: !!str free   # [Only for task "screen"] fast | balance | detail | free,
-                            # use recommended settings of exhaustiveness and search steps
+    out << YAML::EndMap;  // Advanced
 
-  constraint_docking: !!bool false # if True, cancel the translation & orientation DOFs
-  center_x: !!float -22.3   # X coordinate of the center (Angstrom)
-  center_y: !!float 1
-  center_z: !!float 27.3
-  size_x: !!float 30        # size in the X dimension (Angstrom)
-  size_y: !!float 30.0
-  size_z: !!float 30
+    // ==================== Hardware ====================
+    out << YAML::Key << "Hardware";
+    out << YAML::Value << YAML::BeginMap;
 
+    EMIT_PARAM_DEFAULT(out, gpu_device_id);
+    EMIT_PARAM_DEFAULT(out, max_gpu_memory);
 
-Outputs:
-  dir: !!str ./res2         # output directory, default is `./res`
+    out << YAML::EndMap;  // Hardware
 
+    // ==================== Settings ====================
+    out << YAML::Key << "Settings";
+    out << YAML::Value << YAML::BeginMap;
 
-Inputs:
-  json: !!str ./5S8I.json   # Input json file containing receptor & ligands info.
+    EMIT_PARAM_DEFAULT(out, task);
+    EMIT_PARAM_DEFAULT(out, search_mode);
+    EMIT_PARAM_DEFAULT(out, constraint_docking);
 
-)";
+    // Box parameters (required, use placeholder values)
+    EMIT_PARAM(out, center_x, 0.0, "X coordinate of box center (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, center_y, 0.0, "Y coordinate of box center (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, center_z, 0.0, "Z coordinate of box center (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, size_x, 30.0, "Box size along X axis (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, size_y, 30.0, "Box size along Y axis (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, size_z, 30.0, "Box size along Z axis (Angstrom) - REQUIRED");
 
+    out << YAML::EndMap;  // Settings
 
+    // ==================== Outputs ====================
+    out << YAML::Key << "Outputs";
+    out << YAML::Value << YAML::BeginMap;
+
+    EMIT_PARAM_DEFAULT(out, output_dir);
+
+    out << YAML::EndMap;  // Outputs
+
+    // ==================== Inputs ====================
+    out << YAML::Key << "Inputs";
+    out << YAML::Value << YAML::BeginMap;
+
+    EMIT_PARAM_REQUIRED(out, json, "Input JSON file - REQUIRED");
+
+    out << YAML::EndMap;  // Inputs
+
+    out << YAML::EndMap;  // root
+
+    // Write to file
+    std::ofstream fout(path);
+    if (!fout) {
+        std::cerr << "Failed to create config template file: " << path << std::endl;
+        exit(1);
+    }
+    fout << "# Uni-Dock2 Configuration Template\n";
+    fout << "# Generated with default values from CoreInputDefaults\n\n";
+    fout << out.c_str();
+}
+
+#undef EMIT_PARAM_DEFAULT
+#undef EMIT_PARAM
+#undef EMIT_PARAM_REQUIRED
 #endif //MAIN_H
