@@ -125,9 +125,29 @@ def run_docking(example_dir: Path):
     print(f"Results saved to: {output_dir}")
 
 
+def print_help_info():
+    """Print help information for DockingPipeline class and its methods"""
+    # Class docstring
+    print("\n--- DockingPipeline class ---")
+    help(pipeline.DockingPipeline)
+    
+    # Individual method docstrings
+    print("\n--- DockingPipeline.set_receptor ---")
+    help(pipeline.DockingPipeline.set_receptor)
+    
+    print("\n--- DockingPipeline.add_ligands ---")
+    help(pipeline.DockingPipeline.add_ligands)
+    
+    print("\n--- DockingPipeline.run ---")
+    help(pipeline.DockingPipeline.run)
+    
+    print("=" * 60)
+
+
 def test_pipeline():
     """Test the pipeline module"""
     print("\n" + "=" * 60)
+    print_help_info()
     run_docking(example_dir)
     print("\n" + "=" * 60)
     print("All tests passed!")

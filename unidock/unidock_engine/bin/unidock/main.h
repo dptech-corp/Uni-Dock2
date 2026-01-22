@@ -31,7 +31,27 @@
  */
 inline void dump_config_template(const std::string& path) {
     YAML::Emitter out;
+    out.SetFloatPrecision(3);  // decimal places
+    out.SetDoublePrecision(3); 
     out << YAML::BeginMap;
+
+    // ==================== Settings ====================
+    out << YAML::Key << "Settings";
+    out << YAML::Value << YAML::BeginMap;
+
+    EMIT_PARAM_DEFAULT(out, task);
+    EMIT_PARAM_DEFAULT(out, search_mode);
+    EMIT_PARAM_DEFAULT(out, constraint_docking);
+
+    // Box parameters (required, use placeholder values)
+    EMIT_PARAM(out, center_x, 0.0, "float: X coordinate of box center (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, center_y, 0.0, "float: Y coordinate of box center (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, center_z, 0.0, "float: Z coordinate of box center (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, size_x, 30.0, "float: Box size along X axis (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, size_y, 30.0, "float: Box size along Y axis (Angstrom) - REQUIRED");
+    EMIT_PARAM(out, size_z, 30.0, "float: Box size along Z axis (Angstrom) - REQUIRED");
+
+    out << YAML::EndMap;  // Settings
 
     // ==================== Advanced ====================
     out << YAML::Key << "Advanced";
@@ -48,10 +68,7 @@ inline void dump_config_template(const std::string& path) {
     EMIT_PARAM_DEFAULT(out, energy_range);
     EMIT_PARAM_DEFAULT(out, bias);
     EMIT_PARAM_DEFAULT(out, bias_k);
-    out << YAML::Key << "tor_lib"
-        << YAML::Value << CoreInputDefaults::use_tor_lib
-        << YAML::Comment(CoreInputDocs::use_tor_lib);
-
+    EMIT_PARAM_DEFAULT(out, use_tor_lib);
     out << YAML::EndMap;  // Advanced
 
     // ==================== Hardware ====================
@@ -62,24 +79,6 @@ inline void dump_config_template(const std::string& path) {
     EMIT_PARAM_DEFAULT(out, max_gpu_memory);
 
     out << YAML::EndMap;  // Hardware
-
-    // ==================== Settings ====================
-    out << YAML::Key << "Settings";
-    out << YAML::Value << YAML::BeginMap;
-
-    EMIT_PARAM_DEFAULT(out, task);
-    EMIT_PARAM_DEFAULT(out, search_mode);
-    EMIT_PARAM_DEFAULT(out, constraint_docking);
-
-    // Box parameters (required, use placeholder values)
-    EMIT_PARAM(out, center_x, 0.0, "X coordinate of box center (Angstrom) - REQUIRED");
-    EMIT_PARAM(out, center_y, 0.0, "Y coordinate of box center (Angstrom) - REQUIRED");
-    EMIT_PARAM(out, center_z, 0.0, "Z coordinate of box center (Angstrom) - REQUIRED");
-    EMIT_PARAM(out, size_x, 30.0, "Box size along X axis (Angstrom) - REQUIRED");
-    EMIT_PARAM(out, size_y, 30.0, "Box size along Y axis (Angstrom) - REQUIRED");
-    EMIT_PARAM(out, size_z, 30.0, "Box size along Z axis (Angstrom) - REQUIRED");
-
-    out << YAML::EndMap;  // Settings
 
     // ==================== Outputs ====================
     out << YAML::Key << "Outputs";
@@ -93,10 +92,11 @@ inline void dump_config_template(const std::string& path) {
     out << YAML::Key << "Inputs";
     out << YAML::Value << YAML::BeginMap;
 
-    EMIT_PARAM_REQUIRED(out, json, "Input JSON file - REQUIRED");
+    EMIT_PARAM_REQUIRED(out, json, "str: Input JSON file - REQUIRED");
 
     out << YAML::EndMap;  // Inputs
 
+    // ====================
     out << YAML::EndMap;  // root
 
     // Write to file
