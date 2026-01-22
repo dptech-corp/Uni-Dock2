@@ -114,35 +114,8 @@ PYBIND11_MODULE(pipeline, m) { // shared lib name: "pipeline.<py_version>-<platf
                 std::string, Real, Real, Real, Real, Real, Real, std::string, std::string, 
                 int, bool, int, int, int, int, Real, Real, int, bool, bool, int,
                 std::string, int>(),
-            R"pbdoc(
-Initialize a molecular docking pipeline.
-
-Args:
-    output_dir (str): Path to the output directory for docking results.
-    center_x (float): X coordinate of the docking box center.
-    center_y (float): Y coordinate of the docking box center.
-    center_z (float): Z coordinate of the docking box center.
-    size_x (float): Size of the docking box along X axis (Angstrom).
-    size_y (float): Size of the docking box along Y axis (Angstrom).
-    size_z (float): Size of the docking box along Z axis (Angstrom).
-    task (str): Docking task type. Options: "screen", "score", "mc". Default: "screen".
-    search_mode (str): Search algorithm mode. Options: "balance", "fast", "detail". Default: "balance".
-    exhaustiveness (int): Number of independent runs. Default: 512.
-    randomize (bool): Whether to randomize initial ligand poses. Default: True.
-    mc_steps (int): Monte Carlo steps per run. Default: 20.
-    opt_steps (int): Optimization steps (-1 for auto). Default: -1.
-    refine_steps (int): Refinement steps after search. Default: 5.
-    num_pose (int): Maximum number of output poses per ligand. Default: 10.
-    rmsd_limit (float): RMSD threshold for pose clustering (Angstrom). Default: 1.0.
-    energy_range (float): Energy range for output poses (kcal/mol). Default: 10.0.
-    seed (int): Random seed for reproducibility. Default: 1234567.
-    constraint_docking (bool): Enable constraint docking mode. Default: False.
-    use_tor_lib (bool): Use torsion angle library. Default: False.
-    gpu_device_id (int): GPU device ID to use. Default: 0.
-    name_json (str): JSON identifier name for output. Default: "from_python_obj".
-    max_gpu_mem (int): Maximum GPU memory to use in MB (0 for all the memory). Default: 0.
-            )pbdoc",
-            py::arg("output_dir"),
+            py::kw_only(),  // force keyword-only 
+            py::arg("output_dir") = CoreInputDefaults::output_dir,
             py::arg("center_x"), py::arg("center_y"), py::arg("center_z"),
             py::arg("size_x"), py::arg("size_y"), py::arg("size_z"),
             py::arg("task") = CoreInputDefaults::task,
