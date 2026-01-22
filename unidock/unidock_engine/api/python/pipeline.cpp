@@ -2,6 +2,7 @@
 #include <vector>
 #include <filesystem>
 #include <stdexcept>
+#include <sstream>
 
 #include <cuda_runtime.h>
 #include <pybind11/pybind11.h>
@@ -13,6 +14,41 @@
 #include "screening/core.h"
 
 namespace py = pybind11;
+
+// ============ Docstring generation using macro ============
+#define DOC_LINE(name) << "    " #name ": " << CoreInputDocs::name << "(Default: " << CoreInputDefaults::name << ")\n"
+
+inline std::string generate_init_docstring() {
+    std::ostringstream ss;
+    ss << "Initialize a molecular docking pipeline.\n\n"
+       << "Args:\n"
+       DOC_LINE(output_dir)
+       << "    center_x: float: X coordinate of docking box center (Angstrom)\n"
+       << "    center_y: float: Y coordinate of docking box center (Angstrom)\n"
+       << "    center_z: float: Z coordinate of docking box center (Angstrom)\n"
+       << "    size_x: float: Docking box size along X axis (Angstrom)\n"
+       << "    size_y: float: Docking box size along Y axis (Angstrom)\n"
+       << "    size_z: float: Docking box size along Z axis (Angstrom)\n"
+       DOC_LINE(task)
+       DOC_LINE(search_mode)
+       DOC_LINE(exhaustiveness)
+       DOC_LINE(randomize)
+       DOC_LINE(mc_steps)
+       DOC_LINE(opt_steps)
+       DOC_LINE(refine_steps)
+       DOC_LINE(num_pose)
+       DOC_LINE(rmsd_limit)
+       DOC_LINE(energy_range)
+       DOC_LINE(seed)
+       DOC_LINE(constraint_docking)
+       DOC_LINE(use_tor_lib)
+       DOC_LINE(gpu_device_id)
+       DOC_LINE(name_json)
+       DOC_LINE(max_gpu_memory);
+    return ss.str();
+}
+
+#undef DOC_LINE
 
 class DockingPipeline {
 public:
@@ -108,12 +144,16 @@ private:
 PYBIND11_MODULE(pipeline, m) { // shared lib name: "pipeline.<py_version>-<platform>-<arch>.so"
     m.doc() = "Python bindings for the Uni-Dock2 molecular docking engine pipeline";
 
+    // Generate docstring from CoreInputDocs (single source of truth)
+    static const std::string init_doc = generate_init_docstring();
+
     py::class_<DockingPipeline>(m, "DockingPipeline",
         R"pbdoc(Uni-Dock2 molecular docking pipeline.)pbdoc")
         .def(py::init<
                 std::string, Real, Real, Real, Real, Real, Real, std::string, std::string, 
                 int, bool, int, int, int, int, Real, Real, int, bool, bool, int,
                 std::string, int>(),
+            init_doc.c_str(),  // use generated docstring
             py::kw_only(),  // force keyword-only 
             py::arg("output_dir") = CoreInputDefaults::output_dir,
             py::arg("center_x"), py::arg("center_y"), py::arg("center_z"),

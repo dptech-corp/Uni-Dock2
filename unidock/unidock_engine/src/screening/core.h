@@ -36,27 +36,27 @@ namespace CoreInputDefaults {
 
 // ============ Documentation strings (single source of truth) ============
 namespace CoreInputDocs {
-    constexpr const char* bias = "str: Bias type. Options: no, pos (position), align";
-    constexpr const char* bias_k = "float: Bias scaling coefficient";
-    constexpr const char* constraint_docking = "bool: Enable constraint docking (disable translation & orientation DOFs)";
-    constexpr const char* energy_range = "float: Energy range for output poses (kcal/mol)";
-    constexpr const char* exhaustiveness = "int: Number of independent MC runs (roughly proportional to time)";
-    constexpr const char* gpu_device_id = "int: GPU device ID to use";
-    constexpr const char* max_gpu_memory = "int: Max GPU memory in MB (0 for all available)";
-    constexpr const char* mc_steps = "int: Monte Carlo random walk steps per run";
-    constexpr const char* name_json = "str: JSON identifier name for output";
-    constexpr const char* num_pose = "int: Maximum number of output poses per ligand";
-    constexpr const char* opt_steps = "int: Optimization steps after each MC step (-1 for auto)";
-    constexpr const char* output_dir = "str: Output directory for docking results";
-    constexpr const char* randomize = "bool: Whether to randomize input pose before global search";
-    constexpr const char* refine_steps = "int: Refinement steps after clustering";
-    constexpr const char* rmsd_limit = "float: RMSD threshold for pose clustering (Angstrom)";
-    constexpr const char* search_mode = "str: Search mode. Options: fast, balance, detail, free";
-    constexpr const char* seed = "int: Random seed for reproducibility";
-    constexpr const char* task = "str: Docking task type. Options: screen, score, mc";
+    constexpr const char* bias = "(str) Bias type. Options: no, pos (position), align";
+    constexpr const char* bias_k = "(float) Bias scaling coefficient";
+    constexpr const char* constraint_docking = "(bool) Enable constraint docking (disable translation & orientation DOFs)";
+    constexpr const char* energy_range = "(float) Energy range for output poses (kcal/mol)";
+    constexpr const char* exhaustiveness = "(int) Number of independent MC runs (roughly proportional to time)";
+    constexpr const char* gpu_device_id = "(int) GPU device ID to use";
+    constexpr const char* max_gpu_memory = "(int) Max GPU memory in MB (0 for all available)";
+    constexpr const char* mc_steps = "(int) Monte Carlo random walk steps per run";
+    constexpr const char* name_json = "(str) JSON identifier name for output";
+    constexpr const char* num_pose = "(int) Maximum number of output poses per ligand";
+    constexpr const char* opt_steps = "(int) Optimization steps after each MC step (-1 for auto)";
+    constexpr const char* output_dir = "(str) Output directory for docking results";
+    constexpr const char* randomize = "(bool) Whether to randomize input pose before global search";
+    constexpr const char* refine_steps = "(int) Refinement steps after clustering";
+    constexpr const char* rmsd_limit = "(float) RMSD threshold for pose clustering (Angstrom)";
+    constexpr const char* search_mode = "(str) Search mode. Options: fast, balance, detail, free";
+    constexpr const char* seed = "(int) Random seed for reproducibility";
+    constexpr const char* task = "(str) Docking task type. Options: screen, score, mc";
 
     // not in CoreInput
-    constexpr const char* use_tor_lib = "bool: Use torsion angle library";
+    constexpr const char* use_tor_lib = "(bool) Use torsion angle library";
 }
 
 
