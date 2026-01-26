@@ -58,9 +58,16 @@ class TemplateMolGraph(GenericMolGraph):
     def get_rotatable_bond_info(self) -> list[tuple[int,...]]:
         rotatable_bond_finder = BaseRotatableBond.create('generic')
         rotatable_bond_info_list = rotatable_bond_finder.identify_rotatable_bonds(self.mol)
-        rotatable_bond_info_list = [bond_info for bond_info in rotatable_bond_info_list \
-                                    if bond_info[0] in self.core_atom_idx_list \
-                                        and bond_info[1] in self.core_atom_idx_list]
+        filtered_rotatable_bond_info_list = []
+        for rotatable_bond_info in rotatable_bond_info_list:
+            rotatable_begin_atom_idx = rotatable_bond_info[0]
+            rotatable_end_atom_idx = rotatable_bond_info[1]
+            if rotatable_begin_atom_idx in self.core_atom_idx_list and rotatable_end_atom_idx in self.core_atom_idx_list:
+                continue
+            else:
+                filtered_rotatable_bond_info_list.append(rotatable_bond_info)
+
+        rotatable_bond_info_list = filtered_rotatable_bond_info_list
         return rotatable_bond_info_list
 
     def get_root_atom_ids(self, splitted_mol_list:list[Chem.Mol],
