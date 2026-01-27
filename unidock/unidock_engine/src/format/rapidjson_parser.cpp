@@ -8,7 +8,19 @@
 #include <numeric>
 #include <algorithm>
 
-RapidJsonParser::RapidJsonParser(const rapidjson::Document& doc) : doc_(doc) {}
+SCOPE_INLINE std::pair<int, int> order_pair(int a, int b) {
+    return std::make_pair(std::min(a, b), std::max(a, b));
+}
+
+bool checkInAnySameSet(const std::vector<std::set<int>>& frags, int v1, int v2) {
+    for (const auto& frag : frags) {
+        if (frag.find(v1) != frag.end() && frag.find(v2) != frag.end()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 void RapidJsonParser::parse_receptor_info(const Box& box_protein, UDFixMol& fix_mol) {
     fix_mol.coords.clear();
@@ -198,14 +210,6 @@ void RapidJsonParser::parse_ligands_info(UDFlexMolList& flex_mol_list, std::vect
                 }
             }
         }
-        
-        // // inter pairs: flex v.s. receptor
-        // for (int i = 0; i < flex_mol.natom; i++) {
-        //     if (flex_mol.vina_types[i] == VN_TYPE_H) { // ignore Hydrogen
-        //         continue;
-        //     }
-        //     // Note: This will need receptor info separately
-        // }
         
         flex_mol_list.push_back(flex_mol);
     }

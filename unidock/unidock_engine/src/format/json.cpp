@@ -21,24 +21,25 @@
 
 namespace rj = rapidjson;
 
-rj::Document parse_json(const std::string& fp){
-    rj::Document doc;
+void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix, UDFlexMolList& out_flex_list,
+                       std::vector<std::string>& out_fns_flex, bool use_tor_lib){
+
     std::ifstream ifs(fp);
     std::string json_str((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-    doc.Parse(json_str.c_str());
+    read_ud_from_json_string(json_str, box,  out_fix, out_flex_list, out_fns_flex, use_tor_lib);
 
-    if (doc.HasParseError()){
-        throw std::runtime_error("rapidjson: Failed to parse JSON file: " + fp);
-    }
-
-    return doc;
 }
 
 
-
-void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix, UDFlexMolList& out_flex_list,
+void read_ud_from_json_string(const std::string& json_str, const Box& box, UDFixMol& out_fix, UDFlexMolList& out_flex_list,
                        std::vector<std::string>& out_fns_flex, bool use_tor_lib) {
-    rj::Document doc = parse_json(fp);
+
+    rj::Document doc;
+    doc.Parse(json_str.c_str());
+    if (doc.HasParseError()){
+        throw std::runtime_error("rapidjson: Failed to parse JSON string.");
+    }
+
     spdlog::info("Json is successfully parsed");
 
     //---------------- Parse score types ----------------
@@ -52,10 +53,22 @@ void read_ud_from_json(const std::string& fp, const Box& box, UDFixMol& out_fix,
     RapidJsonParser parser(doc);
 
     // Parse receptor
-    parser.parse_receptor_info(box, out_fix);
+    Box box_protein;
+    box_protein.x_lo = box.x_lo - VINA_CUTOFF;
+    box_protein.x_hi = box.x_hi + VINA_CUTOFF;
+    box_protein.y_lo = box.y_lo - VINA_CUTOFF;
+    box_protein.y_hi = box.y_hi + VINA_CUTOFF;
+    box_protein.z_lo = box.z_lo - VINA_CUTOFF;
+    box_protein.z_hi = box.z_hi + VINA_CUTOFF;
+    parser.parse_receptor_info(box_protein, out_fix);
+    spdlog::info("Receptor has {:d} atoms in box", out_fix.natom);
 
     // Parse ligands
     parser.parse_ligands_info(out_flex_list, out_fns_flex, use_tor_lib);
+    spdlog::info("Flexible molecules count: {:d}", out_flex_list.size());
+    if (out_flex_list.size() == 0){
+        spdlog::error("No flexible molecules are found");
+    }
 
     // Add inter pairs for each ligand (this needs to be done after receptor is parsed)
     for (auto& flex_mol : out_flex_list) {

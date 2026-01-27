@@ -89,20 +89,21 @@ add_subdirectory("lib")
 
 add_subdirectory("src")
 
-# python binding
+if (BUILD_TEST) # Compile libs on the fly
+    enable_testing()  # add before BUILD_API, since ctest may be used in API
+    add_subdirectory("include")
+    add_subdirectory("test")
+endif ()
+
 if (BUILD_API)
-    add_subdirectory("api")
+    add_subdirectory("api") # pytest-cov， pybind11
 endif ()
 
 if (BUILD_BIN)
     add_subdirectory("bin")
 endif ()
 
-if (BUILD_TEST) # Compile libs on the fly
-    add_subdirectory("include")
-    enable_testing()
-    add_subdirectory("test")
-endif ()
+
 
 if (BUILD_DOC)
     add_subdirectory("doc")
