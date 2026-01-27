@@ -119,7 +119,6 @@ CoreContext prepare_context_by_input(CoreInput& ipt) {
 
 
     ctx.dock_param.seed = ipt.seed;
-    ctx.dock_param.constraint_docking = ipt.constraint_docking;
     ctx.dock_param.exhaustiveness = ipt.exhaustiveness;
     ctx.dock_param.randomize = ipt.randomize;
     ctx.dock_param.mc_steps = ipt.mc_steps;
