@@ -41,7 +41,8 @@ class TemplateMolGraph(GenericMolGraph):
             reference_mol, mol, core_atom_mapping_dict
         )
 
-        ## The tail parts of atoms in the core are cancelled and not beloings to the core itself. Currently this strategy is disabled temporarily. #noqa
+        ## The tail parts of atoms in the core are cancelled and not belongs to the core itself.
+        ## Currently this strategy is disabled temporarily. #noqa
         # for core_atom_idx in core_atom_idx_list:
         #     core_atom = mol.GetAtomWithIdx(core_atom_idx)
         #     for neighbor_atom in core_atom.GetNeighbors():
@@ -62,7 +63,8 @@ class TemplateMolGraph(GenericMolGraph):
         for rotatable_bond_info in rotatable_bond_info_list:
             rotatable_begin_atom_idx = rotatable_bond_info[0]
             rotatable_end_atom_idx = rotatable_bond_info[1]
-            if rotatable_begin_atom_idx in self.core_atom_idx_list and rotatable_end_atom_idx in self.core_atom_idx_list:
+            if (rotatable_begin_atom_idx in self.core_atom_idx_list
+                    and rotatable_end_atom_idx in self.core_atom_idx_list):
                 continue
             else:
                 filtered_rotatable_bond_info_list.append(rotatable_bond_info)
