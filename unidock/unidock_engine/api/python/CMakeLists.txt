@@ -6,8 +6,7 @@ set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 REQUIRED)
 
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF) # avoid the symbol: fatbinData
-pybind11_add_module(${PYBIND_NAME} pipeline.cpp
-    ${CMAKE_SOURCE_DIR}/src/format/pybind_parser.cpp)
+pybind11_add_module(${PYBIND_NAME} pipeline.cpp)
 install(TARGETS ${PYBIND_NAME} LIBRARY DESTINATION .)
 
 target_link_libraries(${PYBIND_NAME} PRIVATE ${LIB_NAME})

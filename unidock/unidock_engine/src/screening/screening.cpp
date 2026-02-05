@@ -153,7 +153,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
 
     int batch_id = 0;
     int memory_fix = predict_gpu_fix(dpfix_mol);
-
+    
     UD2_REQUIRE(device_max_memory >= memory_fix, "GPU memory ({} MB) is not enough for the receptor ({} MB)", device_max_memory, memory_fix);
 
     device_max_memory -= memory_fix;
