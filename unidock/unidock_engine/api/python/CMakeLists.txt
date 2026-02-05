@@ -17,11 +17,18 @@ target_include_directories(${PYBIND_NAME}
     ${CMAKE_SOURCE_DIR}/src
 )
 
-# install not specified here; managed by conda
-
-# lib rpath: suppose conda_env/lib/pythonX.Y/site-packages/my_package/unidock_engine.AABB.so
-#set_target_properties(${PYBIND_NAME} PROPERTIES
-#        INSTALL_RPATH "$ORIGIN/../../../../"
-#)
+# ============ CTest Integration (pytest) ============
+# Run: ctest -R pytest_pipeline -V
+# Or in CLion: View -> Tool Windows -> CTest -> right-click pytest_pipeline -> Run
+if(BUILD_TEST)
+    message("       Building pytest_pipeline test ...")
+    add_test(NAME pytest_pipeline
+        COMMAND ${Python_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR} -v --tb=short
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
+    set_tests_properties(pytest_pipeline PROPERTIES
+        ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}"
+    )
+endif()
 
 message("      [Sub-Section Done]  PYTHON BINDING !")

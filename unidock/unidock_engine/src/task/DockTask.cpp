@@ -18,17 +18,6 @@
 #include "score/score.h"
 
 
-void DockTask::initialize(const UDFixMol& fix_mol, const UDFlexMolList& flex_mol_list,
-                          DockParam dock_param,
-                          std::vector<std::string> fns_flex,
-                          std::string fp_json){
-    udfix_mol = fix_mol;
-
-    udflex_mols = flex_mol_list;
-    this->fns_flex = std::move(fns_flex);
-    this->fp_json = std::move(fp_json);
-    nflex = flex_mol_list.size();
-}
 
 void DockTask::set_flex(const UDFlexMolList& flex_mol_list,
                         DockParam dock_param,
@@ -40,7 +29,7 @@ void DockTask::set_flex(const UDFlexMolList& flex_mol_list,
     this->fp_json = std::move(fp_json);
     nflex = flex_mol_list.size();
 
-    // TODO: 清理与 flex 相关的临时/结果列表，防止旧状态影响新一次运行
+    // TODO: clear flex-related
     list_i_real.clear();
     clustered_pose_inds_list.clear();
     filtered_pose_inds_list.clear();

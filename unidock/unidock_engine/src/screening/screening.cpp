@@ -85,7 +85,6 @@ size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool pri
     // mc curand
     size_t s0 = npose * TILE_SIZE * sizeof(curandStatePhilox4_32_10_t);
 
-
     // flex_pose_list_cu
     size_t s1 = npose * sizeof(FlexPose) + exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex) * sizeof(Real);
 
@@ -124,7 +123,6 @@ size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool pri
 
     size_t total = (s0 + s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8) / 1048576;
 
-
     if (print_detail){
         spdlog::debug(  "s0-8:%zu, %zu, %zu, %zu, %zu, %zu, %zu, %zu, %zu\n", s0, s1, s2, s3, s4, s5, s6, s7, s8);
     }
@@ -155,6 +153,9 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
 
     int batch_id = 0;
     int memory_fix = predict_gpu_fix(dpfix_mol);
+
+    UD2_REQUIRE(device_max_memory >= memory_fix, "GPU memory ({} MB) is not enough for the receptor ({} MB)", device_max_memory, memory_fix);
+
     device_max_memory -= memory_fix;
 
     DockTask task(dpfix_mol, dock_param);
@@ -196,6 +197,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
             }
 
             spdlog::info("Batch {} size: {}", batch_id, batch_size);
+            UD2_REQUIRE(batch_size > 0, "Not enough GPU Memory to process at least one ligand in batch {}", batch_id);
             num_flex_processed += batch_size;
             std::string fp_json = gen_filepath(name_json + "_" + std::to_string(batch_id) + ".json", dp_out);
 

@@ -151,7 +151,7 @@ enum BiasType{
 struct DockParam{
     int seed = 12345;
     bool constraint_docking = false;
-    int exhaustiveness = 128;
+    int exhaustiveness = 512;
     bool randomize = true;
     int mc_steps = 20; // MC steps
     int opt_steps = -1; // optimization steps in MC process. Zero if only pure MC search is required.
