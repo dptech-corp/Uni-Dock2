@@ -1,6 +1,9 @@
 name: Uni-Dock2 processing test
 
 on:
+  push:
+    tags:
+      - "*"
   pull_request:
     branches:
       - main
