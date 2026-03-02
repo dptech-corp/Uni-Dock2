@@ -1,9 +1,7 @@
 name: Uni-Dock2 processing test
 
 on:
-  push:
-    tags:
-      - "*"
+  workflow_dispatch:
   pull_request:
     branches:
       - main
