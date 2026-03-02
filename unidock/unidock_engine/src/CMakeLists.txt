@@ -9,7 +9,7 @@ set(sources
         cuda/optimize.cu
         cuda/task.cu
         cuda/vina.cu
-        cuda/struct_array_manager_wrapper.cu
+        cuda/struct_array_manager_wrapper.cu cuda/struct_array_manager.cuh
 
         cluster/cluster.h
 
@@ -32,7 +32,8 @@ set(sources
         optimize/bfgs.h
         optimize/optimize.h
 
-        screening/screening.h   screening/screening.cpp
+        screening/screening.cpp screening/screening.h
+        screening/core.cpp screening/core.h
 
         search/mc.h
         search/bvh.cpp          search/bvh.h
@@ -42,7 +43,6 @@ set(sources
         score/vina.h
 
         task/DockTask.cpp       task/DockTask.h
-        cuda/struct_array_manager.cuh
 )
 
 # compile lib for the bin to link to
@@ -54,7 +54,7 @@ target_include_directories(${LIB_NAME} SYSTEM PUBLIC # no warning from third-par
         ${CMAKE_SOURCE_DIR}/include
         .
 )
-
+target_compile_definitions(${LIB_NAME} PUBLIC VERSION_NUMBER="${VERSION_NUMBER}")
 target_link_libraries(${LIB_NAME} PUBLIC CUDA::cudart_static)
 set_target_properties(${LIB_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
