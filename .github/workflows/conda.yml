@@ -21,7 +21,7 @@ jobs:
     strategy:
       matrix:
         python: [ '3.10' ]
-        cuda_compiler_version: [ '11.8', '12.0', '13.0' ]
+        cuda_compiler_version: [ '12.0', '13.0' ]
     env:
       QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
       QUETZ_SERVER_URL: ${{ vars.QUETZ_SERVER_URL }}
