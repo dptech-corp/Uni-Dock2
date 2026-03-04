@@ -30,6 +30,8 @@ jobs:
     if: ${{ always() }}
     needs: [style-check]
     runs-on: [nvidia, t4]
+    env:
+      CUDA_ARCH: 75  # T4 = sm_75, change if runner GPU changes
     container:
       image: dptechnology/unidock2:base-0.0.3
       options: --gpus all
@@ -43,7 +45,7 @@ jobs:
           eval "$(micromamba shell hook --shell bash)"
           micromamba activate base
           cd ./unidock/unidock_engine
-          cmake -B build -S . -DBUILD_TEST=ON
+          cmake -B build -S . -DBUILD_TEST=ON -DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH
           cmake --build build --target unit_test
           ./build/test/unit/unit_test
           cd ../..
@@ -54,7 +56,7 @@ jobs:
           eval "$(micromamba shell hook --shell bash)"
           micromamba activate base
           cd ./unidock/unidock_engine
-          pip install .
+          CMAKE_ARGS="-DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH" pip install .
           cd ../..
           pip install .
 

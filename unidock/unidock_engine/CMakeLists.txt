@@ -40,28 +40,36 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# https://en.wikipedia.org/wiki/CUDA#GPUs_supported
+# https://developer.nvidia.com/cuda/gpus
+# Override via: cmake -DCMAKE_CUDA_ARCHITECTURES=86 (for local dev)
 if(NOT CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES # At least 70!
-        # 60 # 10
-        # 70 # V100
-        # 75 # Turing: RTX 20, T4
-        # 80 # Ampere: A100, A800, L20
-         86 # Ampere consumer: RTX 30
-        # 89 # Ada: RTX 40, L4, L40, L40S
-#        90 # Hopper / Blackwell: H100, B100/B200
-)
+    set(_CUDA_ARCHS_AUTO TRUE)
+    set(CMAKE_CUDA_ARCHITECTURES
+        75  # Turing: RTX 20, T4
+        80  # Ampere: A100, A800
+        86  # Ampere consumer: RTX 30
+        89  # Ada: RTX 40, L4, L40
+        90  # Hopper: H100, H200
+    )
 endif()
-message(STATUS "Supported Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
 
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
 project(${PRJ_NAME}
         LANGUAGES CUDA CXX C)
 
-set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)
-
 find_package(CUDAToolkit REQUIRED)
+
+# CUDA 13+ supports Blackwell (sm_100/120); older nvcc doesn't recognize them
+if(_CUDA_ARCHS_AUTO AND CUDAToolkit_VERSION VERSION_GREATER_EQUAL "13.0")
+    list(APPEND CMAKE_CUDA_ARCHITECTURES
+        100 # Blackwell datacenter: B200, GB200
+        120 # Blackwell consumer: RTX 5090/5080/5070
+    )
+endif()
+message(STATUS "Supported Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
+
+set(SPDLOG_FMT_EXTERNAL OFF CACHE BOOL "" FORCE)
 
 # Default is a release build
 if(NOT CMAKE_BUILD_TYPE)
