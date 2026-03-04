@@ -9,7 +9,7 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF) # avoid the symbol: fatbinData
 pybind11_add_module(${PYBIND_NAME} pipeline.cpp)
 install(TARGETS ${PYBIND_NAME} LIBRARY DESTINATION .)
 
-target_link_libraries(${PYBIND_NAME} PRIVATE ${LIB_NAME})
+target_link_libraries(${PYBIND_NAME} PRIVATE ${LIB_NAME} CUDA::cudart)
 target_include_directories(${PYBIND_NAME}
     PUBLIC
     ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} ${CMAKE_SOURCE_DIR}/include

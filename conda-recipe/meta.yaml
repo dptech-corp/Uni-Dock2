@@ -15,7 +15,7 @@ source:
 
 build:
   number: {{ build }}
-  # skip: true
+  string: cuda{{ cuda_major }}_py{{ PY_VER | replace(".", "") }}_{{ build }}
 
 requirements:
   build:
@@ -42,6 +42,8 @@ requirements:
     - cuda-driver-dev  # [linux]
     {% endif %}
   run:
+    - cuda-version >={{ cuda_major }},<{{ cuda_major + 1 }}
+    - cuda-cudart
     - pyyaml
     - pydantic
     - pathos
@@ -60,3 +62,5 @@ test:
   imports:
     - unidock_engine
     - unidock_processing
+  commands:
+    - python -c "from unidock_engine.api.python.pipeline import DockingPipeline; print('API OK')"

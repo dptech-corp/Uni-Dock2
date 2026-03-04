@@ -55,7 +55,6 @@ target_include_directories(${LIB_NAME} SYSTEM PUBLIC # no warning from third-par
         .
 )
 target_compile_definitions(${LIB_NAME} PUBLIC VERSION_NUMBER="${VERSION_NUMBER}")
-target_link_libraries(${LIB_NAME} PUBLIC CUDA::cudart_static)
 set_target_properties(${LIB_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # install
