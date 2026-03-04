@@ -60,11 +60,11 @@ project(${PRJ_NAME}
 
 find_package(CUDAToolkit REQUIRED)
 
-# CUDA 13+ supports Blackwell (sm_100/120); older nvcc doesn't recognize them
+# CUDA 13+ supports Blackwell via family architectures (100a/120a)
 if(_CUDA_ARCHS_AUTO AND CUDAToolkit_VERSION VERSION_GREATER_EQUAL "13.0")
     list(APPEND CMAKE_CUDA_ARCHITECTURES
-        100 # Blackwell datacenter: B200, GB200
-        120 # Blackwell consumer: RTX 5090/5080/5070
+        100a # Blackwell datacenter: B200, GB200
+        120a # Blackwell consumer: RTX 5090/5080/5070
     )
 endif()
 message(STATUS "Supported Architectures: ${CMAKE_CUDA_ARCHITECTURES}")
