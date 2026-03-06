@@ -22,7 +22,7 @@ target_include_directories(${PYBIND_NAME}
 if(BUILD_TEST)
     message("       Building pytest_pipeline test ...")
     add_test(NAME pytest_pipeline
-        COMMAND ${Python_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR} -v --tb=short
+        COMMAND ${Python_EXECUTABLE} -m pytest ${CMAKE_CURRENT_SOURCE_DIR}/test -v --tb=short
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
     set_tests_properties(pytest_pipeline PROPERTIES

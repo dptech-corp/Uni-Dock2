@@ -8,8 +8,9 @@ import sys
 import os
 from pathlib import Path
 
-project_root = Path(__file__).resolve().parents[2]
-example_dir = project_root / "examples" / "1W1P"
+project_root = Path(__file__).resolve().parents[3]
+test_dir = Path(__file__).resolve().parent
+test_data_dir = test_dir / "data" / "1W1P"
 build_path = project_root / "cmake-build-release" / "api" / "python"
 
 # Add build directory to sys.path (for pipeline.so)
@@ -75,7 +76,7 @@ def run_docking(example_dir: Path):
     print(f"Loading molecules from: {json_path}")
     receptor_info, ligands_info = load_molecules(json_path)
 
-    output_dir = os.path.join(str(example_dir), "res2_py")
+    output_dir = os.path.join(str(example_dir), "temp_res")
 
     print(f"Receptor atoms: {len(receptor_info)}")
     print(f"Ligands count: {len(ligands_info)}")
@@ -102,6 +103,8 @@ def run_docking(example_dir: Path):
         rmsd_limit=advanced.get("rmsd_limit", 1.0),
         energy_range=advanced.get("energy_range", 5.0),
         seed=advanced.get("seed", 1234567),
+        bias=settings.get("bias", "no"),
+        bias_k=settings.get("bias_k", 0.1),
         use_tor_lib=advanced.get("tor_lib", False),
         constraint_docking=settings.get("constraint_docking", False),
         gpu_device_id=hardware.get("gpu_device_id", 0),
@@ -148,7 +151,7 @@ def test_pipeline():
     """Test the pipeline module"""
     print("\n" + "=" * 60)
     print_help_info()
-    run_docking(example_dir)
+    run_docking(test_data_dir)
     print("\n" + "=" * 60)
     print("All tests passed!")
     print("=" * 60)
