@@ -363,7 +363,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
                 // 2. Metropolis
                 bool accepted = false;
                 if (tile.thread_rank() == 0){
-                    Real rand_x = curand_uniform(&states[id_pose]);
+                    Real rand_x = curand_uniform(state);
                     accepted = metropolis_accept(pose_accepted.energy, pose_candidate.energy, 1.2, rand_x);
                 }
                 accepted = tile.shfl(accepted, 0);
