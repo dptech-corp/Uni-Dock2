@@ -28,3 +28,6 @@ _version.py
 test_ud2
 test_conf.yaml
 setup.py.depre
+
+temp_*/
+

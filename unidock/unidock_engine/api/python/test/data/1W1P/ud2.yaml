@@ -1,0 +1,28 @@
+Advanced:
+  energy_range: 10.0
+  exhaustiveness: 512
+  mc_steps: 40
+  num_pose: 1
+  opt_steps: -1
+  randomize: true
+  refine_steps: 0
+  rmsd_limit: 1.0
+  seed: 121
+  tor_lib: false
+Hardware:
+  gpu_device_id: 0 # as
+  max_gpu_memory: 0
+Inputs:
+  json: 1W1P_unidock2.json
+Outputs:
+  dir: ./
+Settings:
+  center_x: 43.20550987534587
+  center_y: 75.61079763066026
+  center_z: 51.93665163136053
+  constraint_docking: false
+  search_mode: free
+  size_x: 30.0
+  size_y: 30.0
+  size_z: 30.0
+  task: screen

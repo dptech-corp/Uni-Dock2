@@ -40,6 +40,8 @@ inline std::string generate_init_docstring() {
        DOC_LINE(rmsd_limit)
        DOC_LINE(energy_range)
        DOC_LINE(seed)
+       DOC_LINE(bias)
+       DOC_LINE(bias_k)
        DOC_LINE(constraint_docking)
        DOC_LINE(use_tor_lib)
        DOC_LINE(gpu_device_id)
@@ -67,6 +69,8 @@ public:
         Real rmsd_limit,
         Real energy_range,
         int seed,
+        std::string bias,
+        Real bias_k,
         bool constraint_docking,
         bool use_tor_lib,
         int gpu_device_id,
@@ -96,6 +100,8 @@ public:
         ipt.energy_range = energy_range;
         ipt.seed = seed;
 
+        ipt.bias = bias;
+        ipt.bias_k = bias_k;
         ipt.constraint_docking = constraint_docking;
         ipt.task = task;
         ipt.search_mode = search_mode;
@@ -151,8 +157,8 @@ PYBIND11_MODULE(pipeline, m) { // shared lib name: "pipeline.<py_version>-<platf
         R"pbdoc(Uni-Dock2 molecular docking pipeline.)pbdoc")
         .def(py::init<
                 std::string, Real, Real, Real, Real, Real, Real, std::string, std::string, 
-                int, bool, int, int, int, int, Real, Real, int, bool, bool, int,
-                std::string, int>(),
+                int, bool, int, int, int, int, Real, Real, int, std::string, Real,
+                bool, bool, int, std::string, int>(),
             init_doc.c_str(),  // use generated docstring
             py::kw_only(),  // force keyword-only 
             py::arg("output_dir") = CoreInputDefaults::output_dir,
@@ -169,6 +175,8 @@ PYBIND11_MODULE(pipeline, m) { // shared lib name: "pipeline.<py_version>-<platf
             py::arg("rmsd_limit") = CoreInputDefaults::rmsd_limit,
             py::arg("energy_range") = CoreInputDefaults::energy_range,
             py::arg("seed") = CoreInputDefaults::seed,
+            py::arg("bias") = CoreInputDefaults::bias,
+            py::arg("bias_k") = CoreInputDefaults::bias_k,
             py::arg("constraint_docking") = CoreInputDefaults::constraint_docking,
             py::arg("use_tor_lib") = CoreInputDefaults::use_tor_lib,
             py::arg("gpu_device_id") = CoreInputDefaults::gpu_device_id,
