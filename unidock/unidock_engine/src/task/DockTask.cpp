@@ -134,13 +134,6 @@ void DockTask::prepare_vina(){
                 VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[flex_mol.vina_types[i2]]);
         }
 
-        // compute r1 + r2 for all inter pairs
-        for (int j = 0; j < flex_mol.inter_pairs.size(); j += 2){
-            int i1 = flex_mol.inter_pairs[j];
-            int i2 = flex_mol.inter_pairs[j + 1];
-            flex_mol.r1_plus_r2_inter.push_back(
-                VN_VDW_RADII[flex_mol.vina_types[i1]] + VN_VDW_RADII[udfix_mol.vina_types[i2]]);
-        }
     }
 }
 

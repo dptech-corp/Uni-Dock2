@@ -72,23 +72,6 @@ void read_ud_from_json_string(const std::string& json_str, const Box& box, UDFix
         spdlog::error("No flexible molecules are found");
     }
 
-    // Add inter pairs for each ligand (this needs to be done after receptor is parsed)
-    for (auto& flex_mol : out_flex_list) {
-        // inter pairs: flex v.s. receptor
-        for (int j = 0; j < out_fix.natom; j++){
-            if (out_fix.vina_types[j] == VN_TYPE_H){
-                continue;
-            }
-            for (int i = 0; i < flex_mol.natom; i++){
-                if (flex_mol.vina_types[i] == VN_TYPE_H){ //ignore Hydrogen on ligand and protein
-                    continue;
-                }
-                flex_mol.inter_pairs.push_back(i);
-                flex_mol.inter_pairs.push_back(j);
-            }
-        }
-    }
-
     spdlog::debug("Json is Done.");
 }
 

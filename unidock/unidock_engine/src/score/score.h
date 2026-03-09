@@ -67,23 +67,27 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
 
     out_pose->center[0] = e_intra;
 
-    // -- Compute inter-molecular energy: flex-protein
-    for (int i = 0; i < udflex_mol.inter_pairs.size() / 2; i++){
-        int i1 = udflex_mol.inter_pairs[i * 2], i2 = udflex_mol.inter_pairs[i * 2 + 1];
+    // -- Compute inter-molecular energy: flex-protein (double loop, no pair list)
+    for (int i1 = 0; i1 < udflex_mol.natom; i1++){
+        if (udflex_mol.vina_types[i1] == VN_TYPE_H) continue;
+        Real vdw_r1 = VN_VDW_RADII[udflex_mol.vina_types[i1]];
 
-        // Cartesian distances won't be saved
-        Real r_vec[3] = {
-            udfix_mol.coords[i2 * 3] - flex_coords[i1 * 3],
-            udfix_mol.coords[i2 * 3 + 1] - flex_coords[i1 * 3 + 1],
-            udfix_mol.coords[i2 * 3 + 2] - flex_coords[i1 * 3 + 2]
-        };
-        rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
+        for (int i2 = 0; i2 < udfix_mol.natom; i2++){
+            if (udfix_mol.vina_types[i2] == VN_TYPE_H) continue;
 
-        if (rr < SF.r2_cutoff){
-            rr = sqrt(rr); // use r2 as a container for |r|
-            Real e = SF.eval_ef(rr - udflex_mol.r1_plus_r2_inter[i], udflex_mol.vina_types[i1],
-                                udfix_mol.vina_types[i2], &f);
-            e_inter += e;
+            Real r_vec[3] = {
+                udfix_mol.coords[i2 * 3] - flex_coords[i1 * 3],
+                udfix_mol.coords[i2 * 3 + 1] - flex_coords[i1 * 3 + 1],
+                udfix_mol.coords[i2 * 3 + 2] - flex_coords[i1 * 3 + 2]
+            };
+            rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
+
+            if (rr < SF.r2_cutoff){
+                rr = sqrt(rr);
+                Real e = SF.eval_ef(rr - (vdw_r1 + VN_VDW_RADII[udfix_mol.vina_types[i2]]),
+                                    udflex_mol.vina_types[i1], udfix_mol.vina_types[i2], &f);
+                e_inter += e;
+            }
         }
     }
 

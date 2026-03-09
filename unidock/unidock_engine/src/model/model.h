@@ -220,9 +220,7 @@ struct UDFlexMol{
     std::vector<UDTorsion> torsions;
     std::vector<Real> dihedrals;
     std::vector<int> intra_pairs; // each in ligand x each in ligand, except 1-2, 1-3, 1-4
-    std::vector<int> inter_pairs; // each in ligand x each in protein (they both count their own atoms from zero)
     std::vector<Real> r1_plus_r2_intra; // vdW radii summations of each pair, intra part
-    std::vector<Real> r1_plus_r2_inter; // vdW radii summations of each pair, inter part
     std::vector<Bias> biases;
 };
 
