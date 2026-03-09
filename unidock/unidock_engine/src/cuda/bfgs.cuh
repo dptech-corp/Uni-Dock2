@@ -237,39 +237,42 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
 
 
     // 1. Compute Pairwise energy and forces
-    // -- Compute inter-molecular energy: flex-protein
-    for (int i = tile.thread_rank(); i < flex_param.npair_inter; i += tile.num_threads()){
-        int i1 = flex_param.pairs_inter[i * 2], i2 = flex_param.pairs_inter[i * 2 + 1];
-        assert(i1 < flex_topo.natom && i2 < fix_mol.natom);
+    // -- Compute inter-molecular energy: flex-protein (per-atom double loop, no atomicAdd)
+    for (int i1 = tile.thread_rank(); i1 < flex_topo.natom; i1 += tile.num_threads()){
+        if (flex_param.atom_types[i1] == VN_TYPE_H) continue;
 
-        // check each i1's penalty and modify the coords if necessary
         coord_adj[0] = pose->coords[i1 * 3];
         coord_adj[1] = pose->coords[i1 * 3 + 1];
         coord_adj[2] = pose->coords[i1 * 3 + 2];
+        Real vdw_r1 = CU_VDW_RADII[flex_param.atom_types[i1]];
+        Real fx = 0., fy = 0., fz = 0.;
 
-        // Cartesian distances won't be saved
-        Real r_vec[3] = {
-            fix_mol.coords[i2 * 3] -  coord_adj[0],
-            fix_mol.coords[i2 * 3 + 1] -  coord_adj[1],
-            fix_mol.coords[i2 * 3 + 2] -  coord_adj[2]
-        };
-        rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
+        for (int i2 = 0; i2 < fix_mol.natom; i2++){
+            if (fix_param.atom_types[i2] == VN_TYPE_H) continue;
 
-        if (rr < Score.r2_cutoff){
-            rr = sqrt(rr); // use r2 as a container for |r|
-            Real e_tmp = Score.eval_ef(rr - flex_param.r1_plus_r2_inter[i], flex_param.atom_types[i1],
-                                    fix_param.atom_types[i2], &f_div_r);
-            energy += e_tmp;
+            Real r_vec[3] = {
+                fix_mol.coords[i2 * 3] -  coord_adj[0],
+                fix_mol.coords[i2 * 3 + 1] -  coord_adj[1],
+                fix_mol.coords[i2 * 3 + 2] -  coord_adj[2]
+            };
+            rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
 
-            if (rr < EPSILON){ // fixme: robust?
-                rr = EPSILON;
+            if (rr < Score.r2_cutoff){
+                rr = sqrt(rr);
+                energy += Score.eval_ef(rr - (vdw_r1 + CU_VDW_RADII[fix_param.atom_types[i2]]),
+                                        flex_param.atom_types[i1], fix_param.atom_types[i2], &f_div_r);
+                if (rr < EPSILON) rr = EPSILON;
+                f_div_r /= rr;
+
+                fx -= f_div_r * r_vec[0];
+                fy -= f_div_r * r_vec[1];
+                fz -= f_div_r * r_vec[2];
             }
-            f_div_r /= rr; //now it is f / |r|
-
-            atomicAdd_block(aux_f + i1 * 3, -f_div_r * r_vec[0]);
-            atomicAdd_block(aux_f + i1 * 3 + 1, -f_div_r * r_vec[1]);
-            atomicAdd_block(aux_f + i1 * 3 + 2, -f_div_r * r_vec[2]);
         }
+
+        aux_f[i1 * 3] += fx;
+        aux_f[i1 * 3 + 1] += fy;
+        aux_f[i1 * 3 + 2] += fz;
     }
     tile.sync();
 

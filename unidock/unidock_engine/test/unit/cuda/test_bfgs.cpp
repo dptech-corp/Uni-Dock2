@@ -30,20 +30,7 @@ void prepare_param_by_topo(const FlexTopo* flex_topo, const FixMol* fix_mol, con
         flex_param->atom_types[i] = flex_topo->vn_types[i];
     }
 
-    flex_param->npair_inter = flex_topo->natom * fix_mol->natom;
-    flex_param->pairs_inter = new int[flex_param->npair_inter * 2];
-    flex_param->r1_plus_r2_inter = new Real[flex_param->npair_inter];
-    ipair = 0;
-    for (int i = 0; i < flex_topo->natom; i++){
-        for (int j = 0; j < fix_mol->natom; j++){
-            flex_param->pairs_inter[ipair * 2] = i;
-            flex_param->pairs_inter[ipair * 2 + 1] = j;
-            flex_param->r1_plus_r2_inter[ipair] = VN_VDW_RADII[flex_param->atom_types[i]] + VN_VDW_RADII[fix_param->atom_types[j]];
-            ipair++;
-        }
-    }
-
-    // Initialize bias fields (added for new bias feature)
+    // Initialize bias fields
     flex_param->inds_bias = new int[flex_topo->natom * 2];
     flex_param->params_bias = nullptr;  // No bias data in unit tests
     // Set all bias indices to 0 (no bias for any atom)
@@ -109,7 +96,8 @@ TEST_CASE("test bfgs process", "[bfgs]"){
         prepare_flex_1(&fix_mol, &fix_param, &flex_param, &x, &flex_topo, &out_x_new, &out_g_new, r);
 
         cal_e_grad_one_gpu(fix_mol, fix_param, flex_param, x, flex_topo, &out_g_new, &out_e);
-        e_ref = vina.eval_ef(r - flex_param.r1_plus_r2_inter[0], fix_param.atom_types[0], flex_param.atom_types[0], &g_ref);
+        Real r1r2 = VN_VDW_RADII[flex_param.atom_types[0]] + VN_VDW_RADII[fix_param.atom_types[0]];
+        e_ref = vina.eval_ef(r - r1r2, fix_param.atom_types[0], flex_param.atom_types[0], &g_ref);
         REQUIRE_THAT(out_e, Catch::Matchers::WithinAbs(e_ref, 1e-4));
         if (r == 0.){
             g_ref = 0.; // too close, the calculation generates wrong result
@@ -134,7 +122,7 @@ TEST_CASE("test bfgs process", "[bfgs]"){
     REQUIRE_THAT(out_x_new.coords[1], Catch::Matchers::WithinAbs(x.coords[1] + out_alpha * g[1], 1e-4));
     REQUIRE_THAT(out_x_new.coords[2], Catch::Matchers::WithinAbs(x.coords[2] + out_alpha * g[2], 1e-4));
     Real r = cal_norm(out_x_new.coords);
-    REQUIRE_THAT(out_e, Catch::Matchers::WithinAbs(vina.eval_ef(r - flex_param.r1_plus_r2_inter[0], fix_param.atom_types[0], flex_param.atom_types[0], &g_ref), 1e-4));
+    REQUIRE_THAT(out_e, Catch::Matchers::WithinAbs(vina.eval_ef(r - (VN_VDW_RADII[flex_param.atom_types[0]] + VN_VDW_RADII[fix_param.atom_types[0]]), fix_param.atom_types[0], flex_param.atom_types[0], &g_ref), 1e-4));
     //![bfgs]
 }
 
@@ -245,8 +233,10 @@ TEST_CASE("test cal_e_grad_one", "[cal_e_grad_one]"){
 
     //--------------- Check Energy -----------------
     Real e_ref =0, g_tmp = 0;
-    e_ref += vina.eval_ef(r - flex_param.r1_plus_r2_inter[0], fix_param.atom_types[0], flex_param.atom_types[0], &g_tmp);
-    e_ref += vina.eval_ef(sqrt(r * r + 1) - flex_param.r1_plus_r2_inter[1], fix_param.atom_types[0], flex_param.atom_types[1], &g_tmp);
+    Real r1r2_0 = VN_VDW_RADII[flex_param.atom_types[0]] + VN_VDW_RADII[fix_param.atom_types[0]];
+    Real r1r2_1 = VN_VDW_RADII[flex_param.atom_types[1]] + VN_VDW_RADII[fix_param.atom_types[0]];
+    e_ref += vina.eval_ef(r - r1r2_0, fix_param.atom_types[0], flex_param.atom_types[0], &g_tmp);
+    e_ref += vina.eval_ef(sqrt(r * r + 1) - r1r2_1, fix_param.atom_types[0], flex_param.atom_types[1], &g_tmp);
     e_ref += vina.eval_ef(1 - flex_param.r1_plus_r2_intra[0], flex_param.atom_types[0], flex_param.atom_types[1], &g_tmp);
     REQUIRE_THAT(out_e_1, Catch::Matchers::WithinAbs(e_ref, 1e-4));
     delete_flex_2(&fix_mol, &fix_param, &x, &flex_topo, &out_x_new);

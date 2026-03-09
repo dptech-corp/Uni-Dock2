@@ -63,7 +63,7 @@ void read_ud_from_json_string(const std::string& json_str, const Box& box, UDFix
     box_protein.z_lo = box.z_lo - VINA_CUTOFF;
     box_protein.z_hi = box.z_hi + VINA_CUTOFF;
     parser.parse_receptor_info(box_protein, out_fix);
-    spdlog::info("Receptor has {:d} atoms in box", out_fix.natom);
+    spdlog::info("Receptor has {:d} heavy atoms in box", out_fix.natom);
 
     // Parse ligands
     parser.parse_ligands_info(out_flex_list, out_fns_flex, use_tor_lib);
