@@ -47,7 +47,7 @@ TEST_CASE("Test JSON", "[json]"){
     REQUIRE(flex_mol.pairs_1213.size() == 8);
     REQUIRE(flex_mol.pairs_14.size() == 9);
     REQUIRE(flex_mol.intra_pairs.size() == 1 * 2);
-    REQUIRE(flex_mol.inter_pairs.size() == 3 * 5 * 2);
+    REQUIRE(flex_mol.intra_range.size() == natom * 2);
 
     flex_mol = flex_mol_list[1];
     natom = 2;
@@ -66,7 +66,7 @@ TEST_CASE("Test JSON", "[json]"){
     REQUIRE(flex_mol.pairs_1213.size() == 5);
     REQUIRE(flex_mol.pairs_14.size() == 6);
     REQUIRE(flex_mol.intra_pairs.size() == 1 * 2);
-    REQUIRE(flex_mol.inter_pairs.size() == 2 * 5 * 2);
+    REQUIRE(flex_mol.intra_range.size() == natom * 2);
     //![json]
 }
 

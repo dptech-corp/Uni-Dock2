@@ -43,47 +43,56 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
 
 
     // 1. Compute Pairwise energy and forces
-    // -- Compute intra-molecular energy
-    for (int i = 0; i < udflex_mol.intra_pairs.size() / 2; i++){
-        int i1 = udflex_mol.intra_pairs[i * 2], i2 = udflex_mol.intra_pairs[i * 2 + 1];
+    // -- Compute intra-molecular energy (per-atom adjacency list)
+    for (int i1 = 0; i1 < udflex_mol.natom; i1++){
+        int start = udflex_mol.intra_range[i1 * 2];
+        int count = udflex_mol.intra_range[i1 * 2 + 1];
+        Real vdw_r1 = VN_VDW_RADII[udflex_mol.vina_types[i1]];
 
-        // Cartesian distances won't be saved
-        Real r_vec[3] = {
-            // cuda vector multiply v3 v4
-            flex_coords[i2 * 3] - flex_coords[i1 * 3],
-            flex_coords[i2 * 3 + 1] - flex_coords[i1 * 3 + 1],
-            flex_coords[i2 * 3 + 2] - flex_coords[i1 * 3 + 2]
-        };
-        rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
+        for (int k = start; k < start + count; k++){
+            int i2 = udflex_mol.intra_pairs[k];
+            if (i2 <= i1){
+                continue;
+            }
 
-        if (rr < SF.r2_cutoff){
-            rr = sqrt(rr); // use r2 as a container for |r|
+            Real r_vec[3] = {
+                flex_coords[i2 * 3] - flex_coords[i1 * 3],
+                flex_coords[i2 * 3 + 1] - flex_coords[i1 * 3 + 1],
+                flex_coords[i2 * 3 + 2] - flex_coords[i1 * 3 + 2]
+            };
+            rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
 
-            Real tmp = SF.eval_ef(rr - udflex_mol.r1_plus_r2_intra[i], udflex_mol.vina_types[i1],
-                                  udflex_mol.vina_types[i2], &f);
-            e_intra += tmp;
+            if (rr < SF.r2_cutoff){
+                rr = sqrt(rr);
+                e_intra += SF.eval_ef(rr - (vdw_r1 + VN_VDW_RADII[udflex_mol.vina_types[i2]]),
+                                      udflex_mol.vina_types[i1], udflex_mol.vina_types[i2], &f);
+            }
         }
     }
 
     out_pose->center[0] = e_intra;
 
-    // -- Compute inter-molecular energy: flex-protein
-    for (int i = 0; i < udflex_mol.inter_pairs.size() / 2; i++){
-        int i1 = udflex_mol.inter_pairs[i * 2], i2 = udflex_mol.inter_pairs[i * 2 + 1];
+    // -- Compute inter-molecular energy: flex-protein (double loop, no pair list)
+    for (int i1 = 0; i1 < udflex_mol.natom; i1++){
+        if (udflex_mol.vina_types[i1] == VN_TYPE_H) continue;
+        Real vdw_r1 = VN_VDW_RADII[udflex_mol.vina_types[i1]];
 
-        // Cartesian distances won't be saved
-        Real r_vec[3] = {
-            udfix_mol.coords[i2 * 3] - flex_coords[i1 * 3],
-            udfix_mol.coords[i2 * 3 + 1] - flex_coords[i1 * 3 + 1],
-            udfix_mol.coords[i2 * 3 + 2] - flex_coords[i1 * 3 + 2]
-        };
-        rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
+        for (int i2 = 0; i2 < udfix_mol.natom; i2++){
+            if (udfix_mol.vina_types[i2] == VN_TYPE_H) continue;
 
-        if (rr < SF.r2_cutoff){
-            rr = sqrt(rr); // use r2 as a container for |r|
-            Real e = SF.eval_ef(rr - udflex_mol.r1_plus_r2_inter[i], udflex_mol.vina_types[i1],
-                                udfix_mol.vina_types[i2], &f);
-            e_inter += e;
+            Real r_vec[3] = {
+                udfix_mol.coords[i2 * 3] - flex_coords[i1 * 3],
+                udfix_mol.coords[i2 * 3 + 1] - flex_coords[i1 * 3 + 1],
+                udfix_mol.coords[i2 * 3 + 2] - flex_coords[i1 * 3 + 2]
+            };
+            rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
+
+            if (rr < SF.r2_cutoff){
+                rr = sqrt(rr);
+                Real e = SF.eval_ef(rr - (vdw_r1 + VN_VDW_RADII[udfix_mol.vina_types[i2]]),
+                                    udflex_mol.vina_types[i1], udfix_mol.vina_types[i2], &f);
+                e_inter += e;
+            }
         }
     }
 
@@ -101,10 +110,6 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
 
     // 1.4. Compute position-bias
     Real e_bias = 0.;
-    Real e_atom = 0.;
-    Real e_one = 0.;
-    int i_last = 0;
-    int i_ref = 0;
     for (auto & b: udflex_mol.biases){
         Real f_bias[3] = {0.};
         Real coord_adj[3] = {
@@ -119,22 +124,11 @@ void score(FlexPose* out_pose, const Real* flex_coords, const UDFixMol& udfix_mo
             b.param[2] -  coord_adj[2]
         };
 
-        if (b.i != i_last){
-            // printf("  [Total] Bias on %i is %f\n", i_last, e_atom);
-            i_ref = 0;
-            e_atom = 0;
-        }
-
         if (dock_param.bias_type == BT_POS){
-            e_one = SF.eval_ef_pos(r_, b.param[3] * dock_param.bias_k, b.param[4], f_bias);
+            e_bias += SF.eval_ef_pos(r_, b.param[3] * dock_param.bias_k, b.param[4], f_bias);
         } else if (dock_param.bias_type == BT_ALIGN){
-            e_one = SF.eval_ef_zalign(r_, b.param[3] * dock_param.bias_k, udflex_mol.vina_types[b.i], f_bias);
+            e_bias += SF.eval_ef_zalign(r_, b.param[3] * dock_param.bias_k, udflex_mol.vina_types[b.i], f_bias);
         }
-
-        e_bias += e_one;
-        e_atom += e_one;
-        i_last = b.i;
-        i_ref ++;
     }
     out_pose->rot_vec[3] = e_bias;
 }

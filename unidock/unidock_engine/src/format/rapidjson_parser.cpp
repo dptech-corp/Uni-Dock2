@@ -198,19 +198,28 @@ void RapidJsonParser::parse_ligands_info(UDFlexMolList& flex_mol_list, std::vect
         flex_mol.center[1] = coords_sum[1] / flex_mol.natom;
         flex_mol.center[2] = coords_sum[2] / flex_mol.natom;
         
-        // intra pairs
+        // intra pairs: build per-atom adjacency list
+        std::vector<std::vector<int>> neighbors(flex_mol.natom);    
         for (int i = 0; i < flex_mol.natom; i++) {
             for (int j = i + 1; j < flex_mol.natom; j++) {
-                // exclude 1-2, 1-3, 1-4 pairs
                 if ((flex_mol.pairs_1213.find(order_pair(i, j)) == flex_mol.pairs_1213.end()) &&
                     (flex_mol.pairs_14.find(order_pair(i, j)) == flex_mol.pairs_14.end()) &&
                     (!checkInAnySameSet(frags, i, j))) {
-                    flex_mol.intra_pairs.push_back(i);
-                    flex_mol.intra_pairs.push_back(j);
+                    neighbors[i].push_back(j);
+                    neighbors[j].push_back(i);
                 }
             }
         }
-        
+
+        flex_mol.intra_range.resize(flex_mol.natom * 2);
+        for (int i = 0; i < flex_mol.natom; i++) {
+            flex_mol.intra_range[i * 2] = flex_mol.intra_pairs.size();
+            for (int j : neighbors[i]) {
+                flex_mol.intra_pairs.push_back(j);
+            }
+            flex_mol.intra_range[i * 2 + 1] = neighbors[i].size();
+        }
+            
         flex_mol_list.push_back(flex_mol);
     }
 }

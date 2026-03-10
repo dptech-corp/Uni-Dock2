@@ -63,30 +63,13 @@ void read_ud_from_json_string(const std::string& json_str, const Box& box, UDFix
     box_protein.z_lo = box.z_lo - VINA_CUTOFF;
     box_protein.z_hi = box.z_hi + VINA_CUTOFF;
     parser.parse_receptor_info(box_protein, out_fix);
-    spdlog::info("Receptor has {:d} atoms in box", out_fix.natom);
+    spdlog::info("Receptor has {:d} heavy atoms in box", out_fix.natom);
 
     // Parse ligands
     parser.parse_ligands_info(out_flex_list, out_fns_flex, use_tor_lib);
     spdlog::info("Flexible molecules count: {:d}", out_flex_list.size());
     if (out_flex_list.size() == 0){
         spdlog::error("No flexible molecules are found");
-    }
-
-    // Add inter pairs for each ligand (this needs to be done after receptor is parsed)
-    for (auto& flex_mol : out_flex_list) {
-        // inter pairs: flex v.s. receptor
-        for (int j = 0; j < out_fix.natom; j++){
-            if (out_fix.vina_types[j] == VN_TYPE_H){
-                continue;
-            }
-            for (int i = 0; i < flex_mol.natom; i++){
-                if (flex_mol.vina_types[i] == VN_TYPE_H){ //ignore Hydrogen on ligand and protein
-                    continue;
-                }
-                flex_mol.inter_pairs.push_back(i);
-                flex_mol.inter_pairs.push_back(j);
-            }
-        }
     }
 
     spdlog::debug("Json is Done.");

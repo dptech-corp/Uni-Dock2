@@ -53,6 +53,8 @@ void cal_e_grad_one_gpu(const FixMol& fix_mol, const FixParamVina& fix_param,
         const FlexParamVina& flex_param, const FlexPose& x, const FlexTopo& flex_topo,
         FlexPoseGradient* out_g, Real* out_e) {
 
+    checkCUDA(cudaMemcpyToSymbol(CU_VDW_RADII, VN_VDW_RADII, sizeof(VN_VDW_RADII)));
+
     // Allocate memory on GPU
     FixMol* fix_mol_cu = alloccp_FixMol_gpu(fix_mol);
     FixParamVina* fix_param_cu = alloccp_FixParamVina_gpu(fix_param, fix_mol.natom);
@@ -93,6 +95,8 @@ void line_search_one_gpu(const FixMol& fix_mol, const FixParamVina& fix_param,
                      const FlexTopo& flex_topo,
                      FlexPose* out_x_new, FlexPoseGradient* out_g_new,
                      Real* out_e, Real* out_alpha) {
+
+    checkCUDA(cudaMemcpyToSymbol(CU_VDW_RADII, VN_VDW_RADII, sizeof(VN_VDW_RADII)));
 
     // Allocate memory on GPU
     FixMol* fix_mol_cu = alloccp_FixMol_gpu(fix_mol);

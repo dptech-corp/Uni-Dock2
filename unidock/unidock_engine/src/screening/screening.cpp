@@ -57,7 +57,7 @@ size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool pri
 
     size_t n_range_all_flex = 0, n_rotated_atoms_all_flex = 0;
     size_t n_dim_all_flex = 0, n_dim_tri_mat_all_flex = 0;
-    size_t size_inter_all_flex = 0, size_intra_all_flex = 0;
+    size_t size_intra_all_flex = 0;
     size_t n_atom_all_flex = 0;
     size_t n_dihe_all_flex = 0;
     size_t n_bias_all_flex = 0;
@@ -65,8 +65,7 @@ size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool pri
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
 
-        size_intra_all_flex += m.intra_pairs.size();
-        size_inter_all_flex += m.inter_pairs.size(); // all possible pairs
+        size_intra_all_flex += m.intra_pairs.size(); // adjacency list entries
 
         n_atom_all_flex += m.natom;
         n_dihe_all_flex += m.dihedrals.size();
@@ -93,10 +92,10 @@ size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool pri
         n_dihe_all_flex * 2 + n_rotated_atoms_all_flex) * sizeof(int) +
             n_range_all_flex * 2 * sizeof(Real);
 
-    // flex_param_list_cu
+    // flex_param_list_cu: pairs_intra + intra_range + atom_types + inds_bias (ints) + params_bias (Reals)
     size_t s3 = nflex * sizeof(FlexParamVina) +
-        (size_intra_all_flex + size_inter_all_flex + n_atom_all_flex + n_atom_all_flex*2) * sizeof(int) +
-            ((size_intra_all_flex + size_inter_all_flex) / 2 + n_bias_all_flex * 5) * sizeof(Real);
+        (size_intra_all_flex + n_atom_all_flex * 2 + n_atom_all_flex + n_atom_all_flex * 2) * sizeof(int) +
+            (n_bias_all_flex * 5) * sizeof(Real);
 
     // aux_pose_cu
     size_t s4 = npose * STRIDE_POSE * sizeof(FlexPose) +
