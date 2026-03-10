@@ -286,34 +286,40 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         }
     }
 
-    // -- Compute intra-molecular energy
-    for (int i = tile.thread_rank(); i < flex_param.npair_intra; i += tile.num_threads()){
-        int i1 = flex_param.pairs_intra[i * 2], i2 = flex_param.pairs_intra[i * 2 + 1];
-        // Cartesian distances won't be saved
-        Real r_vec[3] = {
-            pose->coords[i2 * 3] - pose->coords[i1 * 3],
-            pose->coords[i2 * 3 + 1] - pose->coords[i1 * 3 + 1],
-            pose->coords[i2 * 3 + 2] - pose->coords[i1 * 3 + 2]
-        };
-        rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
+    // -- Compute intra-molecular energy (per-atom adjacency list, no atomicAdd)
+    Real e_intra = 0.;
+    for (int i1 = tile.thread_rank(); i1 < flex_topo.natom; i1 += tile.num_threads()){
+        int start = flex_param.intra_range[i1 * 2];
+        int count = flex_param.intra_range[i1 * 2 + 1];
+        Real vdw_r1 = CU_VDW_RADII[flex_param.atom_types[i1]];
+        Real fx = 0., fy = 0., fz = 0.;
 
-        if (rr < Score.r2_cutoff){
-            rr = sqrt(rr); // use r2 as a container for |r|
-            energy += Score.eval_ef(rr - flex_param.r1_plus_r2_intra[i], flex_param.atom_types[i1],
-                                    flex_param.atom_types[i2], &f_div_r);
-            if (rr < EPSILON){// robust
-                rr = EPSILON;
+        for (int k = start; k < start + count; k++){
+            int i2 = flex_param.pairs_intra[k];
+            Real r_vec[3] = {
+                pose->coords[i2 * 3] - pose->coords[i1 * 3],
+                pose->coords[i2 * 3 + 1] - pose->coords[i1 * 3 + 1],
+                pose->coords[i2 * 3 + 2] - pose->coords[i1 * 3 + 2]
+            };
+            rr = r_vec[0] * r_vec[0] + r_vec[1] * r_vec[1] + r_vec[2] * r_vec[2];
+
+            if (rr < Score.r2_cutoff){
+                rr = sqrt(rr);
+                e_intra += Score.eval_ef(rr - (vdw_r1 + CU_VDW_RADII[flex_param.atom_types[i2]]),
+                                         flex_param.atom_types[i1], flex_param.atom_types[i2], &f_div_r);
+                if (rr < EPSILON) rr = EPSILON;
+                f_div_r /= rr;
+                fx -= f_div_r * r_vec[0];
+                fy -= f_div_r * r_vec[1];
+                fz -= f_div_r * r_vec[2];
             }
-            f_div_r /= rr; // till now, it is the real f/|r|
-            assert(i1 < flex_topo.natom && i2 < flex_topo.natom);
-            atomicAdd_block(aux_f + i1 * 3, -f_div_r * r_vec[0]);
-            atomicAdd_block(aux_f + i1 * 3 + 1, -f_div_r * r_vec[1]);
-            atomicAdd_block(aux_f + i1 * 3 + 2, -f_div_r * r_vec[2]);
-            atomicAdd_block(aux_f + i2 * 3, f_div_r * r_vec[0]);
-            atomicAdd_block(aux_f + i2 * 3 + 1, f_div_r * r_vec[1]);
-            atomicAdd_block(aux_f + i2 * 3 + 2, f_div_r * r_vec[2]);
         }
+
+        aux_f[i1 * 3] += fx;
+        aux_f[i1 * 3 + 1] += fy;
+        aux_f[i1 * 3 + 2] += fz;
     }
+    energy += 0.5 * e_intra;
     tile.sync();
 
     // 1.4. Compute position-bias

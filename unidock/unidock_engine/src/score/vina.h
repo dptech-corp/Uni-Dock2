@@ -17,10 +17,8 @@
 struct FlexParamVina{
     int* atom_types; // size: natom
 
-    // One copy for one ligand, poses share this
-    int npair_intra = 0; // flex x flex
-    int* pairs_intra; // size: npair_intra * 2. each two is a pair. The bound is loose, so never changed after initialization.
-    Real* r1_plus_r2_intra; // size: npair_intra. vdW radii summations of each pair, intra part + inter part
+    int* pairs_intra; // per-atom neighbor indices (concatenated adjacency list)
+    int* intra_range; // size: natom * 2. [start_index_in_pairs_intra, count] per atom
 
     int* inds_bias; // size: natom * 2. each is [start index in bias, end index in bias], [0, 0] for no bias
     Real* params_bias; // size: nbias * 5. each is [x, y, z, V_set, r^2]

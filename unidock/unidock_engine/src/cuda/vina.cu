@@ -11,11 +11,16 @@ FlexParamVina* alloccp_FlexParamVina_gpu(const FlexParamVina& flex_param_vina, i
     cudaMalloc(&flex_param_vina_cu, sizeof(FlexParamVina));
 
     FlexParamVina flex_param_vina_tmp;
-    flex_param_vina_tmp.npair_intra = flex_param_vina.npair_intra;
-    cudaMalloc(&flex_param_vina_tmp.pairs_intra, sizeof(int) * flex_param_vina.npair_intra * 2);
-    cudaMemcpy(flex_param_vina_tmp.pairs_intra, flex_param_vina.pairs_intra, sizeof(int) * flex_param_vina.npair_intra * 2, cudaMemcpyHostToDevice);
-    cudaMalloc(&flex_param_vina_tmp.r1_plus_r2_intra, sizeof(Real) * flex_param_vina.npair_intra);
-    cudaMemcpy(flex_param_vina_tmp.r1_plus_r2_intra, flex_param_vina.r1_plus_r2_intra, sizeof(Real) * flex_param_vina.npair_intra, cudaMemcpyHostToDevice);
+
+    // Compute total intra adjacency list size from intra_range
+    int total_intra = 0;
+    if (natom > 0) {
+        total_intra = flex_param_vina.intra_range[(natom - 1) * 2] + flex_param_vina.intra_range[(natom - 1) * 2 + 1];
+    }
+    cudaMalloc(&flex_param_vina_tmp.pairs_intra, sizeof(int) * total_intra);
+    cudaMemcpy(flex_param_vina_tmp.pairs_intra, flex_param_vina.pairs_intra, sizeof(int) * total_intra, cudaMemcpyHostToDevice);
+    cudaMalloc(&flex_param_vina_tmp.intra_range, sizeof(int) * natom * 2);
+    cudaMemcpy(flex_param_vina_tmp.intra_range, flex_param_vina.intra_range, sizeof(int) * natom * 2, cudaMemcpyHostToDevice);
     cudaMalloc(&flex_param_vina_tmp.atom_types, sizeof(int) * natom);
     cudaMemcpy(flex_param_vina_tmp.atom_types, flex_param_vina.atom_types, sizeof(int) * natom, cudaMemcpyHostToDevice);
 
@@ -51,7 +56,7 @@ void free_FlexParamVina_gpu(FlexParamVina* flex_param_vina_cu){
     cudaMemcpy(&flex_param_vina_tmp, flex_param_vina_cu, sizeof(FlexParamVina), cudaMemcpyDeviceToHost);
     cudaFree(flex_param_vina_tmp.atom_types);
     cudaFree(flex_param_vina_tmp.pairs_intra);
-    cudaFree(flex_param_vina_tmp.r1_plus_r2_intra);
+    cudaFree(flex_param_vina_tmp.intra_range);
     cudaFree(flex_param_vina_tmp.inds_bias);
     if (flex_param_vina_tmp.params_bias != nullptr) {
         cudaFree(flex_param_vina_tmp.params_bias);

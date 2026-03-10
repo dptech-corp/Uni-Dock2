@@ -118,12 +118,12 @@ static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_m
 static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param_list_manager,
                                   FlexParamVina*& flex_param_list_cu,
                                   const UDFlexMolList& udflex_mols,
-                                  int size_intra_all_flex, int n_atom_all_flex){
+                                  int n_atom_all_flex){
     int nflex = udflex_mols.size();
     flex_param_list_manager = new StructArrayManager<FlexParamVina>(nflex);
 
     std::vector<int> list_pairs_intra_size(nflex);
-    std::vector<int> list_r1_plus_r2_intra_size(nflex);
+    std::vector<int> list_intra_range_size(nflex);
     std::vector<int> list_atom_types_size(nflex);
     std::vector<int> list_inds_bias_size(nflex);
     std::vector<int> list_params_bias_size(nflex);
@@ -131,7 +131,7 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
         list_pairs_intra_size[i] = m.intra_pairs.size();
-        list_r1_plus_r2_intra_size[i] = m.r1_plus_r2_intra.size();
+        list_intra_range_size[i] = m.intra_range.size();
         list_atom_types_size[i] = m.natom;
 
         list_inds_bias_size[i]   = m.natom * 2;
@@ -140,8 +140,8 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
 
     flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{
         &FlexParamVina::pairs_intra, sizeof(int), list_pairs_intra_size});
-    flex_param_list_manager->add_ptr_field<Real*>(StructsMemberPtrField<FlexParamVina, Real*>{
-        &FlexParamVina::r1_plus_r2_intra, sizeof(Real), list_r1_plus_r2_intra_size});
+    flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{
+        &FlexParamVina::intra_range, sizeof(int), list_intra_range_size});
     flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{
         &FlexParamVina::atom_types, sizeof(int), list_atom_types_size});
     flex_param_list_manager->add_ptr_field<int*>(StructsMemberPtrField<FlexParamVina, int*>{
@@ -154,11 +154,9 @@ static void alloc_flex_param_list(StructArrayManager<FlexParamVina>*& flex_param
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
         auto& flex_param = flex_param_list_manager->array_host[i];
-        
-        flex_param.npair_intra = m.intra_pairs.size() / 2;
 
         std::memcpy(flex_param.pairs_intra, m.intra_pairs.data(), sizeof(int) * m.intra_pairs.size());
-        std::memcpy(flex_param.r1_plus_r2_intra, m.r1_plus_r2_intra.data(), sizeof(Real) * m.r1_plus_r2_intra.size());
+        std::memcpy(flex_param.intra_range, m.intra_range.data(), sizeof(int) * m.intra_range.size());
         std::memcpy(flex_param.atom_types, m.vina_types.data(), sizeof(int) * m.natom);
 
         std::vector<int> inds_bias(m.natom * 2, 0);
@@ -348,8 +346,6 @@ void DockTask::alloc_gpu(){
     n_dihe_all_flex = 0;
     int n_range_all_flex = 0, n_rotated_atoms_all_flex = 0;
     int n_dim_all_flex = 0, n_dim_tri_mat_all_flex = 0;
-    int size_intra_all_flex = 0;
-
     std::vector<int> list_n_atom_flex(nflex);
     std::vector<int> list_n_dihe(nflex);
     std::vector<int> list_n_range(nflex);
@@ -358,8 +354,6 @@ void DockTask::alloc_gpu(){
 
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
-
-        size_intra_all_flex += m.intra_pairs.size();
 
         list_n_atom_flex[i] = m.natom;
         list_n_dihe[i] = m.dihedrals.size();
@@ -397,7 +391,7 @@ void DockTask::alloc_gpu(){
 
     //----- flex_param_list_cu -----
     alloc_flex_param_list(flex_param_list_manager, flex_param_list_cu, udflex_mols,
-                         size_intra_all_flex, n_atom_all_flex);
+                         n_atom_all_flex);
 
 
     //----- fix_param_cu -----
