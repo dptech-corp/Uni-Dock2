@@ -34,7 +34,7 @@ __global__ void cal_rmsd(int* aux_list_cluster, const FlexPose* poses, const int
                          const FlexTopo* list_flex_topo, int npose_per_flex, Real rmsd_limit){
     // one block := one warp := one tile := one pair of poses
 
-    int npair_per_flex = npose_per_flex * (npose_per_flex + 1) / 2;
+    int npair_per_flex = npose_per_flex * (npose_per_flex - 1) / 2;
     int id_flex = blockIdx.x / npair_per_flex;
 
     // Cooperative group
