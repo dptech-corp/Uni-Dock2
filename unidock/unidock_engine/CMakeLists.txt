@@ -11,9 +11,7 @@ option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for
 # fixme: double seems worse than float
 
 # ------------------------------ Options for Developers
-set(INPUT_TILE_SIZE 32)
-set(INPUT_BLOCK_SIZE 128)
-add_compile_definitions(TILE_SIZE=${INPUT_TILE_SIZE})
+set(INPUT_BLOCK_SIZE 128 CACHE STRING "threads per CUDA block (multiple of 32)")
 add_compile_definitions(BLOCK_SIZE=${INPUT_BLOCK_SIZE})
 file(STRINGS "${CMAKE_SOURCE_DIR}/../VERSION" VERSION_NUMBER)
 #set(VERSION_NUMBER "260119")

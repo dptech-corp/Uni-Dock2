@@ -146,7 +146,7 @@ void DockTask::run_cluster(){
     // clustering according to rmsd_limit, num_pose. [ energy_range(not loaded)]
     spdlog::info("Clustering {} * {} = {} poses ...", nflex, dock_param.exhaustiveness, nflex * dock_param.exhaustiveness);
     cluster_cu(clustered_pose_inds_cu, &npose_clustered, &clustered_pose_inds_list, flex_pose_list_cu, flex_topo_list_cu,
-        aux_list_e_cu, aux_list_cluster_cu, aux_rmsd_ij_cu,
+        aux_list_e_cu, aux_rmsd_matrix_cu,
         nflex, dock_param.exhaustiveness, dock_param.rmsd_limit);
     spdlog::info("Clustering is done. {} poses are left.", npose_clustered);
 }

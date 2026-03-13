@@ -114,11 +114,9 @@ size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool pri
         exhaustiveness * n_atom_all_flex * 3 * sizeof(Real);
 
     // Clustering
-    int npair = exhaustiveness * (exhaustiveness - 1) / 2; // tri-mat with diagonal
     size_t s8 = npose * sizeof(Real) +
-        nflex * exhaustiveness * sizeof(int) +
-            nflex * npair * 2 * sizeof(int) +
-                nflex * exhaustiveness * sizeof(int);
+        nflex * exhaustiveness * exhaustiveness * sizeof(Real) +
+            nflex * exhaustiveness * sizeof(int);
 
     size_t total = (s0 + s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8) / 1048576;
 

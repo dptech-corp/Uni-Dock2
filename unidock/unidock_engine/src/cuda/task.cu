@@ -424,33 +424,10 @@ void DockTask::alloc_gpu(){
 
 
     //----- Clustering -----
-    int npair = dock_param.exhaustiveness * (dock_param.exhaustiveness - 1) / 2; // tri-mat with diagonal
+    int E = dock_param.exhaustiveness;
     checkCUDA(cudaMalloc(&aux_list_e_cu, sizeof(Real) * npose));
-    checkCUDA(cudaMalloc(&aux_list_cluster_cu, sizeof(int) * nflex * dock_param.exhaustiveness));
-    checkCUDA(cudaMalloc(&aux_rmsd_ij_cu, sizeof(int) * nflex * npair * 2));
-    checkCUDA(cudaMalloc(&clustered_pose_inds_cu, sizeof(int) * nflex * dock_param.exhaustiveness));
-
-    // todo: so large ...
-    std::vector<int> aux_rmsd_ij(nflex * npair * 2, 0); // excluding diagonal line
-    for (int i = 0; i < nflex; i++){
-        int tmp = 2 * (i * npair);
-        int a = 0;
-        for (int j = 0; j < dock_param.exhaustiveness; j++){
-            for (int k = j + 1; k < dock_param.exhaustiveness; k++){
-                aux_rmsd_ij[tmp + a * 2] = j;
-                aux_rmsd_ij[tmp + a * 2 + 1] = k;
-                a++;
-            }
-        }
-    }
-    checkCUDA(cudaMemcpy(aux_rmsd_ij_cu, aux_rmsd_ij.data(), sizeof(int) * nflex * npair * 2, cudaMemcpyHostToDevice));
-
-    // set diagonal to 1 for aux_list_cluster_cu
-    std::vector<int> aux_cluster_mat(nflex * dock_param.exhaustiveness, 1);
-    checkCUDA(
-        cudaMemcpy(aux_list_cluster_cu, aux_cluster_mat.data(), sizeof(int) * nflex * dock_param.exhaustiveness,
-            cudaMemcpyHostToDevice));
-
+    checkCUDA(cudaMalloc(&aux_rmsd_matrix_cu, sizeof(Real) * nflex * E * E));
+    checkCUDA(cudaMalloc(&clustered_pose_inds_cu, sizeof(int) * nflex * E));
 
     //----- Wait for cudaMemcpy -----
     checkCUDA(cudaDeviceSynchronize()); // assure that memcpy is finished
@@ -516,8 +493,7 @@ void DockTask::free_memory_all(){
     }
 
     checkCUDA(cudaFree(aux_list_e_cu));
-    checkCUDA(cudaFree(aux_list_cluster_cu));
-    checkCUDA(cudaFree(aux_rmsd_ij_cu));
+    checkCUDA(cudaFree(aux_rmsd_matrix_cu));
     checkCUDA(cudaFree(clustered_pose_inds_cu));
 
     spdlog::info("Memory free on GPU is done.");
