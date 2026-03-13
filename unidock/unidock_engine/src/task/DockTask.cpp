@@ -30,7 +30,6 @@ void DockTask::set_flex(const UDFlexMolList& flex_mol_list,
     nflex = flex_mol_list.size();
 
     // TODO: clear flex-related
-    list_i_real.clear();
     clustered_pose_inds_list.clear();
     filtered_pose_inds_list.clear();
     npose_clustered = 0;
@@ -165,6 +164,8 @@ void DockTask::run_refine(){
 void DockTask::run_filter(){
     spdlog::info("Filtering by num_pose & energy_range...");
 
+    FlexPose* host = flex_pose_list_manager->array_host;
+
     // Object: all clutered poses
     for (int i = 0; i < nflex; i ++){ // for each flex
         auto& clustered_inds = clustered_pose_inds_list[i];
@@ -172,15 +173,15 @@ void DockTask::run_filter(){
         assert(clustered_inds.size() > 0); // todo: change this function!!!
         // prepare indices
         std::vector<int> sorted_indices(clustered_inds.size()); // find the best num_modes poses for each flex
-        std::iota(sorted_indices.begin(), sorted_indices.end(), 0); // 填充0,1,2,...
+        std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
         std::sort(sorted_indices.begin(), sorted_indices.end(),
-        [this, &clustered_inds](int a, int b) { return this->flex_pose_list_res[clustered_inds[a]].energy < this->flex_pose_list_res[clustered_inds[b]].energy; });
+        [&host, &clustered_inds](int a, int b) { return host[clustered_inds[a]].energy < host[clustered_inds[b]].energy; });
 
         int count = 0;
-        Real e_min = flex_pose_list_res[clustered_inds[sorted_indices[0]]].energy;
+        Real e_min = host[clustered_inds[sorted_indices[0]]].energy;
         std::vector<int> filtered_inds;
         for (auto& j: sorted_indices){
-            if(flex_pose_list_res[clustered_inds[j]].energy > e_min + dock_param.energy_range){
+            if(host[clustered_inds[j]].energy > e_min + dock_param.energy_range){
                 break;
             }
             filtered_inds.push_back(clustered_inds[j]);
@@ -202,6 +203,8 @@ void DockTask::run_score(){
     Vina v;
     std::string show_format = "{:<10}{:<20}{:<20}{:<20}";
 
+    FlexPose* host = flex_pose_list_manager->array_host;
+
     for (int i = 0; i < nflex; i ++){
         auto mol = udflex_mols[i];
         int n_tors = mol.torsions.size();
@@ -215,25 +218,25 @@ void DockTask::run_score(){
         // use center[3] to record intra, inter, penalty
         // then use orientation[4] to record Predicted Free Energy of Binding, Total score, inter(contains penalty) score, conf_independent part
         int j_r1 = filtered_pose_inds_list[i][0];
-        score(flex_pose_list_res + j_r1, flex_pose_list_real_res + list_i_real[j_r1 * 2], udfix_mol, mol, dock_param);
-        Real e_intra_rank1 = flex_pose_list_res[j_r1].center[0];
-        Real e_bias_rank1 = flex_pose_list_res[j_r1].rot_vec[3];
+        score(host + j_r1, host[j_r1].coords, udfix_mol, mol, dock_param);
+        Real e_intra_rank1 = host[j_r1].center[0];
+        Real e_bias_rank1 = host[j_r1].rot_vec[3];
 
         int pose_num = 0;
         for (auto& j : filtered_pose_inds_list[i]){
-            score(flex_pose_list_res + j, flex_pose_list_real_res + list_i_real[j * 2], udfix_mol, mol, dock_param);
-            flex_pose_list_res[j].rot_vec[1] = flex_pose_list_res[j].center[0] + flex_pose_list_res[j].center[1] +
-                flex_pose_list_res[j].center[2]; // Total
+            score(host + j, host[j].coords, udfix_mol, mol, dock_param);
+            host[j].rot_vec[1] = host[j].center[0] + host[j].center[1] +
+                host[j].center[2]; // Total
 
-            Real e_inter = flex_pose_list_res[j].rot_vec[1] - e_intra_rank1; // Real adopted inter
+            Real e_inter = host[j].rot_vec[1] - e_intra_rank1; // Real adopted inter
             // Free Energy of Binding
-            flex_pose_list_res[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors); // Affinity
-            flex_pose_list_res[j].rot_vec[2] = flex_pose_list_res[j].rot_vec[0] - e_inter; // Conf-Independent
+            host[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors); // Affinity
+            host[j].rot_vec[2] = host[j].rot_vec[0] - e_inter; // Conf-Independent
 
             pose_num++;
             if (show_score){
-                spdlog::info(show_format, pose_num, flex_pose_list_res[j].rot_vec[0], flex_pose_list_res[j].rot_vec[3],
-                             flex_pose_list_res[j].rot_vec[3] - e_bias_rank1);
+                spdlog::info(show_format, pose_num, host[j].rot_vec[0], host[j].rot_vec[3],
+                             host[j].rot_vec[3] - e_bias_rank1);
             }
         }
         if (show_score){
@@ -255,7 +258,7 @@ void DockTask::dump_poses(){
     while (retry_count < max_retries && !success) {
         try {
             write_poses_to_json(fp_json, fns_flex, filtered_pose_inds_list,
-                                flex_pose_list_res, flex_pose_list_real_res, list_i_real);
+                                flex_pose_list_manager->array_host, udflex_mols);
 
             // check whether the json file is complete
             std::ifstream file(fp_json, std::ios::binary | std::ios::ate);
