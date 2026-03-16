@@ -245,6 +245,35 @@ public:
     }
 
 
+    /**
+     * @brief Decompose geometrical energy into individual terms (no derivative).
+     *        CPU-only, used for energy decomposition at the final scoring stage.
+     * @param d surface distance
+     * @param at1 Atom type of the first atom
+     * @param at2 Atom type of the second atom
+     * @param out_terms Output array [gauss1, gauss2, repulsion, hydrophobic, hbond], weighted
+     */
+    SCOPE_INLINE void eval_decomp(Real d, int at1, int at2, Real out_terms[5]){
+        out_terms[0] = out_terms[1] = out_terms[2] = out_terms[3] = out_terms[4] = 0;
+
+        if (at1 == VN_TYPE_H || at2 == VN_TYPE_H){
+            return;
+        }
+
+        Real f_dummy = 0;
+        out_terms[0] = weight_gauss1 * vina_gaussian1(d, &f_dummy);
+        out_terms[1] = weight_gauss2 * vina_gaussian2(d, &f_dummy);
+        out_terms[2] = weight_repulsion * vina_repulsion(d, &f_dummy);
+
+        if (vn_is_hydrophobic(at1) && vn_is_hydrophobic(at2)){
+            out_terms[3] = weight_hydrophobic * vina_hydrophobic(d, &f_dummy);
+        }
+        if (xs_h_bond_possible(at1, at2)){
+            out_terms[4] = weight_hbond * vina_hbond(d, &f_dummy);
+        }
+    }
+
+
     SCOPE_INLINE Real eval_ef_pos(Real* r_, Real V_set, Real r2, Real* out_f){
         // r_ is bias_position - flex_atom_position
         // V_set *= bias_scale;

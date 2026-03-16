@@ -9,6 +9,7 @@ Advanced:
   num_pose: !!int 10
   energy_range: !!float 10
   tor_lib: !!bool false
+  energy_decomp: !!bool false
 
 Hardware:
   gpu_device_id: !!int 0

@@ -29,6 +29,8 @@ namespace CoreInputDefaults {
     inline const int seed = cid_dock_param.seed;
     constexpr const char* task = "screen";
 
+    constexpr bool energy_decomp = false;
+
     // not in CoreInput
     constexpr bool use_tor_lib = false;
 }
@@ -55,6 +57,8 @@ namespace CoreInputDocs {
     constexpr const char* seed = "(int) Random seed for reproducibility";
     constexpr const char* task = "(str) Docking task type. Options: screen, score, mc";
 
+    constexpr const char* energy_decomp = "(bool) Output per-atom inter energy decomposition (gauss1, gauss2, repulsion, hydrophobic, hbond)";
+
     // not in CoreInput
     constexpr const char* use_tor_lib = "(bool) Use torsion angle library";
 }
@@ -79,6 +83,7 @@ struct CoreInput {
     int seed = CoreInputDefaults::seed;
     std::string search_mode = CoreInputDefaults::search_mode;
     std::string task = CoreInputDefaults::task;
+    bool energy_decomp = CoreInputDefaults::energy_decomp;
 
     Box box;
     UDFixMol fix_mol;
@@ -92,6 +97,7 @@ struct CoreContext {
     std::string task;
     std::string output_dir;
     std::string name_json;
+    bool energy_decomp = false;
     UDFixMol fix_mol;
     UDFlexMolList flex_mol_list;
     std::vector<std::string> fns_flex;

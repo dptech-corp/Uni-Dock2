@@ -139,7 +139,7 @@ size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool pri
  */
 void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::vector<std::string>& fns_flex,
                    const std::string &dp_out, DockParam& dock_param, int device_max_memory,
-                   std::string name_json){
+                   std::string name_json, bool energy_decomp){
 
     // print docking prameters
     dock_param.show();
@@ -156,6 +156,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
     device_max_memory -= memory_fix;
 
     DockTask task(dpfix_mol, dock_param);
+    task.energy_decomp = energy_decomp;
 
     // For each group, divide flex_mol_list into small batches according to GPU Mem Limit
     for (int igroup=0; igroup < groups.size(); igroup ++){

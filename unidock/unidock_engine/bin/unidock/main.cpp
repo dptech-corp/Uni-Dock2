@@ -133,6 +133,7 @@ int main(int argc, char* argv[])
     bool use_tor_lib = get_config_with_err<bool>(config, "Advanced", "tor_lib", CoreInputDefaults::use_tor_lib);
     cipt.bias = get_config_with_err<std::string>(config, "Advanced", "bias", std::string(CoreInputDefaults::bias));
     cipt.bias_k = get_config_with_err<Real>(config, "Advanced", "bias_k", CoreInputDefaults::bias_k);
+    cipt.energy_decomp = get_config_with_err<bool>(config, "Advanced", "energy_decomp", CoreInputDefaults::energy_decomp);
 
     // -------------------------------  Parse Settings -------------------------------
     cipt.task = get_config_with_err<std::string>(config, "Settings", "task", std::string(CoreInputDefaults::task));

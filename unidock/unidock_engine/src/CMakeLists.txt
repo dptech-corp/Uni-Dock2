@@ -39,7 +39,7 @@ set(sources
         search/bvh.cpp          search/bvh.h
 
         score/gaff2.cpp         score/gaff2.h
-        score/score.h
+        score/score.cpp         score/score.h
         score/vina.h
 
         task/DockTask.cpp       task/DockTask.h
