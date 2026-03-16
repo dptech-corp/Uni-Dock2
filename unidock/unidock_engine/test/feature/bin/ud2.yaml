@@ -1,0 +1,32 @@
+Advanced:
+  seed: !!int 121
+  exhaustiveness: !!int 512
+  randomize: !!bool true
+  mc_steps: !!int 40
+  opt_steps: !!int -1
+  refine_steps: !!int 1
+  rmsd_limit: !!float 1.0
+  num_pose: !!int 10
+  energy_range: !!float 10
+  tor_lib: !!bool false
+
+Hardware:
+  gpu_device_id: !!int 0
+  max_gpu_memory: !!int 0
+
+Settings:
+  task: !!str screen
+  search_mode: !!str free
+  constraint_docking: !!bool false
+  center_x: !!float -22.33497980811559
+  center_y: !!float 13.31094327905649
+  center_z: !!float 27.36396790165424
+  size_x: !!float 30.0
+  size_y: !!float 30.0
+  size_z: !!float 30.0
+
+Outputs:
+  dir: !!str ./
+
+Inputs:
+  json: !!str ../../data/5S8I/5S8I_unidock2.json
