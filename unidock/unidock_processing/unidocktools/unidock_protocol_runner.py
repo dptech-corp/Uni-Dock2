@@ -49,6 +49,7 @@ class UnidockProtocolRunner(object):
         energy_range: float = 5.0,
         seed: int = 1234567,
         use_tor_lib: bool = False,
+        energy_decomp: bool = False,
         engine_checkpoint: bool = False,
     ) -> None:
 
@@ -84,6 +85,7 @@ class UnidockProtocolRunner(object):
         self.energy_range = energy_range
         self.seed = seed
         self.use_tor_lib = use_tor_lib
+        self.energy_decomp = energy_decomp
         self.engine_checkpoint = engine_checkpoint
         self.working_dir_name = os.path.abspath(working_dir_name)
         self.unidock2_output_dir_name = os.path.join(self.working_dir_name, 'unidock2_output')
@@ -193,6 +195,7 @@ class UnidockProtocolRunner(object):
             energy_range=self.energy_range,
             seed=self.seed,
             use_tor_lib=self.use_tor_lib,
+            energy_decomp=self.energy_decomp,
             constraint_docking=self.template_docking or self.covalent_ligand,
             gpu_device_id=self.gpu_device_id
         )
@@ -211,6 +214,7 @@ class UnidockProtocolRunner(object):
             ligand_builder.ligand_mol_list,
             pose_json_files,
             covalent_ligand=self.covalent_ligand,
+            energy_decomp=self.energy_decomp,
             docking_pose_sdf_file_name=self.docking_pose_sdf_file_name,
         )
         pose_writer.generate_docking_pose_sdf()

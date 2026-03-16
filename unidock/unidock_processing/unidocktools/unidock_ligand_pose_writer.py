@@ -15,6 +15,7 @@ class UnidockLigandPoseWriter(object):
         ligand_mol_list,
         unidock2_pose_json_file_name_list,
         covalent_ligand=False,
+        energy_decomp=False,
         docking_pose_sdf_file_name='unidock2_pose.sdf',
     ):
         self.ligand_mol_list = ligand_mol_list
@@ -22,6 +23,7 @@ class UnidockLigandPoseWriter(object):
         self.unidock2_pose_json_file_name_list = unidock2_pose_json_file_name_list
         self.num_unidock2_batches = len(self.unidock2_pose_json_file_name_list)
         self.covalent_ligand = covalent_ligand
+        self.energy_decomp = energy_decomp
         self.docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
 
         self.unidock2_pose_dict = {}
@@ -75,6 +77,10 @@ class UnidockLigandPoseWriter(object):
                 ligand_mol_ud2_pose.SetProp(
                     'vina_torsion_number_energy', str(vina_scoring_list[5])
                 )
+
+                if self.energy_decomp and 'decomp' in unidock2_pose_info_dict:
+                    decomp_data = unidock2_pose_info_dict['decomp']
+                    ligand_mol_ud2_pose.SetProp('decomp', json.dumps(decomp_data))
 
                 ligand_mol_ud2_conf = ligand_mol_ud2_pose.GetConformer()
                 ud2_pose_coord_list = unidock2_pose_info_dict['coords']
