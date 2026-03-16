@@ -28,25 +28,25 @@ cd ud2/test/data/dev1
 ```
 
 ### Different Pre-defined Tasks
-Several typical tasks are defined, and you can easily apply them by setting `congfig.yaml`:
+Several typical tasks are defined, and you can easily apply them by setting `config.yaml`:
 ```shell
 ...
 Settings:
   task: !!str screen # screen | score | mc | free
 ...
 ```
-Explaination of pre-defined tasks:
+Explanation of pre-defined tasks:
 
 #### screen
 Perform standard docking tasks, where ONE receptor and some(>0) ligands are provided. 
 For each ligand, `Advanced->exhaustiveness` MC searching tasks will finally generate 
 `Advanced->exhaustiveness` poses. After clustered according to `Advanced->rmsd_limit`,
-the best `Advanced->num_pose` poses withing the `Advanced->energy_range` kcal/mol
+the best `Advanced->num_pose` poses within the `Advanced->energy_range` kcal/mol
 will be output to the result json file, along with their energy terms.
 
 The **energy terms** of one pose is a list of floats, namely `[Predicted Free Energy of Affinity, 
 Total Score, Intra-molecular Score, Inter-molecular Score, Conformation-independent Score, 
-Penalty Score]`.
+Penalty Score, Bias Score]`.
 
 #### score
 Just provide score for the current pose of each providing ligand. No 
@@ -54,8 +54,7 @@ randomization/searching/optimization/clustering/filtering/refinement will be per
 Only the given pose and its energy terms will be saved to the result json file.
 
 #### optimize
-Just optimize the input ligand pose. No randomization/searching/optimization/clustering/filtering will be performed.
-The optimized pose and its energy terms will be saved to the result json file.
+Only perform local refinement(BFGS). No randomization/searching/optimization/clustering/filtering will be performed.
 
 #### randomize
 Only perform randomization to create `exhaustiveness` poses for each given ligand. It is usually used to generate
@@ -69,33 +68,10 @@ be performed without optimization of each pose.
 Clustering/filtering will still be performed.
 No refinement.
 
-#### free
+## Search Mode
+### free
 If the pre-defined tasks can't meet your need, pls use `screen` as the task type, and change
 detailed settings in `Advanced` as you like, since all provided parameters will take effect for 
 `screen` task.
-
-#### benchmark [Not Loaded]
-This is a convenient way to perform benchmark test to check the correctness and speed of UD2.
-By given many receptor&best_ligand_pose data, UD2 will first perform "screen" task to find the
-best `num_pose` poses and record their predicted affinity and RMSD from the expected best pose,
-along with the total time cost.
-
-Users could perform further analysis based on these data.
-
-## Source Code Illustration
-* **api** Provides APIs for other languages like python.
-* **bin** Stores published functional binaries for users.
-* **data** Stores reference files, such as the input configuration file template.
-* **doc** Provides Doxygen-generated documents.
-* **include** Contains third-party header files.
-* **lib** Contains third-party static libraries (not modified from source) built for this project.
-* **src** Contains basic source code files.
-* **test** Includes unit tests and component tests.
-* **set_env.sh** An easy-to-use shell script for developers to quickly set up a ready-to-use development environment.
-* **scripts** [Not Loaded] Provides easy-to-use scripts for users to run standard docking processes, requiring no understanding of the coding details.
-
-## TODO:
-- [ ] Use new data structure to simplify the memory management. 
-
 
    

@@ -88,7 +88,8 @@ auto safe_val = [](float v) -> float {
 void write_poses_to_json(std::string fp_json, const std::vector<std::string>& flex_names,
                          const std::vector<std::vector<int>>& filtered_pose_inds_list,
                          const FlexPose* flex_pose_list,
-                         const UDFlexMolList& udflex_mols){
+                         const UDFlexMolList& udflex_mols,
+                         const std::vector<std::vector<std::vector<AtomEnergyDecomp>>>& decomp_list){
     rj::Document doc;
     doc.SetObject();
 
@@ -97,9 +98,11 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
     for (int i = 0; i < flex_names.size(); i++){
         auto flex_name = flex_names[i];
         int n_coords = udflex_mols[i].natom * 3;
+        int natom = udflex_mols[i].natom;
         int n_dihe = udflex_mols[i].dihedrals.size();
         rj::Value flex_data(rj::kArrayType);
 
+        int pose_idx = 0;
         for (auto& j: filtered_pose_inds_list[i]){
             rj::Value pose_obj;
             pose_obj.SetObject();
@@ -128,7 +131,24 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
             }
             pose_obj.AddMember("dihedrals", dihedrals.Move(), doc.GetAllocator());
 
+            // per-atom inter energy decomposition: [gauss1, gauss2, repulsion, hydrophobic, hbond]
+            if (i < decomp_list.size() && pose_idx < decomp_list[i].size()){
+                const auto& atom_decomp = decomp_list[i][pose_idx];
+                rj::Value decomp_arr(rj::kArrayType);
+                for (int a = 0; a < natom; a++){
+                    rj::Value atom_terms(rj::kArrayType);
+                    atom_terms.PushBack(safe_val(atom_decomp[a].gauss1), doc.GetAllocator());
+                    atom_terms.PushBack(safe_val(atom_decomp[a].gauss2), doc.GetAllocator());
+                    atom_terms.PushBack(safe_val(atom_decomp[a].repulsion), doc.GetAllocator());
+                    atom_terms.PushBack(safe_val(atom_decomp[a].hydrophobic), doc.GetAllocator());
+                    atom_terms.PushBack(safe_val(atom_decomp[a].hbond), doc.GetAllocator());
+                    decomp_arr.PushBack(atom_terms.Move(), doc.GetAllocator());
+                }
+                pose_obj.AddMember("decomp", decomp_arr.Move(), doc.GetAllocator());
+            }
+
             flex_data.PushBack(pose_obj.Move(), doc.GetAllocator());
+            pose_idx++;
         }
 
         rj::Value key(flex_name.c_str(), doc.GetAllocator());

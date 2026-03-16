@@ -69,6 +69,7 @@ inline void dump_config_template(const std::string& path) {
     EMIT_PARAM_DEFAULT(out, bias);
     EMIT_PARAM_DEFAULT(out, bias_k);
     EMIT_PARAM_DEFAULT(out, use_tor_lib);
+    EMIT_PARAM_DEFAULT(out, energy_decomp);
     out << YAML::EndMap;  // Advanced
 
     // ==================== Hardware ====================

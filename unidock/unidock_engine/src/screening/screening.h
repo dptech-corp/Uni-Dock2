@@ -33,7 +33,8 @@ static constexpr int NTorsionThresholds[NGroup] = {SmallConfig.MAX_NUM_OF_TORSIO
 
 
 void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::vector<std::string>& fns_flex,
-                   const std::string &dp_out, DockParam& dock_param, int device_max_memory, std::string name_json = "ud2");
+                   const std::string &dp_out, DockParam& dock_param, int device_max_memory, std::string name_json = "ud2",
+                   bool energy_decomp = false);
 
 
 

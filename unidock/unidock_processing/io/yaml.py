@@ -27,6 +27,7 @@ class AdvancedConfig(BaseModel):
     energy_range: float = 5.0
     seed: int = 1234567
     use_tor_lib: bool = False
+    energy_decomp: bool = False
 
 class HardwareConfig(BaseModel):
     n_cpu: Optional[int] = None
@@ -65,7 +66,7 @@ CONFIG_MAPPING: ClassVar[List[Tuple[str, str, Type[BaseModel], List[str]]]] = [
     ('Advanced', 'advanced', AdvancedConfig, [
      'exhaustiveness', 'randomize', 'mc_steps', 'opt_steps',
      'refine_steps', 'num_pose', 'rmsd_limit', 'energy_range',
-     'seed', 'use_tor_lib']),
+     'seed', 'use_tor_lib', 'energy_decomp']),
     ('Hardware', 'hardware', HardwareConfig, ['n_cpu', 'gpu_device_id']),
     ('Settings', 'settings', SettingsConfig, ['box_size', 'task', 'search_mode']),
     ('Preprocessing', 'preprocessing', PreprocessingConfig, [

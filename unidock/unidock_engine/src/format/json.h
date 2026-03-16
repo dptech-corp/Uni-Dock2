@@ -7,6 +7,7 @@
 
 #include <string>
 #include "model/model.h"
+#include "score/score.h"
 
 
 void read_ud_from_json(const std::string &fp, const Box& box,
@@ -20,6 +21,7 @@ void read_ud_from_json_string(const std::string &ss, const Box& box,
 void write_poses_to_json(std::string fp_json, const std::vector<std::string>& flex_names,
                          const std::vector<std::vector<int>>& filtered_pose_inds_list,
                          const FlexPose* flex_pose_list,
-                         const UDFlexMolList& udflex_mols);
+                         const UDFlexMolList& udflex_mols,
+                         const std::vector<std::vector<std::vector<AtomEnergyDecomp>>>& decomp_list);
 
 #endif //JSON_H

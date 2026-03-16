@@ -44,6 +44,7 @@ inline std::string generate_init_docstring() {
        DOC_LINE(bias_k)
        DOC_LINE(constraint_docking)
        DOC_LINE(use_tor_lib)
+       DOC_LINE(energy_decomp)
        DOC_LINE(gpu_device_id)
        DOC_LINE(name_json)
        DOC_LINE(max_gpu_memory);
@@ -73,10 +74,11 @@ public:
         Real bias_k,
         bool constraint_docking,
         bool use_tor_lib,
+        bool energy_decomp,
         int gpu_device_id,
         std::string name_json,
         int max_gpu_mem
-    ) : use_tor_lib(use_tor_lib) {
+    ) : use_tor_lib(use_tor_lib), energy_decomp(energy_decomp) {
 
         ipt.gpu_device_id = gpu_device_id;
         ipt.max_gpu_memory = max_gpu_mem;
@@ -103,6 +105,7 @@ public:
         ipt.bias = bias;
         ipt.bias_k = bias_k;
         ipt.constraint_docking = constraint_docking;
+        ipt.energy_decomp = energy_decomp;
         ipt.task = task;
         ipt.search_mode = search_mode;
     }
@@ -142,6 +145,7 @@ public:
 
 private:
     bool use_tor_lib = false;
+    bool energy_decomp = false;
     CoreInput ipt;
     py::dict json_data;
 };
@@ -158,7 +162,7 @@ PYBIND11_MODULE(pipeline, m) { // shared lib name: "pipeline.<py_version>-<platf
         .def(py::init<
                 std::string, Real, Real, Real, Real, Real, Real, std::string, std::string, 
                 int, bool, int, int, int, int, Real, Real, int, std::string, Real,
-                bool, bool, int, std::string, int>(),
+                bool, bool, bool, int, std::string, int>(),
             init_doc.c_str(),  // use generated docstring
             py::kw_only(),  // force keyword-only 
             py::arg("output_dir") = CoreInputDefaults::output_dir,
@@ -179,6 +183,7 @@ PYBIND11_MODULE(pipeline, m) { // shared lib name: "pipeline.<py_version>-<platf
             py::arg("bias_k") = CoreInputDefaults::bias_k,
             py::arg("constraint_docking") = CoreInputDefaults::constraint_docking,
             py::arg("use_tor_lib") = CoreInputDefaults::use_tor_lib,
+            py::arg("energy_decomp") = CoreInputDefaults::energy_decomp,
             py::arg("gpu_device_id") = CoreInputDefaults::gpu_device_id,
             py::arg("name_json") = CoreInputDefaults::name_json,
             py::arg("max_gpu_mem") = CoreInputDefaults::max_gpu_memory

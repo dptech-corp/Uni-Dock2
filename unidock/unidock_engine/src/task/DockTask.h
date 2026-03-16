@@ -8,7 +8,9 @@
 
 #include "model/model.h"
 #include <string>
+#include <vector>
 #include "score/vina.h"
+#include "score/score.h"
 #include "cuda/struct_array_manager.cuh"
 
 
@@ -24,6 +26,7 @@ public:
     DockParam dock_param;
     int nflex = 0;
     bool show_score = true;
+    bool energy_decomp = false;
 
     // -------------------- Molecules
     // CPU - Input Model
@@ -66,7 +69,9 @@ private:
     // CPU
     int n_atom_all_flex = 0;
     std::vector<std::vector<int>> clustered_pose_inds_list; 
-    std::vector<std::vector<int>> filtered_pose_inds_list; 
+    std::vector<std::vector<int>> filtered_pose_inds_list;
+    // decomp_list[i_flex][i_pose] = per-atom inter energy decomposition
+    std::vector<std::vector<std::vector<AtomEnergyDecomp>>> decomp_list;
 
     // GPU
     FixMol* fix_mol_cu;

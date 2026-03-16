@@ -205,6 +205,10 @@ void DockTask::run_score(){
 
     FlexPose* host = flex_pose_list_manager->array_host;
 
+    if (energy_decomp){
+        decomp_list.resize(nflex);
+    }
+
     for (int i = 0; i < nflex; i ++){
         auto mol = udflex_mols[i];
         int n_tors = mol.torsions.size();
@@ -233,6 +237,12 @@ void DockTask::run_score(){
             host[j].rot_vec[0] = v.vina_conf_indep(e_inter, n_tors); // Affinity
             host[j].rot_vec[2] = host[j].rot_vec[0] - e_inter; // Conf-Independent
 
+            if (energy_decomp){
+                std::vector<AtomEnergyDecomp> atom_decomp;
+                score_decomp(atom_decomp, host[j].coords, udfix_mol, mol);
+                decomp_list[i].push_back(std::move(atom_decomp));
+            }
+
             pose_num++;
             if (show_score){
                 spdlog::info(show_format, pose_num, host[j].rot_vec[0], host[j].rot_vec[3],
@@ -258,7 +268,8 @@ void DockTask::dump_poses(){
     while (retry_count < max_retries && !success) {
         try {
             write_poses_to_json(fp_json, fns_flex, filtered_pose_inds_list,
-                                flex_pose_list_manager->array_host, udflex_mols);
+                                flex_pose_list_manager->array_host, udflex_mols,
+                                decomp_list);
 
             // check whether the json file is complete
             std::ifstream file(fp_json, std::ios::binary | std::ios::ate);
