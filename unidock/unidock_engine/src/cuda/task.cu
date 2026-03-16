@@ -66,7 +66,6 @@ static void alloc_flex_topo_list(StructArrayManager<FlexTopo>*& flex_topo_list_m
 
 static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_manager,
                              FlexPose*& flex_pose_list_cu,
-                             std::vector<size_t>* list_i_real,
                              const UDFlexMolList& udflex_mols, int npose, int nflex, int exhaustiveness,
                              const std::vector<int>& list_natom_flex, const std::vector<int>& list_ndihe){
 
@@ -88,7 +87,6 @@ static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_m
 
     flex_pose_list_manager->allocate_and_assign();
 
-    list_i_real->push_back(0);
     for (int i = 0; i < nflex; i++){
         auto& m = udflex_mols[i];
         for (int j = 0; j < exhaustiveness; j++){
@@ -105,9 +103,6 @@ static void alloc_flex_pose_list(StructArrayManager<FlexPose>*& flex_pose_list_m
 
             std::memcpy(flex_pose.coords, m.coords.data(), sizeof(Real) * m.coords.size());
             std::memcpy(flex_pose.dihedrals, m.dihedrals.data(), sizeof(Real) * m.dihedrals.size());
-
-            list_i_real->push_back(list_i_real->back() + list_natom_flex[i] * 3);
-            list_i_real->push_back(list_i_real->back() + list_ndihe[i]);
         }
     }
 
@@ -303,32 +298,6 @@ static void alloc_fix_mol(FixMol*& fix_mol_cu, Real*& fix_mol_real_cu, const UDF
 
 void DockTask::cp_to_cpu(){
     flex_pose_list_manager->copy_to_host();
-    
-    // allocate memory for flex_pose_list_res and flex_pose_list_real_res
-    int npose = nflex * dock_param.exhaustiveness;
-    checkCUDA(cudaMallocHost(&flex_pose_list_res, sizeof(FlexPose) * npose));
-    checkCUDA(
-        cudaMallocHost(&flex_pose_list_real_res, sizeof(Real) * dock_param.exhaustiveness * (n_atom_all_flex * 3 + n_dihe_all_flex)));
-    
-    std::memcpy(flex_pose_list_res, flex_pose_list_manager->array_host, sizeof(FlexPose) * npose);
-    
-    Real* p_real = flex_pose_list_real_res;
-    for (int i = 0; i < nflex; i++){
-        for (int j = 0; j < dock_param.exhaustiveness; j++){
-            int idx = i * dock_param.exhaustiveness + j;
-            auto& flex_pose = flex_pose_list_manager->array_host[idx];
-            
-            // coords
-            int coords_size = list_i_real[idx * 2 + 1] - list_i_real[idx * 2];
-            std::memcpy(p_real, flex_pose.coords, sizeof(Real) * coords_size);
-            p_real += coords_size;
-            
-            // dihedrals
-            int dihedrals_size = list_i_real[idx * 2 + 2] - list_i_real[idx * 2 + 1];
-            std::memcpy(p_real, flex_pose.dihedrals, sizeof(Real) * dihedrals_size);
-            p_real += dihedrals_size;
-        }
-    }
 }
 
 
@@ -343,7 +312,6 @@ void DockTask::alloc_gpu(){
     int npose = nflex * dock_param.exhaustiveness;
 
     n_atom_all_flex = 0;
-    n_dihe_all_flex = 0;
     int n_range_all_flex = 0, n_rotated_atoms_all_flex = 0;
     int n_dim_all_flex = 0, n_dim_tri_mat_all_flex = 0;
     std::vector<int> list_n_atom_flex(nflex);
@@ -358,7 +326,6 @@ void DockTask::alloc_gpu(){
         list_n_atom_flex[i] = m.natom;
         list_n_dihe[i] = m.dihedrals.size();
         n_atom_all_flex += m.natom;
-        n_dihe_all_flex += m.dihedrals.size();
 
         int dim = 3 + 4 + m.dihedrals.size();
         n_dim_all_flex += dim;
@@ -375,7 +342,7 @@ void DockTask::alloc_gpu(){
     }
 
     //----- flex_pose_list -----
-    alloc_flex_pose_list(flex_pose_list_manager, flex_pose_list_cu, &list_i_real, udflex_mols, npose, nflex,
+    alloc_flex_pose_list(flex_pose_list_manager, flex_pose_list_cu, udflex_mols, npose, nflex,
                             dock_param.exhaustiveness, list_n_atom_flex, list_n_dihe);
 
 
@@ -424,33 +391,10 @@ void DockTask::alloc_gpu(){
 
 
     //----- Clustering -----
-    int npair = dock_param.exhaustiveness * (dock_param.exhaustiveness - 1) / 2; // tri-mat with diagonal
+    int E = dock_param.exhaustiveness;
     checkCUDA(cudaMalloc(&aux_list_e_cu, sizeof(Real) * npose));
-    checkCUDA(cudaMalloc(&aux_list_cluster_cu, sizeof(int) * nflex * dock_param.exhaustiveness));
-    checkCUDA(cudaMalloc(&aux_rmsd_ij_cu, sizeof(int) * nflex * npair * 2));
-    checkCUDA(cudaMalloc(&clustered_pose_inds_cu, sizeof(int) * nflex * dock_param.exhaustiveness));
-
-    // todo: so large ...
-    std::vector<int> aux_rmsd_ij(nflex * npair * 2, 0); // excluding diagonal line
-    for (int i = 0; i < nflex; i++){
-        int tmp = 2 * (i * npair);
-        int a = 0;
-        for (int j = 0; j < dock_param.exhaustiveness; j++){
-            for (int k = j + 1; k < dock_param.exhaustiveness; k++){
-                aux_rmsd_ij[tmp + a * 2] = j;
-                aux_rmsd_ij[tmp + a * 2 + 1] = k;
-                a++;
-            }
-        }
-    }
-    checkCUDA(cudaMemcpy(aux_rmsd_ij_cu, aux_rmsd_ij.data(), sizeof(int) * nflex * npair * 2, cudaMemcpyHostToDevice));
-
-    // set diagonal to 1 for aux_list_cluster_cu
-    std::vector<int> aux_cluster_mat(nflex * dock_param.exhaustiveness, 1);
-    checkCUDA(
-        cudaMemcpy(aux_list_cluster_cu, aux_cluster_mat.data(), sizeof(int) * nflex * dock_param.exhaustiveness,
-            cudaMemcpyHostToDevice));
-
+    checkCUDA(cudaMalloc(&aux_rmsd_matrix_cu, sizeof(Real) * nflex * E * E));
+    checkCUDA(cudaMalloc(&clustered_pose_inds_cu, sizeof(int) * nflex * E));
 
     //----- Wait for cudaMemcpy -----
     checkCUDA(cudaDeviceSynchronize()); // assure that memcpy is finished
@@ -516,15 +460,11 @@ void DockTask::free_memory_all(){
     }
 
     checkCUDA(cudaFree(aux_list_e_cu));
-    checkCUDA(cudaFree(aux_list_cluster_cu));
-    checkCUDA(cudaFree(aux_rmsd_ij_cu));
+    checkCUDA(cudaFree(aux_rmsd_matrix_cu));
     checkCUDA(cudaFree(clustered_pose_inds_cu));
 
     spdlog::info("Memory free on GPU is done.");
 
-    spdlog::info("Memory free on CPU...");
-    checkCUDA(cudaFreeHost(flex_pose_list_res));
-    checkCUDA(cudaFreeHost(flex_pose_list_real_res));
     spdlog::info("Memory free on CPU is done.");
 }
 

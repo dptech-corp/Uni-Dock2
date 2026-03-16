@@ -19,8 +19,7 @@ void read_ud_from_json_string(const std::string &ss, const Box& box,
 
 void write_poses_to_json(std::string fp_json, const std::vector<std::string>& flex_names,
                          const std::vector<std::vector<int>>& filtered_pose_inds_list,
-                         const FlexPose* flex_pose_list_res,
-                         const Real* flex_pose_list_real_res,
-                         const std::vector<size_t>& list_i_real);
+                         const FlexPose* flex_pose_list,
+                         const UDFlexMolList& udflex_mols);
 
 #endif //JSON_H

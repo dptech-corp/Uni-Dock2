@@ -43,5 +43,5 @@ Outputs:
   dir: !!str ./         # output directory, default is `./res`
 
 Inputs:
-  json: !!str ./input.json   # Input json file containing receptor & ligands info.
+  json: !!str ../../data/bias_hbond/input.json
 

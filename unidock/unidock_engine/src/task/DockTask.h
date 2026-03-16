@@ -65,15 +65,8 @@ public:
 private:
     // CPU
     int n_atom_all_flex = 0;
-    int n_dihe_all_flex = 0;
-    std::vector<size_t> list_i_real; // record indices/ranges of coords & dihedrals in Real data, size: nflex * exhaustiveness
-    FlexPose* flex_pose_list_res; // size: nflex * exhaustiveness todo: add a member score instead of these usurpers
-    // Finally, use center[3] to record intra, inter, penalty
-    // then use orientation[4] to record Predicted Free Energy of Binding, Total score, inter(contains penalty) score, conf_independent part
-
-    Real* flex_pose_list_real_res; // todo: replace this structure by StructArrayManager
-    std::vector<std::vector<int>> clustered_pose_inds_list; // global ind
-    std::vector<std::vector<int>> filtered_pose_inds_list; // global ind
+    std::vector<std::vector<int>> clustered_pose_inds_list; 
+    std::vector<std::vector<int>> filtered_pose_inds_list; 
 
     // GPU
     FixMol* fix_mol_cu;
@@ -111,8 +104,7 @@ private:
     FlexForce* aux_forces_cu;
     StructArrayManager<FlexForce>* aux_forces_manager = nullptr;
 
-    int* aux_rmsd_ij_cu; // saves pose indices of tri mat (no diagonal), {(i, j) | 0<= i,j < exhaustiveness; i < j}
-    int* aux_list_cluster_cu; // saves all pose state: 1 for left, 0 for abandoned (after merging)
+    Real* aux_rmsd_matrix_cu; // E*E RMSD matrix on GPU, upper triangle filled by kernel
 
 
     // -------------------- Functions

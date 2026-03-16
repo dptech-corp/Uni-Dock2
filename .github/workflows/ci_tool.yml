@@ -45,9 +45,19 @@ jobs:
           eval "$(micromamba shell hook --shell bash)"
           micromamba activate base
           cd ./unidock/unidock_engine
-          cmake -B build -S . -DBUILD_TEST=ON -DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH
+          cmake -B build -S . -DBUILD_TEST=ON -DBUILD_BIN=ON -DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH
           cmake --build build --target unit_test
           ./build/test/unit/unit_test
+          cd ../..
+
+      - name: compile and run engine feature tests
+        shell: bash
+        run: |
+          eval "$(micromamba shell hook --shell bash)"
+          micromamba activate base
+          cd ./unidock/unidock_engine
+          cmake --build build --target ud2
+          ctest --test-dir build -R '^feature_' --output-on-failure
           cd ../..
 
       - name: install unidock2

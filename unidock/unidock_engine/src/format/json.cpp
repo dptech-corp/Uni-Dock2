@@ -87,9 +87,8 @@ auto safe_val = [](float v) -> float {
 
 void write_poses_to_json(std::string fp_json, const std::vector<std::string>& flex_names,
                          const std::vector<std::vector<int>>& filtered_pose_inds_list,
-                         const FlexPose* flex_pose_list_res,
-                         const Real* flex_pose_list_real_res,
-                         const std::vector<size_t>& list_i_real){
+                         const FlexPose* flex_pose_list,
+                         const UDFlexMolList& udflex_mols){
     rj::Document doc;
     doc.SetObject();
 
@@ -97,6 +96,8 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
 
     for (int i = 0; i < flex_names.size(); i++){
         auto flex_name = flex_names[i];
+        int n_coords = udflex_mols[i].natom * 3;
+        int n_dihe = udflex_mols[i].dihedrals.size();
         rj::Value flex_data(rj::kArrayType);
 
         for (auto& j: filtered_pose_inds_list[i]){
@@ -104,26 +105,26 @@ void write_poses_to_json(std::string fp_json, const std::vector<std::string>& fl
             pose_obj.SetObject();
 
             rj::Value energy(rj::kArrayType);
-            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[0]), doc.GetAllocator()); // affinity
-            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[1]), doc.GetAllocator()); // total = intra + inter
-            energy.PushBack(safe_val(flex_pose_list_res[j].center[0]), doc.GetAllocator()); // intra
-            energy.PushBack(safe_val(flex_pose_list_res[j].center[1]), doc.GetAllocator()); // inter
-            energy.PushBack(safe_val(flex_pose_list_res[j].center[2]), doc.GetAllocator()); // penalty
-            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[2]), doc.GetAllocator()); // conf independent contribution
-            energy.PushBack(safe_val(flex_pose_list_res[j].rot_vec[3]), doc.GetAllocator()); // bias
+            energy.PushBack(safe_val(flex_pose_list[j].rot_vec[0]), doc.GetAllocator()); // affinity
+            energy.PushBack(safe_val(flex_pose_list[j].rot_vec[1]), doc.GetAllocator()); // total = intra + inter
+            energy.PushBack(safe_val(flex_pose_list[j].center[0]), doc.GetAllocator()); // intra
+            energy.PushBack(safe_val(flex_pose_list[j].center[1]), doc.GetAllocator()); // inter
+            energy.PushBack(safe_val(flex_pose_list[j].center[2]), doc.GetAllocator()); // penalty
+            energy.PushBack(safe_val(flex_pose_list[j].rot_vec[2]), doc.GetAllocator()); // conf independent contribution
+            energy.PushBack(safe_val(flex_pose_list[j].rot_vec[3]), doc.GetAllocator()); // bias
 
-            // energy.PushBack(flex_pose_list_res[j].rot_vec[3], doc.GetAllocator()); // bias reward
+            // energy.PushBack(flex_pose_list[j].rot_vec[3], doc.GetAllocator()); // bias reward
             pose_obj.AddMember("energy", energy.Move(), doc.GetAllocator());
 
             rj::Value coords(rj::kArrayType);
-            for (int k = list_i_real[j * 2]; k < list_i_real[j * 2 + 1]; k++){
-                coords.PushBack(safe_val(flex_pose_list_real_res[k]), doc.GetAllocator());
+            for (int k = 0; k < n_coords; k++){
+                coords.PushBack(safe_val(flex_pose_list[j].coords[k]), doc.GetAllocator());
             }
             pose_obj.AddMember("coords", coords.Move(), doc.GetAllocator());
 
             rj::Value dihedrals(rj::kArrayType);
-            for (int k = list_i_real[j * 2 + 1]; k < list_i_real[j * 2 + 2]; k++){
-                dihedrals.PushBack(safe_val(rad_to_ang(flex_pose_list_real_res[k])), doc.GetAllocator());
+            for (int k = 0; k < n_dihe; k++){
+                dihedrals.PushBack(safe_val(rad_to_ang(flex_pose_list[j].dihedrals[k])), doc.GetAllocator());
             }
             pose_obj.AddMember("dihedrals", dihedrals.Move(), doc.GetAllocator());
 

@@ -29,7 +29,7 @@ extern __constant__ Gaff2 Score;
 void init_constants(const DockParam& dock_param);
 
 
-// #define TILE_SIZE 32
+#define TILE_SIZE 32
 // #define BLOCK_SIZE 128
 #define STRIDE_POSE 4
 #define STRIDE_G 6
