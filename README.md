@@ -7,6 +7,7 @@ A GPU-accelerated molecular docking software incorporating substantial algorithm
 The easiest way to install UniDock2 is via conda:
 
 **Prerequisites**
+* Linux x86_64 + NVIDIA GPU
 * `Python = 3.10`
 * `CUDA >= 12.0`
 
