@@ -56,9 +56,9 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
         else{
             // random center, set gradient
             Real a = gyration_radius(out_pose, &flex_topo);
-            tmp4[0] = get_real_within(rf4.x, CU_BOX.x_lo + a, CU_BOX.x_hi - a);
-            tmp4[1] = get_real_within(rf4.y, CU_BOX.y_lo + a, CU_BOX.y_hi - a);
-            tmp4[2] = get_real_within(rf4.z, CU_BOX.z_lo + a, CU_BOX.z_hi - a);
+            tmp4[0] = get_real_within(rf4.x, CU_BOX.x_lo, CU_BOX.x_hi);
+            tmp4[1] = get_real_within(rf4.y, CU_BOX.y_lo, CU_BOX.y_hi);
+            tmp4[2] = get_real_within(rf4.z, CU_BOX.z_lo, CU_BOX.z_hi);
 
             aux_g->center_g[0] = tmp4[0] - out_pose->center[0];
             aux_g->center_g[1] = tmp4[1] - out_pose->center[1];
