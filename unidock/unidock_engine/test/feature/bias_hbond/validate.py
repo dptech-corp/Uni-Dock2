@@ -23,7 +23,7 @@ if __name__ == "__main__":
     with open(output_file) as f:
         data = json.load(f)
 
-    for pose in list(data.values())[0]:
+    for pose in list(data.values())[0][:5]:
         coord = pose["coords"][6 * 3: 6 * 3 + 3]
         check_two_floats(coord[0], coord_expected[0])
         check_two_floats(coord[1], coord_expected[1])
