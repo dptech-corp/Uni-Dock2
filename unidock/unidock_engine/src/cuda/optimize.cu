@@ -15,7 +15,8 @@ __global__ void opt_kernel(FlexPose* out_poses, const int* pose_inds, const Flex
                           const FlexParamVina* flex_params, const FixParamVina& fix_param,
                           FlexPose* aux_poses, FlexPoseGradient* aux_gradients, FlexPoseHessian* aux_hessians,
                           FlexForce* aux_forces,
-                          int refine_steps, int npose_per_flex){
+                          int refine_steps, int npose_per_flex,
+                          Real v_cap, Real slope){
 
     // nflex, each flex has num_pose poses to optimize, each pose uses a warp
 
@@ -52,7 +53,8 @@ __global__ void opt_kernel(FlexPose* out_poses, const int* pose_inds, const Flex
                &aux_pose_new, &aux_pose_ori,
                &aux_g, &aux_g_new, &aux_g_ori,
                &aux_p, &aux_y, &aux_minus_hy,
-               &aux_h, &aux_f, refine_steps);
+               &aux_h, &aux_f, refine_steps,
+               v_cap, slope);
     tile.sync();
 }
 
@@ -61,12 +63,14 @@ void optimize_cu(FlexPose* out_poses, const int* pose_inds, const FlexTopo* flex
                           const FlexParamVina* flex_params, const FixParamVina& fix_param,
                           FlexPose* aux_poses, FlexPoseGradient* aux_gradients, FlexPoseHessian* aux_hessians,
                           FlexForce* aux_forces,
-                          int refine_steps, int nblock, int npose_per_flex){
+                          int refine_steps, int nblock, int npose_per_flex,
+                          Real v_cap, Real slope){
 
     opt_kernel<<<nblock, TILE_SIZE>>>(out_poses, pose_inds, flex_topos, fix_mol,
                           flex_params, fix_param,
                           aux_poses, aux_gradients, aux_hessians,
-                          aux_forces, refine_steps, npose_per_flex);
+                          aux_forces, refine_steps, npose_per_flex,
+                          v_cap, slope);
     checkCUDA(cudaDeviceSynchronize());
     spdlog::info("[Refinement Line Search Steps Count]: {}", funcCallCount);
 

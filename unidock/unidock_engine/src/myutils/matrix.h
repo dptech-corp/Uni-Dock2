@@ -107,15 +107,4 @@ SCOPE_INLINE int tri_mat_index(int i, int j){
 }
 
 
-//------------------------------------------------------
-//------------------ Matrix and Vector Operations ------
-//------------------------------------------------------
-
-SCOPE_INLINE void mat_multiply_vec(Real out_v[3], const Real m[9], const Real v[3]){
-    out_v[0] = m[0] * v[0] + m[1] * v[0] + m[2] * v[0];
-    out_v[1] = m[0] * v[1] + m[1] * v[1] + m[2] * v[1];
-    out_v[2] = m[0] * v[2] + m[1] * v[2] + m[2] * v[2];
-}
-
-
 #endif //MATRIX_H

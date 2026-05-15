@@ -110,9 +110,10 @@ SCOPE_INLINE Real get_radian_in_ranges(Real* ranges, int num_range, Real* rand_2
 }
 
 SCOPE_INLINE Real clamp_to_center(Real a, Real hi, Real lo){
-    if ((a > hi) or (a < lo)){
-        return (hi + lo) / 2.;
-    }
+    
+    // if ((a > hi) or (a < lo)){
+    //     return (hi + lo) / 2.;
+    // }
 
     return a;
 }

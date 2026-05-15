@@ -193,28 +193,28 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
 }
 
 
-SCOPE_INLINE Real cal_box_penalty(const Real* coord, Box& box, Real* out_f){
+SCOPE_INLINE Real cal_box_penalty(const Real* coord, Box& box, Real* out_f, Real slope = PENALTY_SLOPE){
     Real penalty = 0.;
 
     penalty += (coord[0] < box.x_lo) * (box.x_lo - coord[0]);
-    out_f[0] += (coord[0] < box.x_lo) * (-PENALTY_SLOPE);
+    out_f[0] += (coord[0] < box.x_lo) * (-slope);
 
     penalty += (coord[0] > box.x_hi) * (coord[0] - box.x_hi);
-    out_f[0] += (coord[0] > box.x_hi) * (PENALTY_SLOPE);
+    out_f[0] += (coord[0] > box.x_hi) * (slope);
 
     penalty += (coord[1] < box.y_lo) * (box.y_lo - coord[1]);
-    out_f[1] += (coord[1] < box.y_lo) * (-PENALTY_SLOPE);
+    out_f[1] += (coord[1] < box.y_lo) * (-slope);
 
     penalty += (coord[1] > box.y_hi) * (coord[1] - box.y_hi);
-    out_f[1] += (coord[1] > box.y_hi) * (PENALTY_SLOPE);
+    out_f[1] += (coord[1] > box.y_hi) * (slope);
 
     penalty += (coord[2] < box.z_lo) * (box.z_lo - coord[2]);
-    out_f[2] += (coord[2] < box.z_lo) * (-PENALTY_SLOPE);
+    out_f[2] += (coord[2] < box.z_lo) * (-slope);
 
     penalty += (coord[2] > box.z_hi) * (coord[2] - box.z_hi);
-    out_f[2] += (coord[2] > box.z_hi) * (PENALTY_SLOPE);
+    out_f[2] += (coord[2] > box.z_hi) * (slope);
 
-    return penalty * PENALTY_SLOPE;
+    return penalty * slope;
 }
 
 
@@ -222,7 +222,8 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
                                              const FlexPose* pose, const FlexTopo& flex_topo,
                                              const FixMol& fix_mol, const FlexParamVina& flex_param,
                                              const FixParamVina& fix_param,
-                                             Real* aux_f){
+                                             Real* aux_f,
+                                             Real v_cap = V_CAP, Real slope = PENALTY_SLOPE){
     Real energy = 0.;
     Real rr = 0.;
     Real f_div_r = 0.;
@@ -246,6 +247,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
         coord_adj[2] = pose->coords[i1 * 3 + 2];
         Real vdw_r1 = CU_VDW_RADII[flex_param.atom_types[i1]];
         Real fx = 0., fy = 0., fz = 0.;
+        Real e_atom = 0.;
 
         for (int i2 = 0; i2 < fix_mol.natom; i2++){
             if (fix_param.atom_types[i2] == VN_TYPE_H) continue;
@@ -259,7 +261,7 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
 
             if (rr < Score.r2_cutoff){
                 rr = sqrt(rr);
-                energy += Score.eval_ef(rr - (vdw_r1 + CU_VDW_RADII[fix_param.atom_types[i2]]),
+                e_atom += Score.eval_ef(rr - (vdw_r1 + CU_VDW_RADII[fix_param.atom_types[i2]]),
                                         flex_param.atom_types[i1], fix_param.atom_types[i2], &f_div_r);
                 if (rr < EPSILON) rr = EPSILON;
                 f_div_r /= rr;
@@ -269,6 +271,17 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
                 fz -= f_div_r * r_vec[2];
             }
         }
+
+        // Vina-style curl
+        if (e_atom > 0){
+            Real s = v_cap / (v_cap + e_atom);
+            e_atom *= s;
+            s *= s;
+            fx *= s;
+            fy *= s;
+            fz *= s;
+        }
+        energy += e_atom;
 
         aux_f[i1 * 3] += fx;
         aux_f[i1 * 3 + 1] += fy;
@@ -282,17 +295,19 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
             coord_adj[0] = pose->coords[i * 3];
             coord_adj[1] = pose->coords[i * 3 + 1];
             coord_adj[2] = pose->coords[i * 3 + 2];
-            energy += cal_box_penalty(coord_adj, CU_BOX, aux_f + i * 3);
+            energy += cal_box_penalty(coord_adj, CU_BOX, aux_f + i * 3, slope);
         }
     }
 
     // -- Compute intra-molecular energy (per-atom adjacency list, no atomicAdd)
+    // Vina-style curl 
     Real e_intra = 0.;
     for (int i1 = tile.thread_rank(); i1 < flex_topo.natom; i1 += tile.num_threads()){
         int start = flex_param.intra_range[i1 * 2];
         int count = flex_param.intra_range[i1 * 2 + 1];
         Real vdw_r1 = CU_VDW_RADII[flex_param.atom_types[i1]];
         Real fx = 0., fy = 0., fz = 0.;
+        Real e_atom = 0.;
 
         for (int k = start; k < start + count; k++){
             int i2 = flex_param.pairs_intra[k];
@@ -305,15 +320,30 @@ __device__ __forceinline__ Real cal_e_f_tile(const cg::thread_block_tile<TILE_SI
 
             if (rr < Score.r2_cutoff){
                 rr = sqrt(rr);
-                e_intra += Score.eval_ef(rr - (vdw_r1 + CU_VDW_RADII[flex_param.atom_types[i2]]),
-                                         flex_param.atom_types[i1], flex_param.atom_types[i2], &f_div_r);
+                Real e_pair = Score.eval_ef(rr - (vdw_r1 + CU_VDW_RADII[flex_param.atom_types[i2]]),
+                                            flex_param.atom_types[i1], flex_param.atom_types[i2], &f_div_r);
                 if (rr < EPSILON) rr = EPSILON;
                 f_div_r /= rr;
-                fx -= f_div_r * r_vec[0];
-                fy -= f_div_r * r_vec[1];
-                fz -= f_div_r * r_vec[2];
+                Real fx_p = -f_div_r * r_vec[0];
+                Real fy_p = -f_div_r * r_vec[1];
+                Real fz_p = -f_div_r * r_vec[2];
+
+                if (e_pair > 0){
+                    Real s = v_cap / (v_cap + e_pair);
+                    e_pair *= s;
+                    s *= s;
+                    fx_p *= s;
+                    fy_p *= s;
+                    fz_p *= s;
+                }
+                e_atom += e_pair;
+                fx += fx_p;
+                fy += fy_p;
+                fz += fz_p;
             }
         }
+
+        e_intra += e_atom;
 
         aux_f[i1 * 3] += fx;
         aux_f[i1 * 3 + 1] += fy;
@@ -369,9 +399,10 @@ __device__ __forceinline__ Real cal_e_grad_tile(const cg::thread_block_tile<TILE
                                                 const FlexTopo& flex_topo,
                                                 const FixMol& fix_mol, const FlexParamVina& flex_param,
                                                 const FixParamVina& fix_param,
-                                                Real* aux_f){
+                                                Real* aux_f,
+                                                Real v_cap = V_CAP, Real slope = PENALTY_SLOPE){
     // Total energy
-    Real energy = cal_e_f_tile(tile, pose, flex_topo, fix_mol, flex_param, fix_param, aux_f);
+    Real energy = cal_e_f_tile(tile, pose, flex_topo, fix_mol, flex_param, fix_param, aux_f, v_cap, slope);
 
     // Compute gradients on -force
     cal_grad_tile(tile, aux_f, flex_topo, pose, out_g);
@@ -596,7 +627,8 @@ __device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TIL
                                                  const FlexPoseGradient* p,
                                                  Real* aux_f,
                                                  FlexPose* out_x_new, FlexPoseGradient* out_g_new,
-                                                 const Real e0, int dim_g, int dim_x, Real* out_e, Real* out_alpha){
+                                                 const Real e0, int dim_g, int dim_x, Real* out_e, Real* out_alpha,
+                                                 Real v_cap = V_CAP, Real slope = PENALTY_SLOPE){
     Real alpha = 1.0; // step length, which is the target of BLS
     Real e_new = 0.; // energy of tried step
 
@@ -611,7 +643,7 @@ __device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TIL
         // apply alpha * gradient, get new x
         apply_grad_update_pose_tile(tile, out_x_new, p, flex_topo, alpha); // apply gradient increment
 
-        e_new = cal_e_grad_tile(tile, out_x_new, out_g_new, flex_topo, fix_mol, flex_param, fix_param, aux_f);
+        e_new = cal_e_grad_tile(tile, out_x_new, out_g_new, flex_topo, fix_mol, flex_param, fix_param, aux_f, v_cap, slope);
 
         if (e_new - e0 < LINE_SEARCH_C0 * alpha * pg){
             break;
@@ -702,11 +734,12 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
                                           FlexPoseGradient* aux_g_ori,
                                           FlexPoseGradient* aux_p, FlexPoseGradient* aux_y,
                                           FlexPoseGradient* aux_minus_hy,
-                                          FlexPoseHessian* aux_h, FlexForce* aux_f, int max_steps){
+                                          FlexPoseHessian* aux_h, FlexForce* aux_f, int max_steps,
+                                          Real v_cap = V_CAP, Real slope = PENALTY_SLOPE){
     int dim_g = dof_g + flex_topo.ntorsion;
     int dim_x = dof_x + flex_topo.ntorsion; // center, orientation, torsion
 
-    Real E_ori = cal_e_grad_tile(tile, out_x, aux_g, flex_topo, fix_mol, flex_param, fix_param, aux_f->f);
+    Real E_ori = cal_e_grad_tile(tile, out_x, aux_g, flex_topo, fix_mol, flex_param, fix_param, aux_f->f, v_cap, slope);
 
     // Record initial energy and gradient. E_ori is energy, aux_g is set as current gradient
     // alpha is step length
@@ -735,7 +768,8 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
 
         // find the best alpha, and updates x_new & aux_g_new. f1 is the new energy
         line_search_tile(tile, fix_mol, fix_param, flex_param, out_x, aux_g, flex_topo,
-                         aux_p, aux_f->f, aux_x_new, aux_g_new, E, dim_g, dim_x, &E1, &alpha);
+                         aux_p, aux_f->f, aux_x_new, aux_g_new, E, dim_g, dim_x, &E1, &alpha,
+                         v_cap, slope);
 
         // aux_y = aux_g_new
         duplicate_grad_tile(tile, aux_y, aux_g_new, dim_g);
