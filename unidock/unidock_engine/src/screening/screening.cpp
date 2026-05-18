@@ -173,7 +173,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
             UDFlexMolList batch_flex_mol_list;
             std::vector<std::string> batch_fns_flex;
 
-            int natom_noH = 0;
+            int natom_max = 0;
             while (num_flex_processed + batch_size < group.size()) {
                 int imol = num_flex_processed + batch_size;
                 auto& m = dpflex_mols[group[imol]];
@@ -182,9 +182,9 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
                 // check GPU memory
                 if ((batch_size < 1000) and (predict_gpu_flex(batch_flex_mol_list, dock_param.exhaustiveness) < device_max_memory)){
                     batch_fns_flex.emplace_back(fns_flex[group[imol]]);
-                    int natom_noH_tmp = m.vina_types.size() - std::count(m.vina_types.begin(), m.vina_types.end(), VN_TYPE_H);
-                    if (natom_noH_tmp > natom_noH){
-                        natom_noH = natom_noH_tmp;
+                    int natom_tmp = m.vina_types.size();
+                    if (natom_tmp > natom_max){
+                        natom_max = natom_tmp;
                     }
                     batch_size++;
                 }else{
@@ -203,8 +203,8 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
             spdlog::info("Perform the Task...");
             auto start = std::chrono::high_resolution_clock::now();
 
-            if (dock_param.opt_steps == -1){ // he
-                dock_param.opt_steps = unsigned(25 + natom_noH / 3);
+            if (dock_param.opt_steps == -1){ // heuristic, aligned with Uni-Dock1: (25 + num_movable_atoms) / 3
+                dock_param.opt_steps = unsigned((25 + natom_max) / 3);
             }
             task.set_flex(batch_flex_mol_list, dock_param, batch_fns_flex, fp_json);
             task.run();

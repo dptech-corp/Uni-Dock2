@@ -8,12 +8,15 @@
 // the maximum cutoff of VINA functions
 #define VINA_CUTOFF 8.0
 
-#define LINE_SEARCH_STEPS 5
+#define LINE_SEARCH_STEPS 10
 #define LINE_SEARCH_C0 0.0001
-#define LINE_SEARCH_MULTIPLIER 0.3
+#define LINE_SEARCH_MULTIPLIER 0.5
 
 
 #define PENALTY_SLOPE 1e6
+
+#define V_CAP 10.0
+#define V_CAP_AUTHENTIC 1000.0
 
 const Real VN_VDW_RADII[] = {
     1.1,  // H <from 10.1021/jp8111556>

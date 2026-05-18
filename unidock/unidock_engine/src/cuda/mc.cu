@@ -56,9 +56,9 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
         else{
             // random center, set gradient
             Real a = gyration_radius(out_pose, &flex_topo);
-            tmp4[0] = get_real_within(rf4.x, CU_BOX.x_lo + a, CU_BOX.x_hi - a);
-            tmp4[1] = get_real_within(rf4.y, CU_BOX.y_lo + a, CU_BOX.y_hi - a);
-            tmp4[2] = get_real_within(rf4.z, CU_BOX.z_lo + a, CU_BOX.z_hi - a);
+            tmp4[0] = get_real_within(rf4.x, CU_BOX.x_lo, CU_BOX.x_hi);
+            tmp4[1] = get_real_within(rf4.y, CU_BOX.y_lo, CU_BOX.y_hi);
+            tmp4[2] = get_real_within(rf4.z, CU_BOX.z_lo, CU_BOX.z_hi);
 
             aux_g->center_g[0] = tmp4[0] - out_pose->center[0];
             aux_g->center_g[1] = tmp4[1] - out_pose->center[1];
@@ -90,12 +90,13 @@ __forceinline__ __device__ void randomize_pose_tile(const cg::thread_block_tile<
         tmp4[3] = out_pose->dihedrals[i];
 
         // set gradient
-        int j = rf4.x * flex_topo.range_inds[i * 2 + 1]; // save index of range_list
+        int n_range = flex_topo.range_inds[i * 2 + 1];
+        int j = min(int(rf4.x * n_range), n_range - 1); // save index of range_list
         int i_lo = flex_topo.range_inds[i * 2] + j * 2; // save a tmp index
 
-        tmp4[1] = flex_topo.range_list[i_lo + 1] - flex_topo.range_list[i_lo];
-        tmp4[0] = get_real_within(rf4.y, flex_topo.range_list[i_lo], flex_topo.range_list[i_lo + 1]);
-        aux_g->dihedrals_g[i] = tmp4[0] - tmp4[3];
+        tmp4[1] = flex_topo.range_list[i_lo + 1] - flex_topo.range_list[i_lo]; // range_list[i_lo + 1] - range_list[i_lo]
+        tmp4[0] = get_real_within(rf4.y, flex_topo.range_list[i_lo], flex_topo.range_list[i_lo + 1]); // get_real_within(rf4.y, range_list[i_lo], range_list[i_lo + 1])
+        aux_g->dihedrals_g[i] = tmp4[0] - tmp4[3]; // tmp4[0] - tmp4[3]
     }
     tile.sync();
 
@@ -144,7 +145,7 @@ __global__ void randomize_pose(FlexPose* out_poses, const FlexTopo* flex_topos, 
  */
 __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TILE_SIZE>& tile, FlexPose* out_pose,
                                                  const FlexTopo* flex_topo,
-                                                 curandStatePhilox4_32_10_t* state, Real amplitude = 1){
+                                                 curandStatePhilox4_32_10_t* state, Real amplitude = 2.0){
     //amplitude:2.0
     // DOF, which as an index of DOF
     Real rand4[4] = {0};
@@ -173,11 +174,11 @@ __forceinline__ __device__ void mutate_pose_tile(const cg::thread_block_tile<TIL
     // 0 for translation
     if (which == 0){
         if (tile.thread_rank() == 0){
-            float4 rf4 = curand_uniform4(state);
-            // compute a translation under box constraint
-            tmp1[0] = clamp_by_range(amplitude * rf4.x + out_pose->center[0], CU_BOX.x_hi, CU_BOX.x_lo) - out_pose->center[0];
-            tmp1[1] = clamp_by_range(amplitude * rf4.y + out_pose->center[1], CU_BOX.y_hi, CU_BOX.y_lo) - out_pose->center[1];
-            tmp1[2] = clamp_by_range(amplitude * rf4.z + out_pose->center[2], CU_BOX.z_hi, CU_BOX.z_lo) - out_pose->center[2];
+            // Vina-style symmetric translation
+            gen_4_rand_in_sphere(rand4, state);
+            tmp1[0] = clamp_by_range(amplitude * rand4[0] + out_pose->center[0], CU_BOX.x_hi, CU_BOX.x_lo) - out_pose->center[0];
+            tmp1[1] = clamp_by_range(amplitude * rand4[1] + out_pose->center[1], CU_BOX.y_hi, CU_BOX.y_lo) - out_pose->center[1];
+            tmp1[2] = clamp_by_range(amplitude * rand4[2] + out_pose->center[2], CU_BOX.z_hi, CU_BOX.z_lo) - out_pose->center[2];
             out_pose->center[0] = out_pose->center[0] + tmp1[0];
             out_pose->center[1] = out_pose->center[1] + tmp1[1];
             out_pose->center[2] = out_pose->center[2] + tmp1[2];
@@ -334,10 +335,7 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
 
                 mutate_pose_tile(tile, &pose_candidate, &flex_topo, state);
 
-                // todo: add clash-detection for efficiency
-
-                // Record initial energy and gradient. E_ori is energy, aux_g is set as current gradient
-                // If max_steps == 0, this func only records the energy of original structure.
+                // Record initial energy and gradient
                 if (opt_steps == 0){
                     Real energy = cal_e_grad_tile(tile, &pose_candidate, &aux_g, flex_topo, fix_mol,
                                                   flex_param, fix_param, aux_f.f);
@@ -348,15 +346,16 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
                     tile.sync();
                 }
                 else{
-                    // essential optimization. only computes the energy of candidate pose for MC task
-                    // coords are updated inside bfgs
+                    
+                    // First BFGS: cap clash energy (UD1 hunt_cap-style)
                     bfgs_tile(tile,
                               &pose_candidate, flex_topo, fix_mol,
                               flex_param, fix_param,
                               &aux_pose_new, &aux_pose_ori,
                               &aux_g, &aux_g_new, &aux_g_ori,
                               &aux_p, &aux_y, &aux_minus_hy,
-                              &aux_h, &aux_f, opt_steps);
+                              &aux_h, &aux_f, opt_steps,
+                              V_CAP, PENALTY_SLOPE);
                 }
 
 
@@ -375,8 +374,22 @@ __global__ void mc_kernel(FlexPose* out_poses, const FlexTopo* flex_topos, const
 
                     // Possibly the best pose by now
                     if (pose_accepted.energy < best_e){
-                        duplicate_pose_tile(tile, &out_pose, &pose_accepted, dim, flex_topo.natom);
-                        best_e = pose_accepted.energy;
+
+                        if (opt_steps > 0){
+                            bfgs_tile(tile,
+                                      &pose_accepted, flex_topo, fix_mol,
+                                      flex_param, fix_param,
+                                      &aux_pose_new, &aux_pose_ori,
+                                      &aux_g, &aux_g_new, &aux_g_ori,
+                                      &aux_p, &aux_y, &aux_minus_hy,
+                                      &aux_h, &aux_f, opt_steps,
+                                      V_CAP_AUTHENTIC, PENALTY_SLOPE);
+                        }
+
+                        if (pose_accepted.energy < best_e){
+                            duplicate_pose_tile(tile, &out_pose, &pose_accepted, dim, flex_topo.natom);
+                            best_e = pose_accepted.energy;
+                        }
                     }
                 }
             }

@@ -8,6 +8,7 @@
 #include <fstream>
 #include <thread>
 #include <chrono>
+#include <cmath>
 
 #include "DockTask.h"
 #include "search/mc.h"
@@ -152,12 +153,35 @@ void DockTask::run_cluster(){
 
 
 void DockTask::run_refine(){
-    spdlog::info("Run Refinement (BFGS) for {} steps...", dock_param.refine_steps);
-    optimize_cu(flex_pose_list_cu, clustered_pose_inds_cu, flex_topo_list_cu, *fix_mol_cu,
-                          flex_param_list_cu, *fix_param_cu,
-                          aux_poses_cu, aux_grads_cu, aux_hessians_cu,
-                          aux_forces_cu,
-                          dock_param.refine_steps, npose_clustered, dock_param.exhaustiveness);
+    if (dock_param.refine_steps <= 0){
+        spdlog::info("Skip refinement (refine_steps=0).");
+        return;
+    }
+
+    // Progressive box-penalty slope ramping for the final refinement, matching
+    // Uni-Dock1 (vina.cpp:1766-1771): slope = 100 * 10^(2p), so the per-round
+    // sequence is 100, 1e4, 1e6, 1e6, ... (clamped at PENALTY_SLOPE). The first
+    // rounds let atoms move smoothly back into the box; later rounds tighten
+    // the constraint. Curl is disabled (V_CAP_AUTHENTIC) so the energy
+    // reflects the true Vina potential.
+    constexpr int inner_bfgs_steps = 2;
+    spdlog::info("Run Refinement (BFGS) with slope ramping: {} rounds x {} BFGS steps...",
+                 dock_param.refine_steps, inner_bfgs_steps);
+
+    for (int p = 0; p < dock_param.refine_steps; ++p){
+        Real slope = static_cast<Real>(100.0 * std::pow(10.0, 2.0 * p));
+        if (slope > static_cast<Real>(PENALTY_SLOPE)){
+            slope = static_cast<Real>(PENALTY_SLOPE);
+        }
+        spdlog::debug("  Refine round {}/{}: slope={:.3e}", p + 1, dock_param.refine_steps,
+                      static_cast<double>(slope));
+        optimize_cu(flex_pose_list_cu, clustered_pose_inds_cu, flex_topo_list_cu, *fix_mol_cu,
+                              flex_param_list_cu, *fix_param_cu,
+                              aux_poses_cu, aux_grads_cu, aux_hessians_cu,
+                              aux_forces_cu,
+                              inner_bfgs_steps, npose_clustered, dock_param.exhaustiveness,
+                              V_CAP_AUTHENTIC, slope);
+    }
     spdlog::info("Refinement (BFGS) is done.");
 }
 

@@ -17,7 +17,14 @@ __global__ void line_search_one_original_kernel(const FixMol* fix_mol, const Fix
                                    Real* out_e, Real* out_alpha) {
     auto tile = cg::tiled_partition<TILE_SIZE>(cg::this_thread_block());
 
-    Real e0 = cal_e_grad_tile(tile, x, aux_g, *flex_topo, *fix_mol, *flex_param, *fix_param, aux_f->f);
+    // Wrapper kernels are exposed as a single-shot "compute raw Vina energy/gradient"
+    // entry-point for tests and external callers; pass an effectively infinite
+    // v_cap so the per-pair curl s = v / (v + e) collapses to 1 and the result
+    // matches Vina's uncapped `eval_ef` reference exactly (V_CAP_AUTHENTIC=1000
+    // still leaves ~0.6% curl bleed-through on repulsive pairs).
+    constexpr Real V_CAP_INF = static_cast<Real>(1e30);
+    Real e0 = cal_e_grad_tile(tile, x, aux_g, *flex_topo, *fix_mol, *flex_param, *fix_param, aux_f->f,
+                              V_CAP_INF, PENALTY_SLOPE);
     //DOF, the vector x has this dimension
     int dim_g = 3 + 3 + flex_topo->ntorsion; // center, orientation, torsion
     int dim_x = 3 + 4 + flex_topo->ntorsion;
@@ -35,7 +42,8 @@ __global__ void line_search_one_original_kernel(const FixMol* fix_mol, const Fix
         aux_f->f,
         out_x_new, out_g_new,
         e0, dim_g, dim_x,
-        out_e, out_alpha);
+        out_e, out_alpha,
+        V_CAP_INF, PENALTY_SLOPE);
 
 }
 
@@ -45,7 +53,10 @@ __global__ void cal_e_grad_one_kernel(const FixMol* fix_mol, const FixParamVina*
         FlexPoseGradient* out_g, FlexForce* aux_f, Real* out_e) {
 
     auto tile = cg::tiled_partition<TILE_SIZE>(cg::this_thread_block());
-    *out_e = cal_e_grad_tile(tile, x, out_g, *flex_topo, *fix_mol, *flex_param, *fix_param, aux_f->f);
+    // See note in line_search_one_original_kernel: keep wrapper uncapped.
+    constexpr Real V_CAP_INF = static_cast<Real>(1e30);
+    *out_e = cal_e_grad_tile(tile, x, out_g, *flex_topo, *fix_mol, *flex_param, *fix_param, aux_f->f,
+                             V_CAP_INF, PENALTY_SLOPE);
 }
 
 
