@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         shell: bash -l {0}
         run: |
-          mamba install -y boa quetz-client -c conda-forge
+          mamba install -y conda-build quetz-client -c conda-forge
 
       - name: Print version and build
         shell: bash -l {0}
@@ -55,13 +55,12 @@ jobs:
       - name: Build conda package
         shell: bash -l {0}
         run: |
-          export CONDA_REPODATA_USE_ZST=false
           if [[ "$VERSION" == v* ]]; then
             VERSION_CLEAN="${VERSION#v}"
           else
             VERSION_CLEAN="$VERSION"
           fi
-          conda mambabuild -c http://quetz.dp.tech:8088/get/baymax \
+          conda build -c http://quetz.dp.tech:8088/get/baymax \
             -c conda-forge \
             --variants "{python: ['${{ matrix.python }}'], cuda_compiler_version: ['${{ matrix.cuda_compiler_version }}'], version: ['${VERSION_CLEAN}'], build: ['${{ env.BUILD }}']}" \
             --no-anaconda-upload \
@@ -71,5 +70,5 @@ jobs:
       - name: Upload conda package
         shell: bash -l {0}
         run: |
-          UNIDOCK_PACKAGE=$(find conda-build/ -type f -name 'unidock2-*.tar.bz2')
+          UNIDOCK_PACKAGE=$(find conda-build/ -type f \( -name 'unidock2-*.conda' -o -name 'unidock2-*.tar.bz2' \))
           quetz-client post_file_to_channel $CONDA_CHANNEL ${UNIDOCK_PACKAGE}
