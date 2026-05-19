@@ -60,7 +60,7 @@ jobs:
           else
             VERSION_CLEAN="$VERSION"
           fi
-          conda build -c http://quetz.dp.tech:8088/get/baymax \
+          conda-build -c http://quetz.dp.tech:8088/get/baymax \
             -c conda-forge \
             --variants "{python: ['${{ matrix.python }}'], cuda_compiler_version: ['${{ matrix.cuda_compiler_version }}'], version: ['${VERSION_CLEAN}'], build: ['${{ env.BUILD }}']}" \
             --no-anaconda-upload \
