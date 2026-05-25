@@ -71,8 +71,6 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
                                                const FlexPose* pose, FlexPoseGradient* out_g
 ){
     Real tmp1[3] = {0}, tmp2[3] = {0}, tmp3[3] = {0}, tmp4[3] = {0}, tmp5[3] = {0};
-    Real mat_tmp[9] = {0.};
-    Real mat[9] = {0.};
     int i_at = 0;
 
     // each thread for a torsion. Cal gradient on dihedral
@@ -119,75 +117,55 @@ __device__ __forceinline__ void cal_grad_tile(const cg::thread_block_tile<TILE_S
     }
     tile.sync();
 
-    // Derivative on center
+    // Derivative on center and orientation
     tmp5[0] = tmp5[1] = tmp5[2] = 0.;
-
-    // cal inverse of this rotation (namely last orientation_g;
-    Real q[4] = {0.};
-    rotvec_to_quaternion(q, pose->rot_vec);
-    quaternion_conjugate(q);
 
     for (i_at = tile.thread_rank(); i_at < flex_topo.natom; i_at += tile.num_threads()){
         if (flex_topo.vn_types[i_at] == VN_TYPE_H){
             continue;
         }
-        // compute the coord of atom relative to rotation center
+        // compute the lever arm vector to center
         tmp1[0] = pose->coords[i_at * 3] - pose->center[0];
         tmp1[1] = pose->coords[i_at * 3 + 1] - pose->center[1];
         tmp1[2] = pose->coords[i_at * 3 + 2] - pose->center[2];
-
-
-        // rotate tmp1 to get real rotation coord
-        rotate_vec_by_quaternion(tmp1, q);
 
         // take grad over pos of each atom
         tmp2[0] = aux_f[i_at * 3];
         tmp2[1] = aux_f[i_at * 3 + 1];
         tmp2[2] = aux_f[i_at * 3 + 2];
 
-        tmp4[0] += tmp2[0]; // sum the grad on position
+        // sum the grad on position
+        tmp4[0] += tmp2[0];
         tmp4[1] += tmp2[1];
         tmp4[2] += tmp2[2];
 
-        // compute (\bar f) \outer (\bar x)
-        outer_product(tmp2, tmp1, mat_tmp);
-        for (int j = 0; j < 9; ++j){
-            mat[j] += mat_tmp[j];
-        }
+        // compute the -torque (= r x aux_f, since aux_f = -force) on the atom for the center
+        cross_product(tmp1, tmp2, tmp3);
+        tmp5[0] += tmp3[0];
+        tmp5[1] += tmp3[1];
+        tmp5[2] += tmp3[2];
     }
     tile.sync();
     // gradient over position
     tmp4[0] = cg::reduce(tile, tmp4[0], cg::plus<Real>());
     tmp4[1] = cg::reduce(tile, tmp4[1], cg::plus<Real>());
     tmp4[2] = cg::reduce(tile, tmp4[2], cg::plus<Real>());
-    // (\bar f) \outer (\bar x)
-    mat[0] = cg::reduce(tile, mat[0], cg::plus<Real>());
-    mat[1] = cg::reduce(tile, mat[1], cg::plus<Real>());
-    mat[2] = cg::reduce(tile, mat[2], cg::plus<Real>());
-    mat[3] = cg::reduce(tile, mat[3], cg::plus<Real>());
-    mat[4] = cg::reduce(tile, mat[4], cg::plus<Real>());
-    mat[5] = cg::reduce(tile, mat[5], cg::plus<Real>());
-    mat[6] = cg::reduce(tile, mat[6], cg::plus<Real>());
-    mat[7] = cg::reduce(tile, mat[7], cg::plus<Real>());
-    mat[8] = cg::reduce(tile, mat[8], cg::plus<Real>());
+    // -torque
+    tmp5[0] = cg::reduce(tile, tmp5[0], cg::plus<Real>());
+    tmp5[1] = cg::reduce(tile, tmp5[1], cg::plus<Real>());
+    tmp5[2] = cg::reduce(tile, tmp5[2], cg::plus<Real>());
 
 
-    // write gradient of center
+    // write gradient of center and orientation
     if ((!FLAG_CONSTRAINT_DOCK) and (tile.thread_rank() == 0)){
         out_g->center_g[0] = tmp4[0];
         out_g->center_g[1] = tmp4[1];
         out_g->center_g[2] = tmp4[2];
 
-        // gradient of rotation over vector
-        for (int i = 0; i < 3; ++i){
-            Real dR_dv[9] = {0.};
-            cal_grad_of_rot_over_vec(dR_dv, pose->rot_vec, i);
-
-            // Mirzaei, H., Beglov, D., Paschalidis, I. C., Vajda, S., Vakili, P., & Kozakov, D. (2012).
-            // Rigid body energy minimization on manifolds for molecular docking. Journal of Chemical
-            // Theory and Computation, 8(11), 4374–4380. https://doi.org/10.1021/ct300272j
-            out_g->orientation_g[i] = frobenius_product(mat, dR_dv);
-        }
+        // use -torque as the gradient on orientation
+        out_g->orientation_g[0] = tmp5[0];
+        out_g->orientation_g[1] = tmp5[1];
+        out_g->orientation_g[2] = tmp5[2];
     }
     tile.sync();
 }

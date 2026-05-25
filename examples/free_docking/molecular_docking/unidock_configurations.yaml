@@ -16,7 +16,7 @@ Advanced:
   use_tor_lib: false
   energy_decomp: true
 Hardware:
-  gpu_device_id: 0
+  gpu_device_id: 5
 Settings:
   box_size: [30.0, 30.0, 30.0]
   task: screen
