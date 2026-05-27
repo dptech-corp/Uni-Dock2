@@ -636,7 +636,9 @@ __device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TIL
 
     int trial = 0;
     for (; trial < LINE_SEARCH_STEPS; trial++){
-        atomicAdd(&funcCallCount, 1);  // todo: for debug, show call count
+        if (tile.thread_rank() == 0){
+            atomicAdd(&funcCallCount, 1ULL);  // todo: for debug, show call count
+        }
 
         duplicate_pose_tile(tile, out_x_new, x, dim_x, flex_topo.natom); // x_new = x
 
