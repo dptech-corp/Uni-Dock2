@@ -614,7 +614,9 @@ __device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TIL
 
     int trial = 0;
     for (; trial < LINE_SEARCH_STEPS; trial++){
-        atomicAdd(&funcCallCount, 1);  // todo: for debug, show call count
+        if (tile.thread_rank() == 0){
+            atomicAdd(&funcCallCount, 1ULL);  // todo: for debug, show call count
+        }
 
         duplicate_pose_tile(tile, out_x_new, x, dim_x, flex_topo.natom); // x_new = x
 
@@ -624,12 +626,16 @@ __device__ __forceinline__ void line_search_tile(const cg::thread_block_tile<TIL
         e_new = cal_e_grad_tile(tile, out_x_new, out_g_new, flex_topo, fix_mol, flex_param, fix_param, aux_f, v_cap, slope);
 
         if (e_new - e0 < LINE_SEARCH_C0 * alpha * pg){
+            if (tile.thread_rank() == 0){
+                atomicAdd(&funcEarlyStopCount, 1ULL); 
+            }
             break;
         }
         //todo: Wolfe condition
 
         alpha *= LINE_SEARCH_MULTIPLIER; // lower step length
     }
+
     tile.sync();
 
     // fixme: WHY? this version will lead to active lock (100% occupancy of GPU, never stop)
@@ -741,6 +747,10 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
     duplicate_grad_tile(tile, aux_p, aux_g, dim_g);
 
     for (int step = 0; step < max_steps; step++){
+        if (tile.thread_rank() == 0){
+            atomicAdd(&bfgsCallCount, 1ULL);  // todo: for debug, show call count
+        }
+
         // compute line search direction aux_p = -Hg (dim*1 vector)
         minus_mat_vec_product_tile(tile, aux_p, aux_h->matrix, aux_g, dim_g);
 
@@ -768,6 +778,9 @@ __forceinline__ __device__ void bfgs_tile(const cg::thread_block_tile<TILE_SIZE>
         // Stop criterion: check convergence todo: why not checking g_new?
         Real gg = g_dot_product_tile(tile, aux_g, aux_g, dim_g);
         if (sqrtf(gg) < 1e-5f){
+            if (tile.thread_rank() == 0){
+                atomicAdd(&bfgsEarlyStopCount, 1ULL); 
+            }
             break;
         }
 
