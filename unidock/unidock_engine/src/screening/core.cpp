@@ -162,6 +162,9 @@ int core_pipeline(CoreInput& ipt) {
         // Reset the per-pipeline debug counter
         checkCUDA(cudaDeviceSynchronize());
         funcCallCount = 0ULL;
+        funcEarlyStopCount = 0ULL;
+        bfgsCallCount = 0ULL;
+        bfgsEarlyStopCount = 0ULL;
 
         // ------------------------------- Prepare Context -------------------------------
         auto ctx = prepare_context_by_input(ipt);

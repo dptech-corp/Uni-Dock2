@@ -4,6 +4,9 @@
 #include "common.cuh"
 
 __device__ __managed__ unsigned long long funcCallCount = 0ULL;
+__device__ __managed__ unsigned long long funcEarlyStopCount = 0ULL;
+__device__ __managed__ unsigned long long bfgsCallCount = 0ULL;
+__device__ __managed__ unsigned long long bfgsEarlyStopCount = 0ULL;
 
 
 __constant__ bool FLAG_CONSTRAINT_DOCK = false;
