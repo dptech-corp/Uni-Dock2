@@ -4,7 +4,8 @@ import math
 import json
 import logging
 
-from multiprocess.pool import Pool
+from multiprocess import get_context
+from multiprocess import TimeoutError as MpTimeoutError
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 
@@ -155,40 +156,48 @@ class UnidockLigandTopologyBuilder(object):
 
         raw_num_batches = self.n_cpu * 3
         batch_size = math.ceil(self.num_ligands / raw_num_batches)
-        num_batches = math.ceil(self.num_ligands / batch_size)
-        batch_ligand_topology_builder_results_list = [None] * num_batches
 
-        pool = Pool(processes=self.n_cpu)
-        for batch_idx, start_idx in enumerate(range(0, self.num_ligands, batch_size)):
-            end_idx = min(start_idx + batch_size, self.num_ligands)
-            batch_ligand_mol_list = self.ligand_mol_list[start_idx:end_idx]
-            batch_core_atom_mapping_dict_list = self.core_atom_mapping_dict_list[start_idx:end_idx]
+        per_batch_timeout = 300
+        mp_ctx = get_context('spawn')
+        with mp_ctx.Pool(processes=self.n_cpu) as pool:
+            async_results = []
+            for batch_idx, start_idx in enumerate(range(0, self.num_ligands, batch_size)):
+                end_idx = min(start_idx + batch_size, self.num_ligands)
+                batch_ligand_mol_list = self.ligand_mol_list[start_idx:end_idx]
+                batch_core_atom_mapping_dict_list = self.core_atom_mapping_dict_list[start_idx:end_idx]
 
-            working_dir_name = os.path.join(self.root_working_dir_name, f'ligand_batch_{batch_idx}')
-            os.makedirs(working_dir_name, exist_ok=True)
-            batch_ligand_sdf_file_name = os.path.join(working_dir_name, 'ligand_batch.sdf')
-            with Chem.SDWriter(batch_ligand_sdf_file_name) as writer:
-                for ligand_mol in batch_ligand_mol_list:
-                    writer.write(ligand_mol)
+                working_dir_name = os.path.join(self.root_working_dir_name, f'ligand_batch_{batch_idx}')
+                os.makedirs(working_dir_name, exist_ok=True)
+                batch_ligand_sdf_file_name = os.path.join(working_dir_name, 'ligand_batch.sdf')
+                with Chem.SDWriter(batch_ligand_sdf_file_name) as writer:
+                    for ligand_mol in batch_ligand_mol_list:
+                        writer.write(ligand_mol)
 
-            batch_ligand_topology_builder_results = pool.apply_async(
-                    batch_topology_builder_process,
-                    args=(
-                        batch_ligand_sdf_file_name,
-                        self.covalent_ligand,
-                        self.template_docking,
-                        self.reference_sdf_file_name,
-                        batch_core_atom_mapping_dict_list,
-                        working_dir_name,
-                        self.construct_ff,
-                        self.atom_mapper_align,
-                    ),
-            )
+                async_results.append(pool.apply_async(
+                        batch_topology_builder_process,
+                        args=(
+                            batch_ligand_sdf_file_name,
+                            self.covalent_ligand,
+                            self.template_docking,
+                            self.reference_sdf_file_name,
+                            batch_core_atom_mapping_dict_list,
+                            working_dir_name,
+                            self.construct_ff,
+                            self.atom_mapper_align,
+                        ),
+                ))
 
-            batch_ligand_topology_builder_results_list[batch_idx] = batch_ligand_topology_builder_results
+            collected = []
+            for batch_idx, async_result in enumerate(async_results):
+                try:
+                    collected.append(async_result.get(timeout=per_batch_timeout))
+                except MpTimeoutError:
+                    raise TimeoutError(
+                        f'Ligand topology batch {batch_idx} timed out after '
+                        f'{per_batch_timeout}s; pool terminated.'
+                    )
 
-        self.total_ligand_info_dict_list = sum([p.get() for p in batch_ligand_topology_builder_results_list], [])
-        pool.close()
+        self.total_ligand_info_dict_list = sum(collected, [])
 
         if len(self.total_ligand_info_dict_list) != self.num_ligands:
             raise ValueError(

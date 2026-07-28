@@ -77,7 +77,7 @@ jobs:
           micromamba activate base
           pip install pytest pytest-cov
 
-      - name: run processing unit-test
+      - name: run processing tests
         shell: bash
         run: |
           eval "$(micromamba shell hook --shell bash)"
