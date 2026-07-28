@@ -75,11 +75,11 @@ jobs:
         run: |
           eval "$(micromamba shell hook --shell bash)"
           micromamba activate base
-          pip install pytest pytest-cov
+          pip install pytest
 
       - name: run processing tests
         shell: bash
         run: |
           eval "$(micromamba shell hook --shell bash)"
           micromamba activate base
-          pytest unidock/unidock_processing/test -vv --cov
+          pytest unidock/unidock_processing/test -vv
