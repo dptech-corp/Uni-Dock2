@@ -8,6 +8,14 @@ __device__ __managed__ unsigned long long funcEarlyStopCount = 0ULL;
 __device__ __managed__ unsigned long long bfgsCallCount = 0ULL;
 __device__ __managed__ unsigned long long bfgsEarlyStopCount = 0ULL;
 
+void reset_debug_counters(){
+    checkCUDA(cudaDeviceSynchronize());
+    funcCallCount = 0ULL;
+    funcEarlyStopCount = 0ULL;
+    bfgsCallCount = 0ULL;
+    bfgsEarlyStopCount = 0ULL;
+}
+
 
 __constant__ bool FLAG_CONSTRAINT_DOCK = false;
 __constant__ BiasType BIAS_TYPE = BT_POS;
