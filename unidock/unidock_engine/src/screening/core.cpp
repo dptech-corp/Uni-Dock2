@@ -9,6 +9,7 @@
 #include "model/model.h"
 #include "screening.h"
 #include "core.h"
+#include "cuda/common.cuh"
 
 
 void print_sign() {
@@ -157,6 +158,9 @@ int core_pipeline(CoreInput& ipt) {
 
         spdlog::info("==================== UD2 Starts! ======================\n");
         auto start = std::chrono::high_resolution_clock::now();
+
+        // Reset the per-pipeline debug counters.
+        reset_debug_counters();
 
         // ------------------------------- Prepare Context -------------------------------
         auto ctx = prepare_context_by_input(ipt);

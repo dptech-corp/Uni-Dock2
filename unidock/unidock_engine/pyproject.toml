@@ -21,6 +21,13 @@ classifiers = [
 dynamic = ["version"]
 
 [tool.scikit-build]
+minimum-version = "0.10"
 cmake.define = {"BUILD_API"="ON"}  # -D
 build.tool-args = ["-j4"] # for make/ninja
 wheel.install-dir = "unidock_engine/api/python" # under site-packages
+
+# Same VERSION file that CMakeLists.txt reads for VERSION_NUMBER
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "../VERSION"
+regex = '^\s*(?P<value>\S+)'

@@ -1,6 +1,9 @@
 import os
 import pytest
 
+from rdkit import Chem
+from rdkit.Chem import rdMolAlign
+
 from context import TEST_DATA_DIR
 
 from unidock_processing.io.get_temp_dir_prefix import get_temp_dir_prefix
@@ -9,12 +12,22 @@ from unidock_processing.unidocktools.unidock_protocol_runner import (
     UnidockProtocolRunner,
 )
 
+TOP1_RMSD_LIMIT = 2.0
+
+
+def calc_rmsd(ref_ligand, target_ligand):
+    ref_mol = Chem.SDMolSupplier(str(ref_ligand), removeHs=True)[0]
+    target_mols = Chem.SDMolSupplier(str(target_ligand), removeHs=True)
+    return [rdMolAlign.CalcRMS(ref_mol, target_mol) for target_mol in target_mols]
+
+
 @pytest.mark.parametrize(
-    'receptor,ligand,covalent_residue_atom_info_list,pocket_center',
+    'receptor,ligand,reference,covalent_residue_atom_info_list,pocket_center',
     [
         (
             os.path.join(TEST_DATA_DIR, 'covalent_docking', '1EWL', '1EWL_prepared.pdb'),
             [os.path.join(TEST_DATA_DIR, 'covalent_docking', '1EWL', 'covalent_mol.sdf')],
+            os.path.join(TEST_DATA_DIR, 'covalent_docking', '1EWL', '1EWL_ligand.sdf'),
             [
                 ['', 'CYX', 25, 'CA'],
                 ['', 'CYX', 25, 'CB'],
@@ -28,6 +41,7 @@ from unidock_processing.unidocktools.unidock_protocol_runner import (
 def test_covalent_docking(
     receptor,
     ligand,
+    reference,
     covalent_residue_atom_info_list,
     pocket_center,
 ):
@@ -55,3 +69,13 @@ def test_covalent_docking(
 
         assert os.path.exists(unidock_protocol_runner.docking_pose_sdf_file_name)
         assert os.path.getsize(unidock_protocol_runner.docking_pose_sdf_file_name) > 0
+
+        rmsd_list = calc_rmsd(
+            reference,
+            unidock_protocol_runner.docking_pose_sdf_file_name,
+        )
+        assert rmsd_list, 'No docking poses found in output SDF.'
+        assert rmsd_list[0] < TOP1_RMSD_LIMIT, (
+            f'Top-1 RMSD {rmsd_list[0]:.3f} A exceeds '
+            f'{TOP1_RMSD_LIMIT:.1f} A (best RMSD: {min(rmsd_list):.3f} A).'
+        )

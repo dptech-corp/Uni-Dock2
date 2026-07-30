@@ -32,7 +32,7 @@ requirements:
   host:
     - python
     - pip
-    - scikit-build-core >=0.2.0
+    - scikit-build-core >=0.10
     # - cython
     - setuptools
     - cuda-version {{ cuda_compiler_version }} # [(cuda_compiler_version or "None") != "None"]

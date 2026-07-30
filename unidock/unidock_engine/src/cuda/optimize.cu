@@ -73,5 +73,8 @@ void optimize_cu(FlexPose* out_poses, const int* pose_inds, const FlexTopo* flex
                           v_cap, slope);
     checkCUDA(cudaDeviceSynchronize());
     spdlog::info("[Refinement Line Search Steps Count]: {}", funcCallCount);
+    spdlog::info("[Refinement Line Search Early Stop Count]: {}", funcEarlyStopCount);
+    spdlog::info("[Refinement BFGS Steps Count]: {}", bfgsCallCount);
+    spdlog::info("[Refinement BFGS Early Stop Count]: {}", bfgsEarlyStopCount);
 
 }

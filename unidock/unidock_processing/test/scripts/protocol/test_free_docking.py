@@ -2,6 +2,9 @@ import os
 import pytest
 import yaml
 
+from rdkit import Chem
+from rdkit.Chem import rdMolAlign
+
 from context import TEST_DATA_DIR
 
 from unidock_processing.io.yaml import read_unidock_params_from_yaml
@@ -10,6 +13,15 @@ from unidock_processing.io.tempfile import TemporaryDirectory
 from unidock_processing.unidocktools.unidock_protocol_runner import (
     UnidockProtocolRunner,
 )
+
+TOP1_RMSD_LIMIT = 2.0
+
+
+def calc_rmsd(ref_ligand, target_ligand):
+    ref_mol = Chem.SDMolSupplier(str(ref_ligand), removeHs=True)[0]
+    target_mols = Chem.SDMolSupplier(str(target_ligand), removeHs=True)
+    return [rdMolAlign.CalcRMS(ref_mol, target_mol) for target_mol in target_mols]
+
 
 @pytest.mark.parametrize(
     'receptor,ligand,pocket_center',
@@ -58,12 +70,13 @@ def test_free_docking(
         assert os.path.getsize(unidock_protocol_runner.docking_pose_sdf_file_name) > 0
 
 @pytest.mark.parametrize(
-    'receptor,ligand,pocket_center,configurations_file',
+    'receptor,ligand,reference,pocket_center,configurations_file',
     [
         (
             os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking',
                          '1G9V_protein_water_cleaned.pdb'),
             os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking', 'ligand_prepared.sdf'),
+            os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking', '1G9V_ligand.sdf'),
             (5.122, 18.327, 37.332),
             os.path.join(TEST_DATA_DIR, 'free_docking', 'molecular_docking', 'unidock_configurations.yaml')
         )
@@ -73,6 +86,7 @@ def test_free_docking(
 def test_free_docking_by_yaml(
     receptor,
     ligand,
+    reference,
     pocket_center,
     configurations_file
 ):
@@ -124,3 +138,13 @@ def test_free_docking_by_yaml(
 
         assert os.path.exists(unidock_protocol_runner.docking_pose_sdf_file_name)
         assert os.path.getsize(unidock_protocol_runner.docking_pose_sdf_file_name) > 0
+
+        rmsd_list = calc_rmsd(
+            reference,
+            unidock_protocol_runner.docking_pose_sdf_file_name,
+        )
+        assert rmsd_list, 'No docking poses found in output SDF.'
+        assert rmsd_list[0] < TOP1_RMSD_LIMIT, (
+            f'Top-1 RMSD {rmsd_list[0]:.3f} A exceeds '
+            f'{TOP1_RMSD_LIMIT:.1f} A (best RMSD: {min(rmsd_list):.3f} A).'
+        )

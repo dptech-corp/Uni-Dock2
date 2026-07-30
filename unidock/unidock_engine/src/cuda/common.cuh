@@ -10,7 +10,12 @@
 #include "score/vina.h"
 #include <cuda_runtime.h>
 
-extern __device__ __managed__ unsigned int funcCallCount;
+extern __device__ __managed__ unsigned long long funcCallCount;
+extern __device__ __managed__ unsigned long long funcEarlyStopCount;
+extern __device__ __managed__ unsigned long long bfgsCallCount;
+extern __device__ __managed__ unsigned long long bfgsEarlyStopCount;
+
+void reset_debug_counters();
 
 // -------------- Constants -----------------
 extern __constant__ bool FLAG_CONSTRAINT_DOCK;

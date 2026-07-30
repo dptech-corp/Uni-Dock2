@@ -440,7 +440,10 @@ void mc_cu(FlexPose* out_poses, const FlexTopo* topos,
                                      mc_steps, opt_steps, exhuastiveness, nthreads);
 
     checkCUDA(cudaDeviceSynchronize());
-    spdlog::warn("[Line Search Steps Count]: {}", funcCallCount);
+    // spdlog::warn("[Line Search Steps Count]: {}", funcCallCount);
+    // spdlog::warn("[Line Search Early Stop Count]: {}", funcEarlyStopCount);
+    // spdlog::warn("[BFGS Steps Count]: {}", bfgsCallCount);
+    // spdlog::warn("[BFGS Early Stop Count]: {}", bfgsEarlyStopCount);
 
     // free mem
     checkCUDA(cudaFree(states));

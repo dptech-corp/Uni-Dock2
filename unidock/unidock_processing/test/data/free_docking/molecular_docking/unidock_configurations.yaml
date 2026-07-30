@@ -20,7 +20,7 @@ Hardware:
 Settings:
   box_size: [30.0, 30.0, 30.0]
   task: screen
-  search_mode: balance
+  search_mode: detail
 Preprocessing:
   template_docking: false
   reference_sdf_file_name: null
