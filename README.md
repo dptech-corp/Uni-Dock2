@@ -24,12 +24,14 @@ git clone https://github.com/dptech-corp/Uni-Dock2.git
 ### Build and install Uni-Dock2
 **Prerequisites**
 * `CUDA toolkit (Including nvcc)`
-* `CMake >= 3.18`
+* `CMake >= 3.27`
 * `C++ compiler`
 * `Pybind11`
 
 ```sh
-conda install pydantic pyyaml pathos numpy pandas scipy networkx rdkit mdanalysis pdbfixer openmm msys_viparr_lpsolve55 ambertools_stable -c http://quetz.dp.tech:8088/get/baymax -c conda-forge --no-repodata-use-zst
+# BEGIN GENERATED: conda run dependencies
+conda install numpy networkx pyyaml pydantic rdkit mdanalysis multiprocess openmm pdbfixer msys_viparr_lpsolve55 ambertools_stable -c http://quetz.dp.tech:8088/get/baymax -c conda-forge --no-repodata-use-zst
+# END GENERATED: conda run dependencies
 pip install .
 ```
 

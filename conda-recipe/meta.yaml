@@ -25,14 +25,16 @@ requirements:
 #    - {{ stdlib("c") }}
     - {{ compiler('cxx') }}
     - {{ compiler('cuda') }} # [(linux or win) and cuda_compiler != "None"]
+    # BEGIN GENERATED: conda build tools
     - cmake >=3.27
     - make
     - pybind11
+    # END GENERATED: conda build tools
 
   host:
     - python
     - pip
-    - scikit-build-core >=0.10
+    - scikit-build-core >=1.0
     - pybind11
     - cuda-version {{ cuda_compiler_version }} # [(cuda_compiler_version or "None") != "None"]
     {% if cuda_compiler_version != "None" %}
@@ -43,19 +45,19 @@ requirements:
   run:
     - cuda-version >={{ cuda_major }},<{{ cuda_major + 1 }}
     - cuda-cudart
+    # BEGIN GENERATED: conda run dependencies
+    - numpy
+    - networkx
     - pyyaml
     - pydantic
-    - pathos
-    - numpy
-    - scipy
-    - pandas
-    - networkx
     - rdkit
     - mdanalysis
-    - pdbfixer
+    - multiprocess
     - openmm
+    - pdbfixer
     - msys_viparr_lpsolve55
     - ambertools_stable
+    # END GENERATED: conda run dependencies
 
 test:
   imports:

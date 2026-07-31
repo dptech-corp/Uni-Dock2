@@ -16,10 +16,13 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install ruff
+      - name: Install CI tools
         run: |
           python -m pip install --upgrade pip
-          python -m pip install ruff
+          python -m pip install ruff tomli
+
+      - name: Check dependency blocks are in sync
+        run: python tools/sync_deps.py --check
 
       - name: Run ruff
         run: ruff check unidock2 tests
@@ -111,4 +114,37 @@ jobs:
           python -m pytest "$GITHUB_WORKSPACE/tests" -vv \
             --import-mode=importlib \
             -o "pythonpath=$SITE_PACKAGES $GITHUB_WORKSPACE"
+          popd
+
+  dependency-install-tests:
+    runs-on: [nvidia, t4]
+    env:
+      CMAKE_ARGS: -DCMAKE_CUDA_ARCHITECTURES=75
+    container:
+      image: dptechnology/unidock2:base-0.0.3
+      options: --gpus all
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install from package metadata in a clean environment
+        shell: bash
+        run: |
+          eval "$(micromamba shell hook --shell bash)"
+          micromamba create -y -n dependency-check \
+            -c http://quetz.dp.tech:8088/get/baymax \
+            -c conda-forge \
+            python=3.10 pip \
+            cuda-nvcc libcurand-dev cuda-cudart-dev cuda-version=12.0 \
+            openmm pdbfixer msys_viparr_lpsolve55 ambertools_stable
+          micromamba run -n dependency-check python -m pip install .
+          micromamba run -n dependency-check python -m pip check
+
+      - name: Verify the metadata-installed package
+        shell: bash
+        run: |
+          pushd /tmp
+          micromamba run -n dependency-check python -c "import unidock2"
+          micromamba run -n dependency-check python -c "from unidock2._engine import pipeline"
+          micromamba run -n dependency-check unidock2 --version
           popd

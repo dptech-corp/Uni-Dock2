@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.27)
 
 # ------------------------------ Options for Users
 option(BUILD_BIN "build binaries" ON)
@@ -113,6 +113,5 @@ endif ()
 if (BUILD_DOC)
     add_subdirectory("doc")
 endif ()
-
 
 
