@@ -9,17 +9,7 @@ test/ligands
 test/results
 .vscode
 .idea
-unidock/unidock_engine/examples/
-unidock/build/
-unidock/example/screening_test/indata
-unidock/example/screening_test/result
-unidock/example/screening_test/def_ligands.txt
-unidock/example/screening_test/rundock.sh
-unidock/example/screening_test/unidock
-unidock/example/screening_test/fail_result
-unidock/example/screening_test/receptor_grids
-unidock/example/screening_test/unidock_root
-unidock/example/screening_test/test_dock
+dist/
 unidock_tools/dist
 unidock_tools/dist/*
 *.egg-info
@@ -30,4 +20,3 @@ test_conf.yaml
 setup.py.depre
 
 temp_*/
-

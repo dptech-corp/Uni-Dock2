@@ -1,4 +1,4 @@
-name: Uni-Dock2 processing test
+name: Uni-Dock2 CI
 
 on:
   workflow_dispatch:
@@ -8,7 +8,6 @@ on:
 
 jobs:
   style-check:
-    continue-on-error: true
     runs-on: ubuntu-latest
 
     steps:
@@ -20,18 +19,15 @@ jobs:
       - name: Install ruff
         run: |
           python -m pip install --upgrade pip
-          pip install ruff
+          python -m pip install ruff
 
       - name: Run ruff
-        run: |
-          ruff check
+        run: ruff check unidock2 tests
 
-  tests:
-    if: ${{ always() }}
-    needs: [style-check]
+  engine-tests:
     runs-on: [nvidia, t4]
     env:
-      CUDA_ARCH: 75  # T4 = sm_75, change if runner GPU changes
+      CUDA_ARCH: 75
     container:
       image: dptechnology/unidock2:base-0.0.3
       options: --gpus all
@@ -39,47 +35,80 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: compile and run engine unit tests
+      - name: Build and test the engine
         shell: bash
         run: |
           eval "$(micromamba shell hook --shell bash)"
           micromamba activate base
-          cd ./unidock/unidock_engine
-          cmake -B build -S . -DBUILD_TEST=ON -DBUILD_BIN=ON -DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH
-          cmake --build build --target unit_test
-          ./build/test/unit/unit_test
-          cd ../..
+          python -m pip install pytest
+          cmake -S engine -B build/engine-dev \
+            -DBUILD_API=ON \
+            -DBUILD_BIN=ON \
+            -DBUILD_TEST=ON \
+            -DBUILD_DOC=OFF \
+            -DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH
+          cmake --build build/engine-dev
+          ctest --test-dir build/engine-dev --output-on-failure
 
-      - name: compile and run engine feature tests
-        shell: bash
-        run: |
-          eval "$(micromamba shell hook --shell bash)"
-          micromamba activate base
-          cd ./unidock/unidock_engine
-          cmake --build build --target ud2
-          ctest --test-dir build -R '^feature_' --output-on-failure
-          cd ../..
+  package-tests:
+    runs-on: [nvidia, t4]
+    env:
+      CUDA_ARCH: 75
+      CMAKE_ARGS: -DCMAKE_CUDA_ARCHITECTURES=75
+    container:
+      image: dptechnology/unidock2:base-0.0.3
+      options: --gpus all
 
-      - name: install unidock2
-        shell: bash
-        run: |
-          eval "$(micromamba shell hook --shell bash)"
-          micromamba activate base
-          cd ./unidock/unidock_engine
-          CMAKE_ARGS="-DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH" pip install .
-          cd ../..
-          pip install .
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: install test tools
+      - name: Build and install the wheel
         shell: bash
         run: |
           eval "$(micromamba shell hook --shell bash)"
           micromamba activate base
-          pip install pytest
+          python -m pip install pytest
+          python -m pip wheel . --no-deps -w dist/
+          python -m pip install dist/unidock2-*.whl --no-deps
 
-      - name: run processing tests
+      - name: Check wheel contents
         shell: bash
         run: |
           eval "$(micromamba shell hook --shell bash)"
           micromamba activate base
-          pytest unidock/unidock_processing/test -vv
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel = next(Path("dist").glob("unidock2-*.whl"))
+          with ZipFile(wheel) as archive:
+              names = archive.namelist()
+
+          forbidden = [
+              name for name in names
+              if name == "ud2"
+              or "/ud2" in name
+              or "/test/" in name
+              or "/tests/" in name
+              or name.startswith("unidock_processing/")
+              or name.startswith("unidock_engine/")
+          ]
+          if forbidden:
+              raise SystemExit(f"Forbidden wheel contents: {forbidden}")
+          PY
+
+      - name: Verify the installed package
+        shell: bash
+        run: |
+          eval "$(micromamba shell hook --shell bash)"
+          micromamba activate base
+          SITE_PACKAGES="$(python -c 'import site; print(site.getsitepackages()[0])')"
+          pushd /tmp
+          python -c "import unidock2"
+          python -c "from unidock2._engine import pipeline"
+          unidock2 --help
+          unidock2 --version
+          python -m pytest "$GITHUB_WORKSPACE/tests" -vv \
+            --import-mode=importlib \
+            -o "pythonpath=$SITE_PACKAGES $GITHUB_WORKSPACE"
+          popd

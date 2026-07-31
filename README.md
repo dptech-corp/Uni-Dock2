@@ -21,7 +21,7 @@ conda install unidock2 cuda-version=12.0 -c http://quetz.dp.tech:8088/get/baymax
 git clone https://github.com/dptech-corp/Uni-Dock2.git
 ```
 
-### Step 1. Build unidock_engine
+### Build and install Uni-Dock2
 **Prerequisites**
 * `CUDA toolkit (Including nvcc)`
 * `CMake >= 3.18`
@@ -29,15 +29,19 @@ git clone https://github.com/dptech-corp/Uni-Dock2.git
 * `Pybind11`
 
 ```sh
-cd unidock/unidock_engine
-pip install .
-cd ../..
-```
-
-### Step 2. Build unidock_processing
-```sh
 conda install pydantic pyyaml pathos numpy pandas scipy networkx rdkit mdanalysis pdbfixer openmm msys_viparr_lpsolve55 ambertools_stable -c http://quetz.dp.tech:8088/get/baymax -c conda-forge --no-repodata-use-zst
 pip install .
+```
+
+For an Engine developer build that includes the native binary and tests:
+
+```sh
+cmake -S engine -B build/engine \
+  -DBUILD_API=ON \
+  -DBUILD_BIN=ON \
+  -DBUILD_TEST=ON
+cmake --build build/engine
+ctest --test-dir build/engine --output-on-failure
 ```
 
 ## Verify Installation

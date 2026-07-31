@@ -6,10 +6,6 @@ on:
       - "*"
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Package version'
-        required: true
-        default: '0.0.1'
       build:
         description: 'Build number'
         required: true
@@ -26,10 +22,30 @@ jobs:
       QUETZ_API_KEY: ${{ secrets.QUETZ_API_KEY }}
       QUETZ_SERVER_URL: ${{ vars.QUETZ_SERVER_URL }}
       CONDA_CHANNEL: baymax
-      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || '0.0.1' }}
       BUILD: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.build || '1' }}
     steps:
       - uses: actions/checkout@v6
+
+      - name: Read and validate version
+        shell: bash
+        run: |
+          PACKAGE_VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [[ -z "$PACKAGE_VERSION" ]]; then
+            echo "VERSION is empty"
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            if [[ "$GITHUB_REF_NAME" != v* ]]; then
+              echo "Release tag must use the v<version> format"
+              exit 1
+            fi
+            TAG_VERSION="${GITHUB_REF_NAME#v}"
+            if [[ "$TAG_VERSION" != "$PACKAGE_VERSION" ]]; then
+              echo "Tag version $TAG_VERSION does not match VERSION $PACKAGE_VERSION"
+              exit 1
+            fi
+          fi
+          echo "VERSION=$PACKAGE_VERSION" >> "$GITHUB_ENV"
 
       - name: Setup Miniconda and Mamba
         uses: conda-incubator/setup-miniconda@v4
@@ -55,14 +71,9 @@ jobs:
       - name: Build conda package
         shell: bash -l {0}
         run: |
-          if [[ "$VERSION" == v* ]]; then
-            VERSION_CLEAN="${VERSION#v}"
-          else
-            VERSION_CLEAN="$VERSION"
-          fi
           conda-build -c http://quetz.dp.tech:8088/get/baymax \
             -c conda-forge \
-            --variants "{python: ['${{ matrix.python }}'], cuda_compiler_version: ['${{ matrix.cuda_compiler_version }}'], version: ['${VERSION_CLEAN}'], build: ['${{ env.BUILD }}']}" \
+            --variants "{python: ['${{ matrix.python }}'], cuda_compiler_version: ['${{ matrix.cuda_compiler_version }}'], version: ['${VERSION}'], build: ['${{ env.BUILD }}']}" \
             --no-anaconda-upload \
             --output-folder conda-build \
             conda-recipe

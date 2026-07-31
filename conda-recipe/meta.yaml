@@ -33,8 +33,7 @@ requirements:
     - python
     - pip
     - scikit-build-core >=0.10
-    # - cython
-    - setuptools
+    - pybind11
     - cuda-version {{ cuda_compiler_version }} # [(cuda_compiler_version or "None") != "None"]
     {% if cuda_compiler_version != "None" %}
     - libcurand-dev
@@ -60,7 +59,8 @@ requirements:
 
 test:
   imports:
-    - unidock_engine
-    - unidock_processing
+    - unidock2
   commands:
-    - python -c "from unidock_engine.api.python.pipeline import DockingPipeline; print('API OK')"
+    - unidock2 --version
+    - unidock2 --help
+    - python -c "from unidock2._engine import pipeline"
