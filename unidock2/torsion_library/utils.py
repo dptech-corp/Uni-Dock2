@@ -1,5 +1,3 @@
-import os
-import dill as pickle
 import numpy as np
 from MDAnalysis.lib.transformations import rotation_matrix as get_rotation_matrix
 from MDAnalysis.lib.distances import calc_dihedrals
@@ -295,7 +293,8 @@ def rotate_torsion_angle(
 
 
 def get_torsion_lib_dict() -> dict:
-    tor_lib_pkl_path = os.path.join(os.path.dirname(__file__), 'data', 'torsion_library.pkl')
-    with open(tor_lib_pkl_path, 'rb') as f:
-        tor_lib_dict = pickle.load(f)
-    return tor_lib_dict
+    from unidock2.torsion_library.torsion_library_builder import (
+        TorsionLibraryBuilder,
+    )
+
+    return TorsionLibraryBuilder().build_torsion_library()

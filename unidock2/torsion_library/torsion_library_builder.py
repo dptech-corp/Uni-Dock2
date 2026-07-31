@@ -1,5 +1,4 @@
 import os
-import dill as pickle
 from rdkit import Chem
 import xml.etree.ElementTree as ET
 
@@ -7,13 +6,9 @@ from unidock2.torsion_library import utils
 
 
 class TorsionLibraryBuilder(object):
-    def __init__(self, working_dir_name):
+    def __init__(self):
         self.torsion_library_xml_file_name = os.path.join(
             os.path.dirname(__file__), "data", "torsion_library_2020.xml"
-        )
-        self.working_dir_name = os.path.abspath(working_dir_name)
-        self.torsion_library_pickle_file_name = os.path.join(
-            self.working_dir_name, "torsion_library.pkl"
         )
 
         self.torsion_library_tree = ET.parse(self.torsion_library_xml_file_name)
@@ -120,9 +115,7 @@ class TorsionLibraryBuilder(object):
         torsion_library_dict["generic_class_node_info"] = torsion_class_info_dict
         ########################################################################################
 
-        self.torsion_library_dict = torsion_library_dict
-        with open(self.torsion_library_pickle_file_name, "wb") as f:
-            pickle.dump(torsion_library_dict, f, protocol=pickle.HIGHEST_PROTOCOL)
+        return torsion_library_dict
 
     def __collect_torsion_rules__(self, node, parent_node_info_dict):
         self.node_idx += 1
