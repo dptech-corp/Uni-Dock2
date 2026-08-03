@@ -10,10 +10,13 @@ RUN rm -rf /var/lib/apt/lists/*
 RUN micromamba install -y \
     -c http://quetz.dp.tech:8088/get/baymax \
     -c conda-forge \
-    cmake>=3.27 pybind11 \
     cuda-nvcc libcurand-dev cuda-cudart-dev cuda-version=12.0 \
-    python=3.10 ipython pyyaml pydantic pathos numpy pandas scipy networkx \
-    rdkit mdanalysis pdbfixer openmm \
-    msys_viparr_lpsolve55 ambertools_stable && micromamba clean -a
+    && micromamba clean -a
+
+# BEGIN GENERATED: conda and Docker dependencies
+RUN micromamba install -y -c http://quetz.dp.tech:8088/get/baymax -c conda-forge \
+    'cmake >=3.27' make pybind11 'python =3.10' ipython numpy networkx pyyaml pydantic rdkit openmm pdbfixer msys_viparr_lpsolve55 ambertools_stable \
+    && micromamba clean -a
+# END GENERATED: conda and Docker dependencies
 
 # RUN micromamba install -y conda-forge::sysroot_linux-64==2.34

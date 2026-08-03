@@ -25,16 +25,17 @@ requirements:
 #    - {{ stdlib("c") }}
     - {{ compiler('cxx') }}
     - {{ compiler('cuda') }} # [(linux or win) and cuda_compiler != "None"]
+    # BEGIN GENERATED: conda build tools
     - cmake >=3.27
     - make
     - pybind11
+    # END GENERATED: conda build tools
 
   host:
     - python
     - pip
-    - scikit-build-core >=0.10
-    # - cython
-    - setuptools
+    - scikit-build-core >=1.0
+    - pybind11
     - cuda-version {{ cuda_compiler_version }} # [(cuda_compiler_version or "None") != "None"]
     {% if cuda_compiler_version != "None" %}
     - libcurand-dev
@@ -44,23 +45,22 @@ requirements:
   run:
     - cuda-version >={{ cuda_major }},<{{ cuda_major + 1 }}
     - cuda-cudart
+    # BEGIN GENERATED: conda run dependencies
+    - numpy
+    - networkx
     - pyyaml
     - pydantic
-    - pathos
-    - numpy
-    - scipy
-    - pandas
-    - networkx
     - rdkit
-    - mdanalysis
-    - pdbfixer
     - openmm
+    - pdbfixer
     - msys_viparr_lpsolve55
     - ambertools_stable
+    # END GENERATED: conda run dependencies
 
 test:
   imports:
-    - unidock_engine
-    - unidock_processing
+    - unidock2
   commands:
-    - python -c "from unidock_engine.api.python.pipeline import DockingPipeline; print('API OK')"
+    - unidock2 --version
+    - unidock2 --help
+    - python -c "from unidock2._engine import pipeline"

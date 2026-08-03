@@ -1,19 +1,26 @@
 [build-system]
 requires = [
-    "setuptools>=64",
-    # "setuptools-scm>=8",
+    "scikit-build-core>=1.0",
+    "pybind11",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "scikit_build_core.build"
 
 [project]
-name = "unidock_processing"
-description = "Uni-Dock molecular docking Processor"
+name = "unidock2"
+description = "Uni-Dock molecular docking toolkit"
 readme = "README.md"
 authors = [
-    {name = "DP Uni-Dock2 Team"}
+    {name = "DP Uni-Dock2 Team"},
 ]
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "networkx",
+    "pyyaml",
+    "pydantic",
+    "rdkit",
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
@@ -21,25 +28,43 @@ classifiers = [
 ]
 dynamic = ["version"]
 
-# [tool.setuptools_scm]
-
-[tool.setuptools.dynamic]
-version = { file = "unidock/VERSION" }
-
 [project.scripts]
-unidock2 = "unidock_processing.main:main"
+unidock2 = "unidock2.main:main"
 
-[tool.setuptools.packages.find]
-where = ["unidock"]
-include = ["unidock_processing*"]
+[[tool.dynamic-metadata]]
+provider = "scikit_build_core.metadata.regex"
+field = "version"
+input = "VERSION"
+regex = '^\s*(?P<value>\S+)'
 
-[tool.setuptools.package-data]
-"*" = ["*.xml", "*.in"]
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.source-dir = "engine"
+wheel.packages = ["unidock2"]
+
+[tool.scikit-build.cmake.define]
+BUILD_API = "ON"
+BUILD_BIN = "OFF"
+BUILD_TEST = "OFF"
+BUILD_DOC = "OFF"
+
+[tool.unidock2.deps]
+conda-only-run = [
+    "openmm",
+    "pdbfixer",
+    "msys_viparr_lpsolve55",
+    "ambertools_stable",
+]
+conda-build-tools = ["cmake >=3.27", "make", "pybind11"]
+docker-extra = ["python =3.10", "ipython"]
+channels = ["http://quetz.dp.tech:8088/get/baymax", "conda-forge"]
+
+[tool.unidock2.deps.conda-overrides]
 
 [tool.ruff]
-
 include = [
-    "unidock/unidock_processing/*.py",
+    "unidock2/**/*.py",
+    "tests/**/*.py",
 ]
 exclude = [
     ".bzr",
@@ -68,34 +93,24 @@ exclude = [
     "node_modules",
     "site-packages",
     "venv",
-    "unidock/unidock_configureations.yaml",
 ]
-
 line-length = 120
 indent-width = 4
-
 target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E1", "E4", "E5", "E7", "E9", "F", "W"]
 ignore = ["E722"]
-
 fixable = ["ALL"]
 unfixable = []
-
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.format]
 quote-style = "double"
-
 indent-style = "space"
-
 skip-magic-trailing-comma = false
-
 line-ending = "auto"
-
 docstring-code-format = false
-
 docstring-code-line-length = "dynamic"
 
 [tool.pytest.ini_options]
@@ -104,5 +119,5 @@ verbosity_assertions = 2
 verbosity_test_cases = 2
 addopts = "-s"
 testpaths = [
-    "unidock/unidock_processing/test",
+    "tests",
 ]
