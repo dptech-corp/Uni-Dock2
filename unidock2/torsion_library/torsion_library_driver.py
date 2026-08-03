@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 from rdkit import Chem
+from rdkit.Chem import rdMolTransforms
 
 from unidock2.torsion_library.utils import (
     get_torsion_atom_idx_tuple,
@@ -50,7 +51,7 @@ class TorsionLibraryDriver(object):
                         torsion_atom_idx_list
                     )
                     self.original_torsion_value_list[rotatable_bond_idx] = (
-                        Chem.rdMolTransforms.GetDihedralDeg(
+                        rdMolTransforms.GetDihedralDeg(
                             conformer, *torsion_atom_idx_list
                         )
                     )
@@ -69,7 +70,7 @@ class TorsionLibraryDriver(object):
                     torsion_atom_idx_list
                 )
                 self.original_torsion_value_list[rotatable_bond_idx] = (
-                    Chem.rdMolTransforms.GetDihedralDeg(
+                    rdMolTransforms.GetDihedralDeg(
                         conformer, *torsion_atom_idx_list
                     )
                 )

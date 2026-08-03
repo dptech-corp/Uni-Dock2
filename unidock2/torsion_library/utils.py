@@ -1,6 +1,4 @@
 import numpy as np
-from MDAnalysis.lib.transformations import rotation_matrix as get_rotation_matrix
-from MDAnalysis.lib.distances import calc_dihedrals
 from rdkit import Chem
 from rdkit.Chem import GetMolFrags, FragmentOnBonds
 from rdkit.Geometry.rdGeometry import Point3D
@@ -9,6 +7,45 @@ from rdkit import RDLogger
 
 rdlg = RDLogger.logger()
 rdlg.setLevel(RDLogger.CRITICAL)
+
+
+def _calc_dihedral(position_0, position_1, position_2, position_3):
+    """Calculate the signed dihedral angle in radians."""
+    bond_0 = position_0 - position_1
+    bond_1 = position_2 - position_1
+    bond_2 = position_3 - position_2
+
+    bond_1_unit = bond_1 / np.linalg.norm(bond_1)
+    projected_0 = bond_0 - np.dot(bond_0, bond_1_unit) * bond_1_unit
+    projected_2 = bond_2 - np.dot(bond_2, bond_1_unit) * bond_1_unit
+
+    return np.arctan2(
+        np.dot(np.cross(bond_1_unit, projected_0), projected_2),
+        np.dot(projected_0, projected_2),
+    )
+
+
+def _get_rotation_matrix(angle, direction, point):
+    """Build a homogeneous matrix for rotation around an axis through a point."""
+    direction = direction / np.linalg.norm(direction)
+    sine = np.sin(angle)
+    cosine = np.cos(angle)
+
+    rotation = np.diag([cosine, cosine, cosine])
+    rotation += np.outer(direction, direction) * (1.0 - cosine)
+    scaled_direction = direction * sine
+    rotation += np.array(
+        [
+            [0.0, -scaled_direction[2], scaled_direction[1]],
+            [scaled_direction[2], 0.0, -scaled_direction[0]],
+            [-scaled_direction[1], scaled_direction[0], 0.0],
+        ]
+    )
+
+    transformation = np.identity(4)
+    transformation[:3, :3] = rotation
+    transformation[:3, 3] = point - np.dot(rotation, point)
+    return transformation
 
 
 def get_pattern_atom_mapping(pattern_mol):
@@ -248,7 +285,7 @@ def rotate_torsion_angle(
     torsion_atom_position_3 = positions[torsion_atom_idx_3, :]
 
     target_torsion_value = np.degrees(
-        calc_dihedrals(
+        _calc_dihedral(
             torsion_atom_position_0,
             torsion_atom_position_1,
             torsion_atom_position_2,
@@ -273,7 +310,7 @@ def rotate_torsion_angle(
     delta_torsion_angle = torsion_angle - target_torsion_value
     delta_torsion_angle = np.radians(delta_torsion_angle)
 
-    transformation_matrix = get_rotation_matrix(
+    transformation_matrix = _get_rotation_matrix(
         delta_torsion_angle, unit_dihedral_rotate_axis, torsion_bond_position_0
     )
     rotation = transformation_matrix[:3, :3].T
