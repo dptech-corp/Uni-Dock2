@@ -1,6 +1,5 @@
 from copy import deepcopy
 
-from rdkit import Chem
 from rdkit.Chem import rdMolTransforms
 
 from unidock2.torsion_library.utils import (

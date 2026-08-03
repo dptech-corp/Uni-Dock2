@@ -228,6 +228,4 @@ class UnidockReceptorTopologyBuilder(object):
         self.summary_receptor_info_dict = {}
         self.summary_receptor_info_dict['receptor'] = self.atom_info_nested_list
 
-    def write_summary_receptor_info_json_file(self):
-        with open(self.summary_receptor_info_json_file_name, 'w') as f:
-            json.dump(self.summary_receptor_info_dict, f)
+  

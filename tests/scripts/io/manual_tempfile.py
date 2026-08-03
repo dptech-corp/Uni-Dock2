@@ -1,6 +1,6 @@
 """Characterization tests for `unidock2.io.tempfile.TemporaryDirectory`.
 
-`8b121ae`: vendoring `tempfile` for the `delete` keyword on Python 3.10. 
+`8b121ae`: vendoring `tempfile` for the `delete` keyword on Python 3.10.
 It was replaced by a simple implementation for `TemporaryDirectory`.
 """
 
