@@ -1,6 +1,5 @@
 import os
 from shutil import which
-import json
 import msys
 
 from unidock2.utils.molecule_processing import get_mol_without_indices
@@ -227,5 +226,3 @@ class UnidockReceptorTopologyBuilder(object):
     def get_summary_receptor_info(self):
         self.summary_receptor_info_dict = {}
         self.summary_receptor_info_dict['receptor'] = self.atom_info_nested_list
-
-  
