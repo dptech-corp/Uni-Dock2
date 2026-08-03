@@ -30,7 +30,7 @@ git clone https://github.com/dptech-corp/Uni-Dock2.git
 
 ```sh
 # BEGIN GENERATED: conda run dependencies
-conda install numpy networkx pyyaml pydantic rdkit mdanalysis multiprocess openmm pdbfixer msys_viparr_lpsolve55 ambertools_stable -c http://quetz.dp.tech:8088/get/baymax -c conda-forge --no-repodata-use-zst
+conda install numpy networkx pyyaml pydantic rdkit mdanalysis openmm pdbfixer msys_viparr_lpsolve55 ambertools_stable -c http://quetz.dp.tech:8088/get/baymax -c conda-forge --no-repodata-use-zst
 # END GENERATED: conda run dependencies
 pip install .
 ```

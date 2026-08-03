@@ -4,8 +4,8 @@ import math
 import json
 import logging
 
-from multiprocess import get_context
-from multiprocess import TimeoutError as MpTimeoutError
+from multiprocessing import get_context
+from multiprocessing import TimeoutError as MpTimeoutError
 from rdkit import Chem
 from rdkit.Chem import Descriptors
 

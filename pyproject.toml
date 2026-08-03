@@ -21,7 +21,6 @@ dependencies = [
     "pydantic",
     "rdkit",
     "MDAnalysis",
-    "multiprocess",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

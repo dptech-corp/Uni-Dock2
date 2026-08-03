@@ -52,7 +52,6 @@ requirements:
     - pydantic
     - rdkit
     - mdanalysis
-    - multiprocess
     - openmm
     - pdbfixer
     - msys_viparr_lpsolve55
