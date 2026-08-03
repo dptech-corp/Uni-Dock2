@@ -1,10 +1,9 @@
 import os
 from shutil import copyfile
-import MDAnalysis as mda
 import msys
 
 from pdbfixer import PDBFixer
-from openmm.app import PDBFile
+from openmm.app import Modeller, PDBFile
 
 
 class ReceptorTopologyPreparation(object):
@@ -31,9 +30,23 @@ class ReceptorTopologyPreparation(object):
         )
 
     def run_preparation(self):
-        receptor_ag = mda.Universe(self.receptor_pdb_file_name).atoms
-        cleaned_ag = receptor_ag.select_atoms("not name OXT and not name H*")
-        cleaned_ag.write(self.receptor_cleaned_pdb_file_name)
+        receptor_pdb = PDBFile(self.receptor_pdb_file_name)
+        modeller = Modeller(receptor_pdb.topology, receptor_pdb.positions)
+        modeller.delete(
+            [
+                atom
+                for atom in modeller.topology.atoms()
+                if atom.name == "OXT" or atom.name.startswith("H")
+            ]
+        )
+
+        with open(self.receptor_cleaned_pdb_file_name, "w") as receptor_cleaned_pdb_file:
+            PDBFile.writeFile(
+                modeller.topology,
+                modeller.positions,
+                receptor_cleaned_pdb_file,
+                keepIds=True,
+            )
 
         fixer = PDBFixer(filename=self.receptor_cleaned_pdb_file_name)
         fixer.findMissingResidues()
@@ -47,12 +60,12 @@ class ReceptorTopologyPreparation(object):
         with open(self.receptor_fixed_pdb_file_name, "w") as receptor_fixed_pdb_file:
             PDBFile.writeFile(fixer.topology, fixer.positions, receptor_fixed_pdb_file)
 
-        fixed_ag = mda.Universe(self.receptor_fixed_pdb_file_name).atoms
-        for residue in fixed_ag.residues:
-            if residue.resname == "CYS":
-                residue.resname = "CYX"
+        for residue in fixer.topology.residues():
+            if residue.name == "CYS":
+                residue.name = "CYX"
 
-        fixed_ag.write(self.receptor_final_pdb_file_name)
+        with open(self.receptor_final_pdb_file_name, "w") as receptor_final_pdb_file:
+            PDBFile.writeFile(fixer.topology, fixer.positions, receptor_final_pdb_file)
 
         tleap_source_file_name = os.path.join(
             os.path.dirname(__file__), "data", "tleap_receptor_template.in"

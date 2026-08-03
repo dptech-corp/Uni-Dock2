@@ -51,7 +51,6 @@ requirements:
     - pyyaml
     - pydantic
     - rdkit
-    - mdanalysis
     - openmm
     - pdbfixer
     - msys_viparr_lpsolve55
