@@ -2,6 +2,7 @@ import argparse
 import os
 
 import pytest
+import yaml
 
 from unidock2.cli._resolve import (
     resolve_docking_request,
@@ -38,6 +39,7 @@ def test_argparse_uses_none_only_as_the_source_sentinel():
         "search_mode": None,
         "output_docking_pose_sdf_file_name": None,
         "configurations": None,
+        "dump_config": None,
     }
     assert vars(protein_prep_args) == {
         "receptor": None,
@@ -49,9 +51,49 @@ def test_argparse_uses_none_only_as_the_source_sentinel():
 def test_help_uses_business_defaults_from_the_pydantic_schema():
     help_text = " ".join(_parser(DockingCLICommand).format_help().split())
 
-    assert "Docking box center coordinates (default: [0.0, 0.0, 0.0])" in help_text
-    assert "Number of independent search tasks (default: 512)" in help_text
-    assert "Native engine search mode (default: 'balance')" in help_text
+    assert "Docking box center coordinates [x, y, z] in angstroms (default: [0.0, 0.0, 0.0])" in help_text
+    assert "Number of independent Monte Carlo runs (roughly proportional to runtime) (default: 512)" in help_text
+    assert "non-free modes select preset search parameters (default: 'balance')" in help_text
+    assert "--dump_config [FILE]" in help_text
+
+
+def test_dump_config_writes_an_annotated_round_trippable_default(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.chdir(tmp_path)
+    args = _parse(DockingCLICommand, ["--dump_config"])
+
+    output_path = DockingCLICommand.run(args)
+
+    assert output_path == tmp_path / "unidock2_config.yaml"
+    template_text = output_path.read_text(encoding="utf-8")
+    assert yaml.safe_load(template_text) == UnidockConfig().model_dump(by_alias=True)
+    assert "# Explicit command-line values override values in this file." in template_text
+
+    for _, _, field, _ in UnidockConfig().iter_flat_fields():
+        assert field.description
+        assert f"# {field.description}" in template_text
+
+    assert str(output_path) in capsys.readouterr().out
+
+
+def test_dump_config_accepts_a_custom_output_file():
+    args = _parse(DockingCLICommand, ["--dump_config", "custom.yaml"])
+
+    assert args.dump_config == "custom.yaml"
+
+
+def test_dump_config_does_not_overwrite_an_existing_file(tmp_path):
+    output_path = tmp_path / "existing.yaml"
+    output_path.write_text("user configuration\n", encoding="utf-8")
+    args = _parse(DockingCLICommand, ["--dump_config", str(output_path)])
+
+    with pytest.raises(FileExistsError, match="Refusing to overwrite"):
+        DockingCLICommand.run(args)
+
+    assert output_path.read_text(encoding="utf-8") == "user configuration\n"
 
 
 def test_common_cli_values_override_yaml_even_when_equal_to_defaults(

@@ -68,6 +68,16 @@ Use `unidock2 docking --help` to check how to write the YAML file.
 ## Command Line Parameters
 All supported parameters can be configured in YAML. Frequently changed scalar and short-list parameters also have command-line equivalents; explicit command-line inputs override YAML values. Run `unidock2 docking --help` for the generated list and current defaults.
 
+Generate a complete YAML template with the current defaults and field comments:
+
+```sh
+unidock2 docking --dump_config
+# Writes ./unidock2_config.yaml
+
+# Or choose the output file explicitly:
+unidock2 docking --dump_config my_config.yaml
+```
+
 For example, a reusable YAML configuration can be adjusted for one run without editing the file:
 ```sh
 unidock2 docking -cf experiment.yaml \

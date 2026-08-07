@@ -46,6 +46,8 @@ class _ConfigurationSection(BaseModel):
 
 
 class RequiredConfig(_ConfigurationSection):
+    """Input structures and docking center."""
+
     yaml_section_name = "Required"
 
     receptor: str | None = Field(
@@ -64,12 +66,12 @@ class RequiredConfig(_ConfigurationSection):
     )
     ligand_batch: str | None = Field(
         default=None,
-        description="Text file containing ligand SDF file paths",
+        description="Text file containing one ligand SDF file path per line",
         json_schema_extra=cli("-lb", "--ligand_batch", commands=("docking",)),
     )
     center: list[float] = Field(
         default_factory=lambda: [0.0, 0.0, 0.0],
-        description="Docking box center coordinates",
+        description="Docking box center coordinates [x, y, z] in angstroms",
         json_schema_extra=cli(
             "-c",
             "--center",
@@ -88,46 +90,82 @@ class RequiredConfig(_ConfigurationSection):
 
 
 class AdvancedConfig(_ConfigurationSection):
+    """Docking search and pose-output controls."""
+
     yaml_section_name = "Advanced"
 
     exhaustiveness: int = Field(
         default=512,
-        description="Number of independent search tasks",
+        description="Number of independent Monte Carlo runs (roughly proportional to runtime)",
         json_schema_extra=cli("-e", "--exhaustiveness", commands=("docking",)),
     )
-    randomize: bool = True
-    mc_steps: int = 40
-    opt_steps: int = -1
-    refine_steps: int = 5
-    num_pose: int = 10
-    rmsd_limit: float = 1.0
-    energy_range: float = 5.0
+    randomize: bool = Field(
+        default=True,
+        description="Randomize the input pose before global search",
+    )
+    mc_steps: int = Field(
+        default=40,
+        description="Monte Carlo random-walk steps per run",
+    )
+    opt_steps: int = Field(
+        default=-1,
+        description="Optimization steps after each Monte Carlo step (-1 selects automatic)",
+    )
+    refine_steps: int = Field(
+        default=5,
+        description="Local refinement steps after pose clustering",
+    )
+    num_pose: int = Field(
+        default=10,
+        description="Maximum number of output poses per ligand",
+    )
+    rmsd_limit: float = Field(
+        default=1.0,
+        description="RMSD threshold in angstroms for pose clustering",
+    )
+    energy_range: float = Field(
+        default=5.0,
+        description="Energy window in kcal/mol for output poses",
+    )
     seed: int = Field(
         default=1234567,
-        description="Random seed",
+        description="Random seed for reproducibility",
         json_schema_extra=cli("--seed", commands=("docking",)),
     )
-    use_tor_lib: bool = False
-    energy_decomp: bool = False
+    use_tor_lib: bool = Field(
+        default=False,
+        description="Use the torsion-angle library",
+    )
+    energy_decomp: bool = Field(
+        default=False,
+        description="Output per-atom intermolecular energy decomposition",
+    )
 
 
 class HardwareConfig(_ConfigurationSection):
+    """CPU and GPU resource selection."""
+
     yaml_section_name = "Hardware"
 
-    n_cpu: int | None = None
+    n_cpu: int | None = Field(
+        default=None,
+        description="Maximum CPU workers for ligand preprocessing (null uses available CPUs)",
+    )
     gpu_device_id: int = Field(
         default=0,
-        description="GPU device index",
+        description="GPU device index to use",
         json_schema_extra=cli("--gpu_device_id", commands=("docking",)),
     )
 
 
 class SettingsConfig(_ConfigurationSection):
+    """Docking box and native engine mode settings."""
+
     yaml_section_name = "Settings"
 
     box_size: list[float] = Field(
         default_factory=lambda: [30.0, 30.0, 30.0],
-        description="Docking box dimensions",
+        description="Docking box dimensions [x, y, z] in angstroms",
         json_schema_extra=cli(
             "--box_size",
             commands=("docking",),
@@ -135,10 +173,13 @@ class SettingsConfig(_ConfigurationSection):
             metavar=("size_x", "size_y", "size_z"),
         ),
     )
-    task: str = "screen"
+    task: str = Field(
+        default="screen",
+        description="Native engine docking task type",
+    )
     search_mode: str = Field(
         default="balance",
-        description="Native engine search mode",
+        description=("Search mode: fast, balance, detail, or free; non-free modes select preset search parameters"),
         json_schema_extra=cli("--search_mode", commands=("docking",)),
     )
 
@@ -151,18 +192,50 @@ class SettingsConfig(_ConfigurationSection):
 
 
 class PreprocessingConfig(_ConfigurationSection):
+    """Topology preparation, constrained docking, temporary files, and outputs."""
+
     yaml_section_name = "Preprocessing"
 
-    construct_ff: bool = False
-    template_docking: bool = False
-    reference_sdf_file_name: str | None = None
-    compute_center: bool = True
-    core_atom_mapping_dict_list: list[dict[Any, Any] | None] | None = None
-    covalent_ligand: bool = False
-    covalent_residue_atom_info_list: list[Any] | None = None
-    preserve_receptor_hydrogen: bool = False
-    temp_dir_name: str = "/tmp"
-    engine_checkpoint: bool = False
+    construct_ff: bool = Field(
+        default=False,
+        description="Construct force-field atom types and bonded parameters for ligands",
+    )
+    template_docking: bool = Field(
+        default=False,
+        description="Enable template-constrained docking",
+    )
+    reference_sdf_file_name: str | None = Field(
+        default=None,
+        description="Reference ligand SDF file used by template-constrained docking",
+    )
+    compute_center: bool = Field(
+        default=True,
+        description="Recompute the docking center from the reference or first ligand in constrained modes",
+    )
+    core_atom_mapping_dict_list: list[dict[Any, Any] | None] | None = Field(
+        default=None,
+        description="Optional per-ligand core atom mappings for template-constrained docking",
+    )
+    covalent_ligand: bool = Field(
+        default=False,
+        description="Enable covalent docking",
+    )
+    covalent_residue_atom_info_list: list[Any] | None = Field(
+        default=None,
+        description="Three receptor atom descriptors defining the covalent anchor and bond",
+    )
+    preserve_receptor_hydrogen: bool = Field(
+        default=False,
+        description="Preserve receptor hydrogens during topology preparation",
+    )
+    temp_dir_name: str = Field(
+        default="/tmp",
+        description="Parent directory for temporary working directories",
+    )
+    engine_checkpoint: bool = Field(
+        default=False,
+        description="Write prepared engine inputs to ud2_engine_inputs.json",
+    )
     output_receptor_dms_file_name: str = Field(
         default="receptor_parameterized.dms",
         description="Output receptor DMS file name",
