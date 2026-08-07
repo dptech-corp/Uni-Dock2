@@ -1,129 +1,239 @@
-from typing import List, Optional, Tuple, Dict, Any
-import os
 import json
+import os
+from typing import Any, Dict, List, Optional, Tuple
 
-from rdkit import Chem
+from unidock2.config import UnidockConfig
 
-from unidock2._engine import pipeline
-from unidock2.unidocktools.unidock_receptor_topology_builder import (
-    UnidockReceptorTopologyBuilder,
-)
-from unidock2.unidocktools.unidock_ligand_topology_builder import (
-    UnidockLigandTopologyBuilder,
-)
-from unidock2.unidocktools.unidock_ligand_pose_writer import (
-    UnidockLigandPoseWriter,
-)
-from unidock2.ligand_topology import utils
 
-class UnidockProtocolRunner(object):
+class _UnsetType:
+    def __repr__(self):
+        return "UNSET"
+
+
+UNSET = _UnsetType()
+
+
+def _build_pipeline_kwargs(
+    config: UnidockConfig,
+    target_center,
+    output_dir,
+):
+    """Translate the typed Python config to the native pipeline boundary."""
+    settings = config.settings.model_dump()
+    box_size = settings.pop("box_size")
+
+    return {
+        "output_dir": output_dir,
+        "center_x": target_center[0],
+        "center_y": target_center[1],
+        "center_z": target_center[2],
+        "size_x": box_size[0],
+        "size_y": box_size[1],
+        "size_z": box_size[2],
+        **settings,
+        **config.advanced.model_dump(),
+        "constraint_docking": (config.preprocessing.template_docking or config.preprocessing.covalent_ligand),
+        "gpu_device_id": config.hardware.gpu_device_id,
+    }
+
+
+class UnidockProtocolRunner:
+    """Run docking from typed configuration or the compatible legacy API."""
+
     def __init__(
         self,
         receptor_file_name: str,
         ligand_sdf_file_name_list: List[str],
         target_center: Tuple[float, float, float],
-        box_size: Tuple[float, float, float] = (30.0, 30.0, 30.0),
+        box_size: Tuple[float, float, float] = UNSET,
         ligand_json_file_name: str = None,
-        template_docking: bool = False,
-        reference_sdf_file_name: Optional[str] = None,
-        compute_center: bool = True,
-        core_atom_mapping_dict_list: Optional[List[Optional[Dict[int, int]]]] = None,
-        covalent_ligand: bool = False,
-        covalent_residue_atom_info_list: Optional[List[Dict[str, Any]]] = None,
-        construct_ff: bool = False,
+        template_docking: bool = UNSET,
+        reference_sdf_file_name: Optional[str] = UNSET,
+        compute_center: bool = UNSET,
+        core_atom_mapping_dict_list: Optional[List[Optional[Dict[int, int]]]] = UNSET,
+        covalent_ligand: bool = UNSET,
+        covalent_residue_atom_info_list: Optional[List[Dict[str, Any]]] = UNSET,
+        construct_ff: bool = UNSET,
         atom_mapper_align: bool = False,
-        preserve_receptor_hydrogen: bool = False,
-        working_dir_name: str = '.',
-        docking_pose_sdf_file_name: str = 'unidock2_pose.sdf',
-        n_cpu: Optional[int] = None,
-        gpu_device_id: int = 0,
-        task: str = 'screen',
-        search_mode: str = 'balance',
-        exhaustiveness: int = 512,
-        randomize: bool = True,
-        mc_steps: int = 40,
-        opt_steps: int = -1,
-        refine_steps: int = 5,
-        num_pose: int = 10,
-        rmsd_limit: float = 1.0,
-        energy_range: float = 5.0,
-        seed: int = 1234567,
-        use_tor_lib: bool = False,
-        energy_decomp: bool = False,
-        engine_checkpoint: bool = False,
+        preserve_receptor_hydrogen: bool = UNSET,
+        working_dir_name: str = ".",
+        docking_pose_sdf_file_name: str = UNSET,
+        n_cpu: Optional[int] = UNSET,
+        gpu_device_id: int = UNSET,
+        task: str = UNSET,
+        search_mode: str = UNSET,
+        exhaustiveness: int = UNSET,
+        randomize: bool = UNSET,
+        mc_steps: int = UNSET,
+        opt_steps: int = UNSET,
+        refine_steps: int = UNSET,
+        num_pose: int = UNSET,
+        rmsd_limit: float = UNSET,
+        energy_range: float = UNSET,
+        seed: int = UNSET,
+        use_tor_lib: bool = UNSET,
+        energy_decomp: bool = UNSET,
+        engine_checkpoint: bool = UNSET,
+        **config_overrides: Any,
     ) -> None:
+        """Adapt the historical constructor to the typed configuration path.
+
+        Existing parameter names and positional order are retained. ``UNSET``
+        distinguishes omitted values from explicit values, allowing all business
+        defaults to come from ``UnidockConfig``.
+        """
+        config = UnidockConfig()
+        local_values = locals()
+        overrides = dict(config_overrides)
+
+        for field_name in config.protocol_field_names():
+            value = local_values.get(field_name, UNSET)
+            if value is not UNSET:
+                overrides[field_name] = value
+
+        overrides["center"] = list(target_center)
+        if docking_pose_sdf_file_name is not UNSET:
+            overrides["output_docking_pose_sdf_file_name"] = docking_pose_sdf_file_name
+        config = config.with_overrides(**overrides)
+
+        self._initialize(
+            receptor_file_name=receptor_file_name,
+            ligand_sdf_file_name_list=ligand_sdf_file_name_list,
+            target_center=tuple(config.required.center),
+            working_dir_name=working_dir_name,
+            ligand_json_file_name=ligand_json_file_name,
+            atom_mapper_align=atom_mapper_align,
+            config=config,
+        )
+
+    @classmethod
+    def from_config(
+        cls,
+        receptor_file_name: str,
+        ligand_sdf_file_name_list,
+        target_center,
+        config: Optional[UnidockConfig] = None,
+        working_dir_name: str = ".",
+        docking_pose_sdf_file_name: Optional[str] = None,
+        ligand_json_file_name: Optional[str] = None,
+        atom_mapper_align: bool = False,
+    ):
+        """Create a runner directly from the canonical typed configuration."""
+        if config is None:
+            config = UnidockConfig()
+        elif not isinstance(config, UnidockConfig):
+            config = UnidockConfig.model_validate(config)
+
+        overrides = {"center": list(target_center)}
+        if docking_pose_sdf_file_name is not None:
+            overrides["output_docking_pose_sdf_file_name"] = docking_pose_sdf_file_name
+        config = config.with_overrides(**overrides)
+
+        runner = cls.__new__(cls)
+        runner._initialize(
+            receptor_file_name=receptor_file_name,
+            ligand_sdf_file_name_list=ligand_sdf_file_name_list,
+            target_center=tuple(config.required.center),
+            working_dir_name=working_dir_name,
+            ligand_json_file_name=ligand_json_file_name,
+            atom_mapper_align=atom_mapper_align,
+            config=config,
+        )
+        return runner
+
+    def _initialize(
+        self,
+        receptor_file_name,
+        ligand_sdf_file_name_list,
+        target_center,
+        working_dir_name,
+        ligand_json_file_name,
+        atom_mapper_align,
+        config,
+    ):
+        self.config = config
+        for field_name, value in config.to_protocol_kwargs().items():
+            setattr(self, field_name, value)
 
         self.receptor_file_name = os.path.abspath(receptor_file_name)
-        self.ligand_sdf_file_name_list = [os.path.abspath(f) for f in ligand_sdf_file_name_list]
-
-        if ligand_json_file_name is not None:
-            self.ligand_json_file_name = os.path.abspath(ligand_json_file_name)
-        else:
-            self.ligand_json_file_name = None
-
+        self.ligand_sdf_file_name_list = [os.path.abspath(file_name) for file_name in ligand_sdf_file_name_list]
+        self.ligand_json_file_name = (
+            os.path.abspath(ligand_json_file_name) if ligand_json_file_name is not None else None
+        )
         self.target_center = target_center
-        self.template_docking = template_docking
-        self.reference_sdf_file_name = os.path.abspath(reference_sdf_file_name) if reference_sdf_file_name else None
-        self.compute_center = compute_center
-        self.covalent_ligand = covalent_ligand
-        self.covalent_residue_atom_info_list = covalent_residue_atom_info_list
-        self.construct_ff = construct_ff
         self.atom_mapper_align = atom_mapper_align
-        self.preserve_receptor_hydrogen = preserve_receptor_hydrogen
-        self.box_size = box_size
-        self.n_cpu = n_cpu
-        self.gpu_device_id = gpu_device_id
-        self.task = task
-        self.search_mode = search_mode
-        self.exhaustiveness = exhaustiveness
-        self.randomize = randomize
-        self.mc_steps = mc_steps
-        self.opt_steps = opt_steps
-        self.refine_steps = refine_steps
-        self.num_pose = num_pose
-        self.rmsd_limit = rmsd_limit
-        self.energy_range = energy_range
-        self.seed = seed
-        self.use_tor_lib = use_tor_lib
-        self.energy_decomp = energy_decomp
-        self.engine_checkpoint = engine_checkpoint
+        self.reference_sdf_file_name = (
+            os.path.abspath(self.reference_sdf_file_name) if self.reference_sdf_file_name else None
+        )
         self.working_dir_name = os.path.abspath(working_dir_name)
-        self.unidock2_output_dir_name = os.path.join(self.working_dir_name, 'unidock2_output')
-        self.docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
+        self.unidock2_output_dir_name = os.path.join(
+            self.working_dir_name,
+            "unidock2_output",
+        )
+        self.docking_pose_sdf_file_name = os.path.abspath(self.output_docking_pose_sdf_file_name)
         os.makedirs(self.unidock2_output_dir_name, exist_ok=True)
 
-        self.core_atom_mapping_dict_list = [
-            {int(k): int(v) for k, v in d.items()} if d else None
-            for d in core_atom_mapping_dict_list
-        ] if core_atom_mapping_dict_list else None
+        self.core_atom_mapping_dict_list = (
+            [
+                {int(key): int(value) for key, value in mapping.items()} if mapping else None
+                for mapping in self.core_atom_mapping_dict_list
+            ]
+            if self.core_atom_mapping_dict_list
+            else None
+        )
 
         if self.template_docking and self.reference_sdf_file_name and self.compute_center:
-            reference_mol = Chem.SDMolSupplier(self.reference_sdf_file_name, removeHs=True)[0]
-            self.target_center = tuple(utils.calculate_center_of_mass(reference_mol))
+            self.target_center = self._center_from_sdf(self.reference_sdf_file_name)
 
         if self.covalent_ligand and self.compute_center:
-            ligand_mol = Chem.SDMolSupplier(self.ligand_sdf_file_name_list[0], removeHs=True)[0]
-            self.target_center = tuple(utils.calculate_center_of_mass(ligand_mol))
+            self.target_center = self._center_from_sdf(self.ligand_sdf_file_name_list[0])
 
-        print(f'Target Center for Current Docking: {self.target_center}')
+        print(f"Target Center for Current Docking: {self.target_center}")
 
         if self.ligand_json_file_name:
-            with open(self.ligand_json_file_name) as ligand_json_file:
+            with open(self.ligand_json_file_name, encoding="utf-8") as ligand_json_file:
                 self.specified_ligand_info_dict = json.load(ligand_json_file)
         else:
             self.specified_ligand_info_dict = None
 
-        if self.receptor_file_name.split('.')[-1] == 'json':
-            with open(self.receptor_file_name) as receptor_file:
+        if self.receptor_file_name.split(".")[-1] == "json":
+            with open(self.receptor_file_name, encoding="utf-8") as receptor_file:
                 self.specified_receptor_info_dict = json.load(receptor_file)
         else:
             self.specified_receptor_info_dict = None
 
+    @staticmethod
+    def _center_from_sdf(sdf_file_name):
+        from rdkit import Chem
+
+        from unidock2.ligand_topology import utils
+
+        molecule = Chem.SDMolSupplier(sdf_file_name, removeHs=True)[0]
+        return tuple(utils.calculate_center_of_mass(molecule))
+
+    def _current_config(self):
+        overrides = {
+            field_name: getattr(self, field_name)
+            for field_name in self.config.protocol_field_names()
+            if hasattr(self, field_name)
+        }
+        return self.config.with_overrides(**overrides)
+
     def run_unidock_protocol(self) -> str:
-        # Prepare receptor
+        from unidock2._engine import pipeline
+        from unidock2.unidocktools.unidock_ligand_pose_writer import (
+            UnidockLigandPoseWriter,
+        )
+        from unidock2.unidocktools.unidock_ligand_topology_builder import (
+            UnidockLigandTopologyBuilder,
+        )
+        from unidock2.unidocktools.unidock_receptor_topology_builder import (
+            UnidockReceptorTopologyBuilder,
+        )
+
         if self.specified_receptor_info_dict:
-            print('Using specified receptor info dict...')
-            receptor_atom_info_list = self.specified_receptor_info_dict['receptor']
+            print("Using specified receptor info dict...")
+            receptor_atom_info_list = self.specified_receptor_info_dict["receptor"]
         else:
             receptor_builder = UnidockReceptorTopologyBuilder(
                 self.receptor_file_name,
@@ -136,9 +246,8 @@ class UnidockProtocolRunner(object):
             receptor_builder.get_summary_receptor_info()
             receptor_atom_info_list = receptor_builder.atom_info_nested_list
 
-        # Prepare ligands
         if self.specified_ligand_info_dict:
-            print('Using specified ligand info dict...')
+            print("Using specified ligand info dict...")
             ligand_info_dict = self.specified_ligand_info_dict
             ligand_builder = UnidockLigandTopologyBuilder(
                 self.ligand_sdf_file_name_list,
@@ -168,47 +277,33 @@ class UnidockProtocolRunner(object):
             ligand_info_dict = ligand_builder.summary_ligand_info_dict
 
         if self.engine_checkpoint:
-            with open(os.path.join(self.working_dir_name, 'ud2_engine_inputs.json'), 'w') as f:
-                json.dump({
-                    'receptor': receptor_atom_info_list,
-                    **ligand_info_dict
-                }, f)
+            with open(
+                os.path.join(self.working_dir_name, "ud2_engine_inputs.json"),
+                "w",
+                encoding="utf-8",
+            ) as file:
+                json.dump(
+                    {
+                        "receptor": receptor_atom_info_list,
+                        **ligand_info_dict,
+                    },
+                    file,
+                )
 
-        # Instantiate and configure the docking pipeline
-        docking_pipeline = pipeline.DockingPipeline(
-            output_dir=self.unidock2_output_dir_name,
-            center_x=self.target_center[0],
-            center_y=self.target_center[1],
-            center_z=self.target_center[2],
-            size_x=self.box_size[0],
-            size_y=self.box_size[1],
-            size_z=self.box_size[2],
-            task=self.task,
-            search_mode=self.search_mode,
-            exhaustiveness=self.exhaustiveness,
-            randomize=self.randomize,
-            mc_steps=self.mc_steps,
-            opt_steps=self.opt_steps,
-            refine_steps=self.refine_steps,
-            num_pose=self.num_pose,
-            rmsd_limit=self.rmsd_limit,
-            energy_range=self.energy_range,
-            seed=self.seed,
-            use_tor_lib=self.use_tor_lib,
-            energy_decomp=self.energy_decomp,
-            constraint_docking=self.template_docking or self.covalent_ligand,
-            gpu_device_id=self.gpu_device_id
+        pipeline_kwargs = _build_pipeline_kwargs(
+            self._current_config(),
+            self.target_center,
+            self.unidock2_output_dir_name,
         )
-
+        docking_pipeline = pipeline.DockingPipeline(**pipeline_kwargs)
         docking_pipeline.set_receptor(receptor_atom_info_list)
         docking_pipeline.add_ligands(ligand_info_dict)
-
         docking_pipeline.run()
 
-        # Process and write output poses
         pose_json_files = [
-            os.path.join(self.unidock2_output_dir_name, f)
-            for f in os.listdir(self.unidock2_output_dir_name) if f.endswith('.json')
+            os.path.join(self.unidock2_output_dir_name, file_name)
+            for file_name in os.listdir(self.unidock2_output_dir_name)
+            if file_name.endswith(".json")
         ]
         pose_writer = UnidockLigandPoseWriter(
             ligand_builder.ligand_mol_list,

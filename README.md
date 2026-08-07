@@ -66,18 +66,15 @@ Use `unidock2 docking --help` to check how to write the YAML file.
 
 
 ## Command Line Parameters
-Core parameters in the YAML file have command line equivalents. Command line inputs will override YAML values:
+All supported parameters can be configured in YAML. Frequently changed scalar and short-list parameters also have command-line equivalents; explicit command-line inputs override YAML values. Run `unidock2 docking --help` for the generated list and current defaults.
+
+For example, a reusable YAML configuration can be adjusted for one run without editing the file:
 ```sh
-  -r RECEPTOR, --receptor RECEPTOR
-                        Receptor structure file in PDB or DMS format
-  -l LIGAND, --ligand LIGAND
-                        Single ligand structure file in SDF format
-  -lb LIGAND_BATCH, --ligand_batch LIGAND_BATCH
-                        Recorded batch text file of ligand SDF file path
-  -c center_x center_y center_z, --center center_x center_y center_z
-                        Docking box center coordinates
-  -o OUTPUT_DOCKING_POSE_SDF_FILE_NAME, --output_docking_pose_sdf_file_name OUTPUT_DOCKING_POSE_SDF_FILE_NAME
-                        Output docking pose SDF file name
+unidock2 docking -cf experiment.yaml \
+  --seed 42 \
+  --gpu_device_id 1 \
+  --search_mode free \
+  --exhaustiveness 1024
 ```
 
 ---
