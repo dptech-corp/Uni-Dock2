@@ -2,6 +2,7 @@ import os
 from shutil import which
 import msys
 
+from unidock2.utils.external_command import run_external_command
 from unidock2.utils.molecule_processing import get_mol_without_indices
 from unidock2.unidocktools.protein_topology import (
     prepare_receptor_residue_mol_list,
@@ -36,26 +37,38 @@ class UnidockReceptorTopologyBuilder(object):
         )
 
     def run_protein_preparation(self):
-        if which("fepfixer") is not None and which("utop") is not None:
+        fepfixer_executable = which("fepfixer")
+        utop_executable = which("utop")
+        if fepfixer_executable is not None and utop_executable is not None:
+            fepfixer_command = [
+                fepfixer_executable,
+                "-i",
+                os.path.abspath(self.receptor_file_name),
+                "-o",
+                os.path.basename(self.receptor_structure_dms_file_name),
+            ]
             if self.prepared_hydrogen:
-                fep_fixer_command = (
-                    f"fepfixer -i {self.receptor_file_name} "
-                    f"-o {self.receptor_structure_dms_file_name} "
-                    "--custom-protonation-states"
-                )
-            else:
-                fep_fixer_command = (
-                    f"fepfixer -i {self.receptor_file_name} "
-                    f"-o {self.receptor_structure_dms_file_name}"
-                )
+                fepfixer_command.append("--custom-protonation-states")
 
-            unitop_command = (
-                f"utop prm -i {self.receptor_structure_dms_file_name} "
-                f"-o {self.receptor_parameterized_dms_file_name}"
+            run_external_command(
+                fepfixer_command,
+                cwd=self.working_dir_name,
+                log_file_name="fepfixer.log",
+                expected_output_file_names=[self.receptor_structure_dms_file_name],
             )
-
-            os.system(fep_fixer_command)
-            os.system(unitop_command)
+            run_external_command(
+                [
+                    utop_executable,
+                    "prm",
+                    "-i",
+                    os.path.basename(self.receptor_structure_dms_file_name),
+                    "-o",
+                    os.path.basename(self.receptor_parameterized_dms_file_name),
+                ],
+                cwd=self.working_dir_name,
+                log_file_name="utop.log",
+                expected_output_file_names=[self.receptor_parameterized_dms_file_name],
+            )
         else:
             receptor_topology_preparation = ReceptorTopologyPreparation(
                 self.receptor_file_name, self.working_dir_name

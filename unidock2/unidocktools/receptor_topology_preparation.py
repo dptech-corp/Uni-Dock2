@@ -5,6 +5,8 @@ import msys
 from pdbfixer import PDBFixer
 from openmm.app import Modeller, PDBFile
 
+from unidock2.utils.external_command import run_external_command
+
 
 class ReceptorTopologyPreparation(object):
     def __init__(self, receptor_pdb_file_name, working_dir_name="."):
@@ -27,6 +29,24 @@ class ReceptorTopologyPreparation(object):
         )
         self.receptor_dms_file_name = os.path.join(
             self.working_dir_name, "receptor_parameterized.dms"
+        )
+
+    def _run_tleap(self):
+        tleap_source_file_name = os.path.join(
+            os.path.dirname(__file__), "data", "tleap_receptor_template.in"
+        )
+        tleap_destination_file_name = os.path.join(self.working_dir_name, "tleap.in")
+        copyfile(tleap_source_file_name, tleap_destination_file_name)
+
+        run_external_command(
+            ["tleap", "-f", "tleap.in"],
+            cwd=self.working_dir_name,
+            log_file_name="tleap.log",
+            append_log=True,
+            expected_output_file_names=[
+                self.receptor_prmtop_file_name,
+                self.receptor_inpcrd_file_name,
+            ],
         )
 
     def run_preparation(self):
@@ -67,17 +87,7 @@ class ReceptorTopologyPreparation(object):
         with open(self.receptor_final_pdb_file_name, "w") as receptor_final_pdb_file:
             PDBFile.writeFile(fixer.topology, fixer.positions, receptor_final_pdb_file)
 
-        tleap_source_file_name = os.path.join(
-            os.path.dirname(__file__), "data", "tleap_receptor_template.in"
-        )
-        tleap_destination_file_name = os.path.join(self.working_dir_name, "tleap.in")
-        copyfile(tleap_source_file_name, tleap_destination_file_name)
-
-        tleap_command = (
-            f"cd {self.working_dir_name}; "
-            "tleap -f tleap.in >> tleap.log; cd - >> tleap.log"
-        )
-        os.system(tleap_command)
+        self._run_tleap()
 
         receptor_system = msys.LoadPrmTop(self.receptor_prmtop_file_name)
         msys.ReadCrdCoordinates(receptor_system, self.receptor_inpcrd_file_name)

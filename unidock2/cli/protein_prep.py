@@ -1,4 +1,5 @@
 import os
+from shutil import copyfile
 
 from unidock2.cli._arguments import add_config_arguments
 from unidock2.cli._resolve import resolve_protein_prep_request
@@ -40,4 +41,7 @@ class CLICommand:
                 working_dir_name=temp_dir_name,
             )
             receptor_builder.generate_receptor_topology()
-            os.system(f"cp {receptor_builder.receptor_parameterized_dms_file_name} {request.receptor_dms_file_name}")
+            copyfile(
+                receptor_builder.receptor_parameterized_dms_file_name,
+                request.receptor_dms_file_name,
+            )
