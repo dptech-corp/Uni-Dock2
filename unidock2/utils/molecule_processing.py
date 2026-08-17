@@ -1,215 +1,133 @@
 from rdkit import Chem
 
 
-def get_mol_without_indices(
-    mol_input, remove_indices=[], keep_properties=[], keep_mol_properties=[]
+def _atom_copy_data(atom, atom_property_names):
+    source_properties = atom.GetPropsAsDict()
+    copied_properties = {
+        property_name: source_properties[property_name]
+        for property_name in atom_property_names
+        if property_name in source_properties
+    }
+
+    atom_symbol = atom.GetSymbol()
+    if atom_symbol.startswith("*"):
+        normalized_symbol = "*"
+        copied_properties["molAtomMapNumber"] = atom.GetAtomMapNum()
+    elif atom_symbol.startswith("R"):
+        normalized_symbol = "*"
+        atom_map_number = int(atom_symbol[1:]) if len(atom_symbol) > 1 else atom.GetAtomMapNum()
+        copied_properties["molAtomMapNumber"] = atom_map_number
+        copied_properties["dummyLabel"] = f"R{atom_map_number}"
+        copied_properties["_MolFileRLabel"] = str(atom_map_number)
+    else:
+        normalized_symbol = atom_symbol
+
+    return (
+        normalized_symbol,
+        atom.GetChiralTag(),
+        atom.GetFormalCharge(),
+        atom.GetNumExplicitHs(),
+        copied_properties,
+    )
+
+
+def _set_atom_properties(atom, properties):
+    for property_name, property_value in properties.items():
+        if isinstance(property_value, str):
+            atom.SetProp(property_name, property_value)
+        elif isinstance(property_value, int):
+            atom.SetIntProp(property_name, property_value)
+        elif isinstance(property_value, float):
+            atom.SetDoubleProp(property_name, property_value)
+
+
+def _copy_submolecule(
+    mol_input,
+    kept_indices,
+    *,
+    atom_property_names=(),
+    molecule_property_names=(),
 ):
-    mol_property_dict = {}
-    for mol_property_name in keep_mol_properties:
-        mol_property_dict[mol_property_name] = mol_input.GetProp(mol_property_name)
+    """Copy selected atoms in source order using the legacy topology rules.
 
-    atom_list, bond_list, idx_map = [], [], {}  # idx_map: {old: new}
+    Conformers and bond properties are intentionally not copied. Callers that
+    need coordinates currently rebuild them from atom properties or construct a
+    new conformer explicitly.
+    """
 
-    for atom in mol_input.GetAtoms():
-        props = {}
-        for property_name in keep_properties:
-            if property_name in atom.GetPropsAsDict():
-                props[property_name] = atom.GetPropsAsDict()[property_name]
+    kept_index_set = set(kept_indices)
+    molecule_properties = {property_name: mol_input.GetProp(property_name) for property_name in molecule_property_names}
+    atom_data_list = [_atom_copy_data(atom, atom_property_names) for atom in mol_input.GetAtoms()]
 
-        symbol = atom.GetSymbol()
+    editable_molecule = Chem.RWMol(Chem.Mol())
+    old_to_new_index = {}
+    for old_atom_index, atom_data in enumerate(atom_data_list):
+        if old_atom_index not in kept_index_set:
+            continue
 
-        if symbol.startswith("*"):
-            atom_symbol = "*"
-            props["molAtomMapNumber"] = atom.GetAtomMapNum()
+        copied_atom = Chem.Atom(atom_data[0])
+        copied_atom.SetChiralTag(atom_data[1])
+        copied_atom.SetFormalCharge(atom_data[2])
+        copied_atom.SetNumExplicitHs(atom_data[3])
+        _set_atom_properties(copied_atom, atom_data[4])
+        old_to_new_index[old_atom_index] = editable_molecule.AddAtom(copied_atom)
 
-        elif symbol.startswith("R"):
-            atom_symbol = "*"
-            if len(symbol) > 1:
-                atom_map_num = int(symbol[1:])
-            else:
-                atom_map_num = atom.GetAtomMapNum()
-            props["molAtomMapNumber"] = atom_map_num
-            props["dummyLabel"] = "R" + str(atom_map_num)
-            props["_MolFileRLabel"] = str(atom_map_num)
+    for source_bond in mol_input.GetBonds():
+        begin_atom_index = source_bond.GetBeginAtomIdx()
+        end_atom_index = source_bond.GetEndAtomIdx()
+        begin_is_kept = begin_atom_index in kept_index_set
+        end_is_kept = end_atom_index in kept_index_set
 
-        else:
-            atom_symbol = symbol
-
-        atom_list.append(
-            (
-                atom_symbol,
-                atom.GetChiralTag(),
-                atom.GetFormalCharge(),
-                atom.GetNumExplicitHs(),
-                props,
+        if begin_is_kept and end_is_kept:
+            editable_molecule.AddBond(
+                old_to_new_index[begin_atom_index],
+                old_to_new_index[end_atom_index],
+                source_bond.GetBondType(),
             )
-        )
+        elif begin_is_kept != end_is_kept:
+            kept_atom_index = begin_atom_index if begin_is_kept else end_atom_index
+            if atom_data_list[kept_atom_index][0] in ("N", "P"):
+                kept_atom = editable_molecule.GetAtomWithIdx(old_to_new_index[kept_atom_index])
+                kept_atom.SetNumExplicitHs(kept_atom.GetNumExplicitHs() + 1)
 
-    for bond in mol_input.GetBonds():
-        bond_list.append(
-            (bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), bond.GetBondType())
-        )
+    copied_molecule = Chem.Mol(editable_molecule)
+    for property_name, property_value in molecule_properties.items():
+        copied_molecule.SetProp(property_name, property_value)
 
-    mol = Chem.RWMol(Chem.Mol())
+    Chem.GetSymmSSSR(copied_molecule)
+    copied_molecule.UpdatePropertyCache(strict=False)
+    return copied_molecule
 
-    new_idx = 0
-    for atom_index, atom_info in enumerate(atom_list):
-        if atom_index not in remove_indices:
-            atom = Chem.Atom(atom_info[0])
-            atom.SetChiralTag(atom_info[1])
-            atom.SetFormalCharge(atom_info[2])
-            atom.SetNumExplicitHs(atom_info[3])
 
-            for property_name in atom_info[4]:
-                if isinstance(atom_info[4][property_name], str):
-                    atom.SetProp(property_name, atom_info[4][property_name])
-                elif isinstance(atom_info[4][property_name], int):
-                    atom.SetIntProp(property_name, atom_info[4][property_name])
-                elif isinstance(atom_info[4][property_name], float):
-                    atom.SetDoubleProp(property_name, atom_info[4][property_name])
+def get_mol_without_indices(
+    mol_input,
+    remove_indices=(),
+    keep_properties=(),
+    keep_mol_properties=(),
+):
+    """Copy a molecule while excluding the requested source atom indices."""
 
-            mol.AddAtom(atom)
-            idx_map[atom_index] = new_idx
-            new_idx += 1
-
-    for bond_info in bond_list:
-        if bond_info[0] not in remove_indices and bond_info[1] not in remove_indices:
-            mol.AddBond(idx_map[bond_info[0]], idx_map[bond_info[1]], bond_info[2])
-
-        else:
-            one_in = False
-            if (bond_info[0] in remove_indices) and (
-                bond_info[1] not in remove_indices
-            ):
-                keep_index = bond_info[1]
-                one_in = True
-            elif (bond_info[1] in remove_indices) and (
-                bond_info[0] not in remove_indices
-            ):
-                keep_index = bond_info[0]
-                one_in = True
-            if one_in:
-                if atom_list[keep_index][0] in ["N", "P"]:
-                    old_num_explicit_Hs = mol.GetAtomWithIdx(
-                        idx_map[keep_index]
-                    ).GetNumExplicitHs()
-
-                    mol.GetAtomWithIdx(idx_map[keep_index]).SetNumExplicitHs(
-                        old_num_explicit_Hs + 1
-                    )
-
-    mol = Chem.Mol(mol)
-
-    for mol_property_name in mol_property_dict:
-        mol.SetProp(mol_property_name, mol_property_dict[mol_property_name])
-
-    Chem.GetSymmSSSR(mol)
-    mol.UpdatePropertyCache(strict=False)
-    return mol
+    removed_index_set = set(remove_indices)
+    kept_indices = (atom_index for atom_index in range(mol_input.GetNumAtoms()) if atom_index not in removed_index_set)
+    return _copy_submolecule(
+        mol_input,
+        kept_indices,
+        atom_property_names=keep_properties,
+        molecule_property_names=keep_mol_properties,
+    )
 
 
 def get_mol_with_indices(
-    mol_input, selected_indices=[], keep_properties=[], keep_mol_properties=[]
+    mol_input,
+    selected_indices=(),
+    keep_properties=(),
+    keep_mol_properties=(),
 ):
-    mol_property_dict = {}
-    for mol_property_name in keep_mol_properties:
-        mol_property_dict[mol_property_name] = mol_input.GetProp(mol_property_name)
+    """Copy only the requested source atom indices from a molecule."""
 
-    atom_list, bond_list, idx_map = [], [], {}  # idx_map: {old: new}
-
-    for atom in mol_input.GetAtoms():
-        props = {}
-        for property_name in keep_properties:
-            if property_name in atom.GetPropsAsDict():
-                props[property_name] = atom.GetPropsAsDict()[property_name]
-
-        symbol = atom.GetSymbol()
-
-        if symbol.startswith("*"):
-            atom_symbol = "*"
-            props["molAtomMapNumber"] = atom.GetAtomMapNum()
-
-        elif symbol.startswith("R"):
-            atom_symbol = "*"
-            if len(symbol) > 1:
-                atom_map_num = int(symbol[1:])
-            else:
-                atom_map_num = atom.GetAtomMapNum()
-            props["molAtomMapNumber"] = atom_map_num
-            props["dummyLabel"] = "R" + str(atom_map_num)
-            props["_MolFileRLabel"] = str(atom_map_num)
-
-        else:
-            atom_symbol = symbol
-
-        atom_list.append(
-            (
-                atom_symbol,
-                atom.GetChiralTag(),
-                atom.GetFormalCharge(),
-                atom.GetNumExplicitHs(),
-                props,
-            )
-        )
-
-    for bond in mol_input.GetBonds():
-        bond_list.append(
-            (bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), bond.GetBondType())
-        )
-
-    mol = Chem.RWMol(Chem.Mol())
-
-    new_idx = 0
-    for atom_index, atom_info in enumerate(atom_list):
-        if atom_index in selected_indices:
-            atom = Chem.Atom(atom_info[0])
-            atom.SetChiralTag(atom_info[1])
-            atom.SetFormalCharge(atom_info[2])
-            atom.SetNumExplicitHs(atom_info[3])
-
-            for property_name in atom_info[4]:
-                if isinstance(atom_info[4][property_name], str):
-                    atom.SetProp(property_name, atom_info[4][property_name])
-                elif isinstance(atom_info[4][property_name], int):
-                    atom.SetIntProp(property_name, atom_info[4][property_name])
-                elif isinstance(atom_info[4][property_name], float):
-                    atom.SetDoubleProp(property_name, atom_info[4][property_name])
-
-            mol.AddAtom(atom)
-            idx_map[atom_index] = new_idx
-            new_idx += 1
-
-    for bond_info in bond_list:
-        if bond_info[0] in selected_indices and bond_info[1] in selected_indices:
-            mol.AddBond(idx_map[bond_info[0]], idx_map[bond_info[1]], bond_info[2])
-
-        else:
-            one_in = False
-            if (bond_info[0] not in selected_indices) and (
-                bond_info[1] in selected_indices
-            ):
-                keep_index = bond_info[1]
-                one_in = True
-            elif (bond_info[1] not in selected_indices) and (
-                bond_info[0] in selected_indices
-            ):
-                keep_index = bond_info[0]
-                one_in = True
-            if one_in:
-                if atom_list[keep_index][0] in ["N", "P"]:
-                    old_num_explicit_Hs = mol.GetAtomWithIdx(
-                        idx_map[keep_index]
-                    ).GetNumExplicitHs()
-
-                    mol.GetAtomWithIdx(idx_map[keep_index]).SetNumExplicitHs(
-                        old_num_explicit_Hs + 1
-                    )
-
-    mol = Chem.Mol(mol)
-
-    for mol_property_name in mol_property_dict:
-        mol.SetProp(mol_property_name, mol_property_dict[mol_property_name])
-
-    Chem.GetSymmSSSR(mol)
-    mol.UpdatePropertyCache(strict=False)
-    return mol
+    return _copy_submolecule(
+        mol_input,
+        selected_indices,
+        atom_property_names=keep_properties,
+        molecule_property_names=keep_mol_properties,
+    )
