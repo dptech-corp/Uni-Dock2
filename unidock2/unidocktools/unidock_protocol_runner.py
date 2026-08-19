@@ -246,32 +246,24 @@ class UnidockProtocolRunner:
             receptor_builder.get_summary_receptor_info()
             receptor_atom_info_list = receptor_builder.atom_info_nested_list
 
-        if self.specified_ligand_info_dict:
+        use_specified_ligand_info = bool(self.specified_ligand_info_dict)
+        if use_specified_ligand_info:
             print("Using specified ligand info dict...")
+
+        ligand_builder = UnidockLigandTopologyBuilder(
+            self.ligand_sdf_file_name_list,
+            covalent_ligand=self.covalent_ligand,
+            template_docking=self.template_docking,
+            reference_sdf_file_name=self.reference_sdf_file_name,
+            core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
+            n_cpu=self.n_cpu,
+            working_dir_name=self.working_dir_name,
+            construct_ff=self.construct_ff,
+            atom_mapper_align=self.atom_mapper_align,
+        )
+        if use_specified_ligand_info:
             ligand_info_dict = self.specified_ligand_info_dict
-            ligand_builder = UnidockLigandTopologyBuilder(
-                self.ligand_sdf_file_name_list,
-                covalent_ligand=self.covalent_ligand,
-                template_docking=self.template_docking,
-                reference_sdf_file_name=self.reference_sdf_file_name,
-                core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
-                n_cpu=self.n_cpu,
-                working_dir_name=self.working_dir_name,
-                construct_ff=self.construct_ff,
-                atom_mapper_align=self.atom_mapper_align,
-            )
         else:
-            ligand_builder = UnidockLigandTopologyBuilder(
-                self.ligand_sdf_file_name_list,
-                covalent_ligand=self.covalent_ligand,
-                template_docking=self.template_docking,
-                reference_sdf_file_name=self.reference_sdf_file_name,
-                core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
-                n_cpu=self.n_cpu,
-                working_dir_name=self.working_dir_name,
-                construct_ff=self.construct_ff,
-                atom_mapper_align=self.atom_mapper_align,
-            )
             ligand_builder.generate_batch_ligand_topology()
             ligand_builder.get_summary_ligand_info_dict()
             ligand_info_dict = ligand_builder.summary_ligand_info_dict

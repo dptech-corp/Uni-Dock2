@@ -17,6 +17,20 @@ from unidock2.unidocktools.supported_protein_residue_name import (
 
 FALLBACK_RECEPTOR_FF_ATOM_TYPE = "c"
 FALLBACK_RECEPTOR_CHARGE = 0.0
+RECEPTOR_ATOM_PROPERTY_NAMES = (
+    "atom_idx",
+    "atom_name",
+    "atom_charge",
+    "ff_atom_type",
+    "residue_idx",
+    "residue_name",
+    "chain_idx",
+    "internal_atom_idx",
+    "internal_residue_idx",
+    "x",
+    "y",
+    "z",
+)
 
 
 class MissingNonbondedTermsWarning(UserWarning):
@@ -206,39 +220,13 @@ def prepare_receptor_residue_mol_list(receptor_msys_system):
     protein_mol = get_mol_without_indices(
         receptor_mol,
         remove_indices=non_protein_atom_idx_list,
-        keep_properties=[
-            "atom_idx",
-            "atom_name",
-            "atom_charge",
-            "ff_atom_type",
-            "residue_idx",
-            "residue_name",
-            "chain_idx",
-            "internal_atom_idx",
-            "internal_residue_idx",
-            "x",
-            "y",
-            "z",
-        ],
+        keep_properties=RECEPTOR_ATOM_PROPERTY_NAMES,
     )
 
     cofactor_mol = get_mol_with_indices(
         receptor_mol,
         selected_indices=non_protein_atom_idx_list,
-        keep_properties=[
-            "atom_idx",
-            "atom_name",
-            "atom_charge",
-            "ff_atom_type",
-            "residue_idx",
-            "residue_name",
-            "chain_idx",
-            "internal_atom_idx",
-            "internal_residue_idx",
-            "x",
-            "y",
-            "z",
-        ],
+        keep_properties=RECEPTOR_ATOM_PROPERTY_NAMES,
     )
 
     atom_typer = AtomType()
@@ -274,20 +262,7 @@ def prepare_receptor_residue_mol_list(receptor_msys_system):
         cofactor_residue_mol = get_mol_with_indices(
             cofactor_mol,
             selected_indices=cofactor_atom_idx_list,
-            keep_properties=[
-                "atom_idx",
-                "atom_name",
-                "atom_charge",
-                "ff_atom_type",
-                "residue_idx",
-                "residue_name",
-                "chain_idx",
-                "internal_atom_idx",
-                "internal_residue_idx",
-                "x",
-                "y",
-                "z",
-            ],
+            keep_properties=RECEPTOR_ATOM_PROPERTY_NAMES,
         )
 
         atom_typer.assign_atom_types(cofactor_residue_mol)

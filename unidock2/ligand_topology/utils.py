@@ -526,46 +526,40 @@ def _run_ambertools_for_gaff2(
         antechamber_frcmod_file_name.unlink(missing_ok=True)
 
 
+# Preserve the legacy Antechamber preprocessing workaround: protonate selected
+# anionic nitrogens in the parameterization copy before atom typing/charge assignment.
+_ANIONIC_NITROGEN_SMARTS_LIST = [
+    "[$(NS=O),$(NP=O);-1]",  # sulfonamide and phosphonamide
+    "[n;H0;-1]",  # any aromatic anionic N; historically intended for tetrazoles
+]
+
+
+def _protonate_anionic_nitrogens(mol):
+    for anionic_nitrogen_smarts in _ANIONIC_NITROGEN_SMARTS_LIST:
+        anionic_nitrogen_pattern = Chem.MolFromSmarts(anionic_nitrogen_smarts)
+        nitrogen_match_tuple_list = mol.GetSubstructMatches(anionic_nitrogen_pattern)
+
+        for nitrogen_match_tuple in nitrogen_match_tuple_list:
+            atom = mol.GetAtomWithIdx(nitrogen_match_tuple[0])
+            num_implicit_Hs = atom.GetNumImplicitHs()
+            num_explicit_Hs = atom.GetNumExplicitHs()
+            total_current_num_Hs = num_implicit_Hs + num_explicit_Hs
+            atom.SetFormalCharge(0)
+            atom.SetNoImplicit(True)
+            atom.SetNumExplicitHs(total_current_num_Hs + 1)
+
+
 def record_gaff2_atom_types_and_parameters(
     ligand_sdf_file_name, ligand_charge_method, working_dir_name
 ):
     working_dir_name = os.path.abspath(working_dir_name)
-    ## Deal with sulfonamide with negative charge on Nitrogen atom cases
-    ##############################################################################
-    ##############################################################################
+
+
     mol = Chem.SDMolSupplier(ligand_sdf_file_name, removeHs=False)[0]
     num_atoms = mol.GetNumAtoms()
 
     mol_copy = deepcopy(mol)
-    sulfonamide_pattern = Chem.MolFromSmarts("[$(NS=O),$(NP=O);-1]")
-    sulfonamide_N_tuple_list = list(mol_copy.GetSubstructMatches(sulfonamide_pattern))
-    sulfonamide_N_atom_idx_list = [
-        sulfonamide_N_tuple[0] for sulfonamide_N_tuple in sulfonamide_N_tuple_list
-    ]
-
-    for atom_idx in sulfonamide_N_atom_idx_list:
-        atom = mol_copy.GetAtomWithIdx(atom_idx)
-        num_implicit_Hs = atom.GetNumImplicitHs()
-        num_explicit_Hs = atom.GetNumExplicitHs()
-        total_current_num_Hs = num_implicit_Hs + num_explicit_Hs
-        atom.SetFormalCharge(0)
-        atom.SetNoImplicit(True)
-        atom.SetNumExplicitHs(total_current_num_Hs + 1)
-
-    tetazole_pattern = Chem.MolFromSmarts("[n;H0;-1]")
-    tetazole_N_tuple_list = list(mol_copy.GetSubstructMatches(tetazole_pattern))
-    tetazole_N_atom_idx_list = [
-        tetazole_N_tuple[0] for tetazole_N_tuple in tetazole_N_tuple_list
-    ]
-
-    for atom_idx in tetazole_N_atom_idx_list:
-        atom = mol_copy.GetAtomWithIdx(atom_idx)
-        num_implicit_Hs = atom.GetNumImplicitHs()
-        num_explicit_Hs = atom.GetNumExplicitHs()
-        total_current_num_Hs = num_implicit_Hs + num_explicit_Hs
-        atom.SetFormalCharge(0)
-        atom.SetNoImplicit(True)
-        atom.SetNumExplicitHs(total_current_num_Hs + 1)
+    _protonate_anionic_nitrogens(mol_copy)
 
     Chem.GetSymmSSSR(mol_copy)
     mol_copy.UpdatePropertyCache(strict=False)
@@ -579,10 +573,7 @@ def record_gaff2_atom_types_and_parameters(
     temp_ligand_frcmod_file_name = os.path.join(working_dir_name, "ligand_temp.frcmod")
 
     convert_v3000_mol_to_v2000_sdf(mol_copy_h, temp_ligand_sdf_file_name)
-    ##############################################################################
-    ##############################################################################
 
-    ##############################################################################
     ## Execute ambertools
     _run_ambertools_for_gaff2(
         working_dir_name,
@@ -592,9 +583,7 @@ def record_gaff2_atom_types_and_parameters(
         ligand_charge_method,
         formal_charge,
     )
-    ##############################################################################
 
-    ##############################################################################
     ## Record atom types and parameters
     ## mol2 file parsing
     atom_type_list = [None] * num_atoms
