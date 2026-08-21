@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.27)
 
 # ------------------------------ Options for Users
-option(BUILD_BIN "build binaries" ON)
 option(BUILD_API "build api" ON)
-option(BUILD_TEST "build unit tests" ON)
+option(BUILD_TEST "build tests" ON)
 option(BUILD_DOC "build documents" OFF)
 
 # Precision
@@ -13,19 +12,14 @@ option(USE_DOUBLE "If TRUE, use double-precision instead of single-precision for
 # ------------------------------ Options for Developers
 set(INPUT_BLOCK_SIZE 128 CACHE STRING "threads per CUDA block (multiple of 32)")
 add_compile_definitions(BLOCK_SIZE=${INPUT_BLOCK_SIZE})
-file(STRINGS "${CMAKE_SOURCE_DIR}/../VERSION" VERSION_NUMBER)
-#set(VERSION_NUMBER "260119")
 set(CMAKE_CUDA_FLAGS_RELEASE "${CMAKE_CUDA_FLAGS_RELEASE} --use_fast_math --maxrregcount 64") #  --generate-line-info
 
 # For Building Stage
-link_directories(${CMAKE_SOURCE_DIR}/lib)
 include_directories(${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src)
 
 set(PRJ_NAME ud2)
 set(LIB_NAME ud_lib)
 set(THIRD_NAME_CATCH2 catch2)
-set(THIRD_NAME_YAML yaml-cpp)
-set(BIN_NAME "ud2")
 set(TESTS_NAME unit_test)
 
 # install
@@ -91,17 +85,14 @@ else()
 endif ()
 
 # ------------------------------ Start building
-add_subdirectory("lib")
+if (BUILD_TEST)
+    add_subdirectory("lib")
+endif ()
 
 add_subdirectory("src")
 
-if (BUILD_BIN)
-    add_subdirectory("bin")
-endif ()
-
 if (BUILD_TEST)
     enable_testing()
-    add_subdirectory("include")
     add_subdirectory("test")
 endif ()
 
@@ -113,5 +104,3 @@ endif ()
 if (BUILD_DOC)
     add_subdirectory("doc")
 endif ()
-
-

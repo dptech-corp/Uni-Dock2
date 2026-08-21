@@ -46,7 +46,6 @@ jobs:
           python -m pip install pytest
           cmake -S engine -B build/engine-dev \
             -DBUILD_API=ON \
-            -DBUILD_BIN=ON \
             -DBUILD_TEST=ON \
             -DBUILD_DOC=OFF \
             -DCMAKE_CUDA_ARCHITECTURES=$CUDA_ARCH

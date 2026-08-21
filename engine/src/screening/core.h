@@ -106,10 +106,4 @@ struct CoreContext {
 
 int core_pipeline(CoreInput& ctx);
 
-void print_sign();
-
-void print_version();
-
-
 #endif // UD2_PIPELINE_CORE_H
-

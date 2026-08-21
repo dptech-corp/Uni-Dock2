@@ -11,24 +11,6 @@
 #include "core.h"
 #include "cuda/common.cuh"
 
-
-void print_sign() {
-    // ANSI Shadow
-    std::cout << R"(
-    ██╗ccc██╗██████╗c██████╗c
-    ██║ccc██║██╔══██╗╚════██╗
-    ██║ccc██║██║cc██║c█████╔╝
-    ██║ccc██║██║cc██║██╔═══╝c
-    ╚██████╔╝██████╔╝███████╗
-    c╚═════╝c╚═════╝c╚══════╝
-    )" << std::endl;
-
-}
-
-void print_version(){
-    std::cout << "UD2 C++ Engine Version: " << VERSION_NUMBER << "\n";
-}
-
 namespace {
 int decide_memory_limit_mb(int gpu_device_id, int vram_lim_user) {
     int ram_lim = sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGE_SIZE) / 1024 / 1024 * 0.95f;

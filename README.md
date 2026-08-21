@@ -35,12 +35,11 @@ conda install numpy networkx pyyaml pydantic rdkit openmm pdbfixer msys_viparr_l
 pip install .
 ```
 
-For an Engine developer build that includes the native binary and tests:
+For an engine developer build that includes the private Python binding and tests:
 
 ```sh
 cmake -S engine -B build/engine \
   -DBUILD_API=ON \
-  -DBUILD_BIN=ON \
   -DBUILD_TEST=ON
 cmake --build build/engine
 ctest --test-dir build/engine --output-on-failure
