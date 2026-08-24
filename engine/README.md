@@ -3,8 +3,12 @@
 This directory contains the private C++/CUDA implementation used by the
 `unidock2` Python package. It does not provide a standalone product interface.
 
-The Python binding in `api/python` is the only runtime adapter. It converts
-Python inputs into `CoreInput` and then calls `core_pipeline()`.
+The Python binding in `api/python` is the only runtime adapter. Its one-shot
+`pipeline.run(request)` entry point accepts a versioned, JSON-compatible
+dictionary, validates the private engine schema, converts it into `CoreInput`,
+and calls `core_pipeline()`. User-facing defaults, documentation, and
+validation remain in the Python `UnidockConfig` model; the C++ engine does not
+define a second set of product defaults.
 
 ## Developer build
 
@@ -27,6 +31,10 @@ The test suite contains C++ unit tests and pybind integration tests. The
 integration tests load prepared engine JSON fixtures, execute docking through
 the Python binding, and validate the generated poses.
 
+When `engine_checkpoint` is enabled, `UnidockProtocolRunner` writes both the
+legacy topology-only `ud2_engine_inputs.json` and the replayable,
+schema-versioned `ud2_engine_request.json` during the compatibility period.
+
 ## Native debugging through Python
 
 Build the engine with debug symbols, then configure the debugger to launch the
@@ -42,3 +50,14 @@ PYTHONPATH=build/engine/api/python \
 Set breakpoints in `api/python/pipeline.cpp`, `screening/core.cpp`, or the
 relevant C++/CUDA implementation. The debugger enters native code when the
 Python test calls the binding.
+
+A saved request can also be replayed from a focused Python debugger session:
+
+```python
+from unidock2._engine import load_engine_request, pipeline
+
+pipeline.run(load_engine_request("ud2_engine_request.json"))
+```
+
+The native module and request schema are private engine interfaces. External
+workflows should continue to use `UnidockProtocolRunner`.

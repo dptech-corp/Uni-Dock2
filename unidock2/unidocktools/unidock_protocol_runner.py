@@ -2,6 +2,7 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
+from unidock2._engine import build_engine_request, dump_engine_request
 from unidock2.config import UnidockConfig
 
 
@@ -13,28 +14,19 @@ class _UnsetType:
 UNSET = _UnsetType()
 
 
-def _build_pipeline_kwargs(
-    config: UnidockConfig,
-    target_center,
-    output_dir,
-):
-    """Translate the typed Python config to the native pipeline boundary."""
-    settings = config.settings.model_dump()
-    box_size = settings.pop("box_size")
+def _write_engine_checkpoints(engine_request, working_dir):
+    """Write the legacy topology payload and the replayable versioned request."""
+    with open(
+        os.path.join(working_dir, "ud2_engine_inputs.json"),
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(engine_request["molecules"], file, allow_nan=False)
 
-    return {
-        "output_dir": output_dir,
-        "center_x": target_center[0],
-        "center_y": target_center[1],
-        "center_z": target_center[2],
-        "size_x": box_size[0],
-        "size_y": box_size[1],
-        "size_z": box_size[2],
-        **settings,
-        **config.advanced.model_dump(),
-        "constraint_docking": (config.preprocessing.template_docking or config.preprocessing.covalent_ligand),
-        "gpu_device_id": config.hardware.gpu_device_id,
-    }
+    dump_engine_request(
+        engine_request,
+        os.path.join(working_dir, "ud2_engine_request.json"),
+    )
 
 
 class UnidockProtocolRunner:
@@ -74,6 +66,9 @@ class UnidockProtocolRunner:
         use_tor_lib: bool = UNSET,
         energy_decomp: bool = UNSET,
         engine_checkpoint: bool = UNSET,
+        bias: str = UNSET,
+        bias_k: float = UNSET,
+        max_gpu_memory: int = UNSET,
         **config_overrides: Any,
     ) -> None:
         """Adapt the historical constructor to the typed configuration path.
@@ -268,29 +263,18 @@ class UnidockProtocolRunner:
             ligand_builder.get_summary_ligand_info_dict()
             ligand_info_dict = ligand_builder.summary_ligand_info_dict
 
-        if self.engine_checkpoint:
-            with open(
-                os.path.join(self.working_dir_name, "ud2_engine_inputs.json"),
-                "w",
-                encoding="utf-8",
-            ) as file:
-                json.dump(
-                    {
-                        "receptor": receptor_atom_info_list,
-                        **ligand_info_dict,
-                    },
-                    file,
-                )
-
-        pipeline_kwargs = _build_pipeline_kwargs(
+        engine_request = build_engine_request(
             self._current_config(),
-            self.target_center,
-            self.unidock2_output_dir_name,
+            target_center=self.target_center,
+            output_dir=self.unidock2_output_dir_name,
+            receptor=receptor_atom_info_list,
+            ligands=ligand_info_dict,
         )
-        docking_pipeline = pipeline.DockingPipeline(**pipeline_kwargs)
-        docking_pipeline.set_receptor(receptor_atom_info_list)
-        docking_pipeline.add_ligands(ligand_info_dict)
-        docking_pipeline.run()
+
+        if self.engine_checkpoint:
+            _write_engine_checkpoints(engine_request, self.working_dir_name)
+
+        pipeline.run(engine_request)
 
         pose_json_files = [
             os.path.join(self.unidock2_output_dir_name, file_name)

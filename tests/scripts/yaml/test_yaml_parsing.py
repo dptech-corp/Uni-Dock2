@@ -34,11 +34,14 @@ def test_yaml_parsing(
     assert yaml_params.advanced.rmsd_limit == 1.0
     assert yaml_params.advanced.energy_range == 3.0
     assert yaml_params.advanced.seed == 12345
+    assert yaml_params.advanced.bias == "no"
+    assert yaml_params.advanced.bias_k == 0.1
     assert not yaml_params.advanced.use_tor_lib
     assert not yaml_params.advanced.energy_decomp
 
     assert yaml_params.hardware.n_cpu is None
     assert yaml_params.hardware.gpu_device_id == 0
+    assert yaml_params.hardware.max_gpu_memory == 0
 
     assert yaml_params.settings.box_size == [30.0, 30.0, 30.0]
     assert yaml_params.settings.task == 'screen'
@@ -68,10 +71,13 @@ def test_yaml_parsing(
                                  'rmsd_limit': 1.0,
                                  'energy_range': 3.0,
                                  'seed': 12345,
+                                 'bias': 'no',
+                                 'bias_k': 0.1,
                                  'use_tor_lib': False,
                                  'energy_decomp': False,
                                  'n_cpu': None,
                                  'gpu_device_id': 0,
+                                 'max_gpu_memory': 0,
                                  'box_size': [30.0, 30.0, 30.0],
                                  'task': 'screen',
                                  'search_mode': 'balance',

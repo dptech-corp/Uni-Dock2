@@ -45,7 +45,7 @@ set(sources
         task/DockTask.cpp       task/DockTask.h
 )
 
-# compile lib for the bin to link to
+# Compile reusable core objects for the private Python binding and native tests.
 add_library(${LIB_NAME} OBJECT ${sources})
 
 # include src directory

@@ -20,10 +20,12 @@ DEFAULT_CONFIG = {
         "rmsd_limit": 1.0,
         "energy_range": 5.0,
         "seed": 1234567,
+        "bias": "no",
+        "bias_k": 0.1,
         "use_tor_lib": False,
         "energy_decomp": False,
     },
-    "Hardware": {"n_cpu": None, "gpu_device_id": 0},
+    "Hardware": {"n_cpu": None, "gpu_device_id": 0, "max_gpu_memory": 0},
     "Settings": {
         "box_size": [30.0, 30.0, 30.0],
         "task": "screen",

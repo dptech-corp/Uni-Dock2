@@ -132,6 +132,14 @@ class AdvancedConfig(_ConfigurationSection):
         description="Random seed for reproducibility",
         json_schema_extra=cli("--seed", commands=("docking",)),
     )
+    bias: str = Field(
+        default="no",
+        description="Native bias mode: no, pos (position), or align",
+    )
+    bias_k: float = Field(
+        default=0.1,
+        description="Scaling coefficient applied to native bias potentials",
+    )
     use_tor_lib: bool = Field(
         default=False,
         description="Use the torsion-angle library",
@@ -155,6 +163,10 @@ class HardwareConfig(_ConfigurationSection):
         default=0,
         description="GPU device index to use",
         json_schema_extra=cli("--gpu_device_id", commands=("docking",)),
+    )
+    max_gpu_memory: int = Field(
+        default=0,
+        description="Maximum GPU memory in MB (0 uses the available-memory limit)",
     )
 
 
@@ -234,7 +246,7 @@ class PreprocessingConfig(_ConfigurationSection):
     )
     engine_checkpoint: bool = Field(
         default=False,
-        description="Write prepared engine inputs to ud2_engine_inputs.json",
+        description="Write legacy topology inputs and a versioned, replayable engine request",
     )
     output_receptor_dms_file_name: str = Field(
         default="receptor_parameterized.dms",
