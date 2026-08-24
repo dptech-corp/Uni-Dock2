@@ -44,7 +44,6 @@ wheel.packages = ["unidock2"]
 
 [tool.scikit-build.cmake.define]
 BUILD_API = "ON"
-BUILD_BIN = "OFF"
 BUILD_TEST = "OFF"
 BUILD_DOC = "OFF"
 

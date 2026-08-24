@@ -1,107 +1,47 @@
+import os
+from shutil import copyfile
+
+from unidock2.cli._arguments import add_config_arguments
+from unidock2.cli._resolve import resolve_protein_prep_request
+
+
 class CLICommand:
-    """Perform protein preparation only for large batch docking.
+    """Perform protein preparation for large-batch docking.
 
-    Note: Required arguments should be passed by either command line arguments or YAML Required options.
-    If both sides are specified,
-    the values passed in the command line arguments will overide the values passed in YAML file.
-
-    Example input YAML configurations:
-
-    Required:
-        receptor: 1G9V_protein_water_cleaned.pdb
-    Preprocessing:
-        covalent_residue_atom_info_list: null
-        preserve_receptor_hydrogen: false
-        temp_dir_name: str = /tmp
-        output_receptor_dms_file_name = receptor_parameterized.dms
-
+    Values are resolved in this order: Pydantic defaults, YAML configuration,
+    then explicitly supplied command-line arguments.
     """
 
+    @staticmethod
     def add_arguments(parser):
-        parser.add_argument(
-            '-r',
-            '--receptor',
-            default=None,
-            help='Receptor structure file in PDB or DMS format',
-        )
+        add_config_arguments(parser, "protein_prep")
 
-        parser.add_argument(
-            '-o',
-            '--output_receptor_dms_file_name',
-            default='receptor_parameterized.dms',
-            help='Output receptor DMS file name',
-        )
-
-        parser.add_argument(
-            '-cf',
-            '--configurations',
-            default=None,
-            help='Uni-Dock2 configuration YAML file recording all other options',
-        )
-
+    @staticmethod
     def run(args):
-        import os
-        from unidock2.io.yaml import UnidockConfig, read_unidock_params_from_yaml
         from unidock2.io.get_temp_dir_prefix import get_temp_dir_prefix
         from unidock2.io.tempfile import TemporaryDirectory
         from unidock2.unidocktools.unidock_receptor_topology_builder import (
-        UnidockReceptorTopologyBuilder,
+            UnidockReceptorTopologyBuilder,
         )
 
-        ## Read all arguments from user input YAML first
-        kwargs_dict = {}
-        if args.configurations:
-            extra_params = read_unidock_params_from_yaml(args.configurations)
-            kwargs_dict = extra_params.to_protocol_kwargs()
-        else:
-            extra_params = UnidockConfig()
-            kwargs_dict = extra_params.to_protocol_kwargs()
-
-        print(kwargs_dict)
-
-        ## Parse receptor input
-        kwargs_receptor_file_name = kwargs_dict.pop('receptor', None)
-        if kwargs_receptor_file_name is not None:
-            kwargs_receptor_file_name = os.path.abspath(kwargs_receptor_file_name)
-
-        if args.receptor is not None:
-            receptor_file_name = os.path.abspath(args.receptor)
-        else:
-            receptor_file_name = kwargs_receptor_file_name
-
-        if receptor_file_name is None:
-            raise ValueError('Receptor file name not specified !')
-
-        ## Specify receptor DMS file name
-        kwargs_receptor_dms_file_name = kwargs_dict.pop('output_receptor_dms_file_name', None)
-        if args.output_receptor_dms_file_name != 'receptor_parameterized.dms':
-            receptor_dms_file_name = args.output_receptor_dms_file_name
-        else:
-            receptor_dms_file_name = kwargs_receptor_dms_file_name
-
-        receptor_dms_file_name = os.path.abspath(receptor_dms_file_name)
-
-        ## Prepare temp dir
-        root_temp_dir_name = os.path.abspath(kwargs_dict.pop('temp_dir_name', None))
+        request = resolve_protein_prep_request(args)
         temp_dir_prefix = os.path.join(
-            root_temp_dir_name, get_temp_dir_prefix('protein_prep')
+            request.root_temp_dir_name,
+            get_temp_dir_prefix("protein_prep"),
         )
 
-        if root_temp_dir_name == '/tmp':
-            remove_temp_dir = True
-        else:
-            remove_temp_dir = False
-
-        ## Run receptor preparation
-        with TemporaryDirectory(prefix=temp_dir_prefix, delete=remove_temp_dir) as temp_dir_name:
-            unidock_receptor_topology_builder = UnidockReceptorTopologyBuilder(
-                receptor_file_name,
-                prepared_hydrogen=kwargs_dict['preserve_receptor_hydrogen'],
-                covalent_residue_atom_info_list=kwargs_dict['covalent_residue_atom_info_list'],
+        with TemporaryDirectory(
+            prefix=temp_dir_prefix,
+            delete=request.remove_temp_dir,
+        ) as temp_dir_name:
+            receptor_builder = UnidockReceptorTopologyBuilder(
+                request.receptor_file_name,
+                prepared_hydrogen=request.config.preprocessing.preserve_receptor_hydrogen,
+                covalent_residue_atom_info_list=(request.config.preprocessing.covalent_residue_atom_info_list),
                 working_dir_name=temp_dir_name,
             )
-
-            unidock_receptor_topology_builder.generate_receptor_topology()
-            os.system(
-                f'cp {unidock_receptor_topology_builder.receptor_parameterized_dms_file_name} {receptor_dms_file_name}'
+            receptor_builder.generate_receptor_topology()
+            copyfile(
+                receptor_builder.receptor_parameterized_dms_file_name,
+                request.receptor_dms_file_name,
             )

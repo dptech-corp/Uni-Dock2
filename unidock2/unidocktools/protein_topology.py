@@ -1,3 +1,6 @@
+import math
+import warnings
+
 import msys
 
 from rdkit.Chem import SplitMolByPDBResidues, GetMolFrags, FragmentOnBonds
@@ -11,6 +14,74 @@ from unidock2.atom_types.vina_atom_type import AtomType
 from unidock2.unidocktools.supported_protein_residue_name import (
     PROTEIN_RESIUDE_NAME_LIST,
 )
+
+FALLBACK_RECEPTOR_FF_ATOM_TYPE = "c"
+FALLBACK_RECEPTOR_CHARGE = 0.0
+RECEPTOR_ATOM_PROPERTY_NAMES = (
+    "atom_idx",
+    "atom_name",
+    "atom_charge",
+    "ff_atom_type",
+    "residue_idx",
+    "residue_name",
+    "chain_idx",
+    "internal_atom_idx",
+    "internal_residue_idx",
+    "x",
+    "y",
+    "z",
+)
+
+
+class MissingNonbondedTermsWarning(UserWarning):
+    """Warning emitted when receptor force-field placeholders are used."""
+
+
+def _safe_fallback_charge(value):
+    try:
+        charge = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return FALLBACK_RECEPTOR_CHARGE
+    return charge if math.isfinite(charge) else FALLBACK_RECEPTOR_CHARGE
+
+
+def _read_receptor_force_field_data(receptor_msys_system):
+    """Read nonbonded types, or provide Vina-compatible placeholders when absent."""
+    num_receptor_atoms = receptor_msys_system.natoms
+    receptor_nb_table = receptor_msys_system.getTable("nonbonded")
+    num_nonbonded_terms = 0 if receptor_nb_table is None else receptor_nb_table.nterms
+
+    if num_nonbonded_terms not in (0, num_receptor_atoms):
+        raise ValueError(
+            "Problematic receptor preparation: "
+            f"nonbonded term count ({num_nonbonded_terms}) does not match "
+            f"atom count ({num_receptor_atoms})."
+        )
+
+    if num_nonbonded_terms == num_receptor_atoms and num_receptor_atoms > 0:
+        ff_atom_types = [
+            receptor_nb_table.term(atom_idx)["type"]
+            for atom_idx in range(num_receptor_atoms)
+        ]
+        charges = [
+            receptor_msys_system.atom(atom_idx).charge
+            for atom_idx in range(num_receptor_atoms)
+        ]
+        return ff_atom_types, charges
+
+    warnings.warn(
+        "Receptor has no nonbonded terms; using fallback FF atom type "
+        f"'{FALLBACK_RECEPTOR_FF_ATOM_TYPE}' and atom charges, with "
+        f"{FALLBACK_RECEPTOR_CHARGE} for invalid charges.",
+        MissingNonbondedTermsWarning,
+        stacklevel=2,
+    )
+    ff_atom_types = [FALLBACK_RECEPTOR_FF_ATOM_TYPE] * num_receptor_atoms
+    charges = [
+        _safe_fallback_charge(receptor_msys_system.atom(atom_idx).charge)
+        for atom_idx in range(num_receptor_atoms)
+    ]
+    return ff_atom_types, charges
 
 
 def is_peptide_bond(bond):
@@ -90,18 +161,15 @@ def split_mol_by_residues(protein_mol):
 
 def prepare_receptor_residue_mol_list(receptor_msys_system):
     num_receptor_atoms = receptor_msys_system.natoms
-    receptor_nb_table = receptor_msys_system.getTable("nonbonded")
-
-    if num_receptor_atoms != receptor_nb_table.nterms:
-        raise ValueError("Problematic receptor preparation!!")
+    receptor_ff_atom_type_list, receptor_atom_charge_list = (
+        _read_receptor_force_field_data(receptor_msys_system)
+    )
 
     receptor_atom_idx_list = [None] * num_receptor_atoms
     receptor_atom_name_list = [None] * num_receptor_atoms
-    receptor_atom_charge_list = [None] * num_receptor_atoms
     receptor_resid_list = [None] * num_receptor_atoms
     receptor_resname_list = [None] * num_receptor_atoms
     receptor_chain_idx_list = [None] * num_receptor_atoms
-    receptor_ff_atom_type_list = [None] * num_receptor_atoms
     receptor_internal_atom_idx_list = [None] * num_receptor_atoms
     receptor_internal_residue_idx_list = [None] * num_receptor_atoms
 
@@ -109,16 +177,11 @@ def prepare_receptor_residue_mol_list(receptor_msys_system):
         atom = receptor_msys_system.atom(atom_idx)
         receptor_atom_idx_list[atom_idx] = atom_idx + 1
         receptor_atom_name_list[atom_idx] = atom.name
-        receptor_atom_charge_list[atom_idx] = atom.charge
         receptor_resid_list[atom_idx] = atom.residue.resid
         receptor_resname_list[atom_idx] = atom.residue.name
         receptor_chain_idx_list[atom_idx] = atom.residue.chain.name
         receptor_internal_atom_idx_list[atom_idx] = atom_idx
         receptor_internal_residue_idx_list[atom_idx] = atom.residue.id
-
-        nb_term = receptor_nb_table.term(atom_idx)
-        atom_type = nb_term["type"]
-        receptor_ff_atom_type_list[atom_idx] = atom_type
 
     receptor_mol = msys.ConvertToRdkit(receptor_msys_system)
 
@@ -157,39 +220,13 @@ def prepare_receptor_residue_mol_list(receptor_msys_system):
     protein_mol = get_mol_without_indices(
         receptor_mol,
         remove_indices=non_protein_atom_idx_list,
-        keep_properties=[
-            "atom_idx",
-            "atom_name",
-            "atom_charge",
-            "ff_atom_type",
-            "residue_idx",
-            "residue_name",
-            "chain_idx",
-            "internal_atom_idx",
-            "internal_residue_idx",
-            "x",
-            "y",
-            "z",
-        ],
+        keep_properties=RECEPTOR_ATOM_PROPERTY_NAMES,
     )
 
     cofactor_mol = get_mol_with_indices(
         receptor_mol,
         selected_indices=non_protein_atom_idx_list,
-        keep_properties=[
-            "atom_idx",
-            "atom_name",
-            "atom_charge",
-            "ff_atom_type",
-            "residue_idx",
-            "residue_name",
-            "chain_idx",
-            "internal_atom_idx",
-            "internal_residue_idx",
-            "x",
-            "y",
-            "z",
-        ],
+        keep_properties=RECEPTOR_ATOM_PROPERTY_NAMES,
     )
 
     atom_typer = AtomType()
@@ -225,20 +262,7 @@ def prepare_receptor_residue_mol_list(receptor_msys_system):
         cofactor_residue_mol = get_mol_with_indices(
             cofactor_mol,
             selected_indices=cofactor_atom_idx_list,
-            keep_properties=[
-                "atom_idx",
-                "atom_name",
-                "atom_charge",
-                "ff_atom_type",
-                "residue_idx",
-                "residue_name",
-                "chain_idx",
-                "internal_atom_idx",
-                "internal_residue_idx",
-                "x",
-                "y",
-                "z",
-            ],
+            keep_properties=RECEPTOR_ATOM_PROPERTY_NAMES,
         )
 
         atom_typer.assign_atom_types(cofactor_residue_mol)

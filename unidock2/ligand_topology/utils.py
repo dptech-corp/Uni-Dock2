@@ -1,5 +1,6 @@
 import os
 from copy import deepcopy
+from pathlib import Path
 import re
 import warnings
 
@@ -16,6 +17,7 @@ from unidock2.utils.molecule_processing import (
     get_mol_without_indices,
     get_mol_with_indices,
 )
+from unidock2.utils.external_command import run_external_command
 
 
 def convert_v3000_mol_to_v2000_sdf(v3000_mol, v2000_sdf_file_name):
@@ -463,45 +465,101 @@ def calculate_nonbonded_atom_pairs(mol):
     return atom_pair_12_13_nested_list, atom_pair_14_nested_list
 
 
+def _run_ambertools_for_gaff2(
+    working_dir_name,
+    ligand_sdf_file_name,
+    ligand_mol2_file_name,
+    ligand_frcmod_file_name,
+    ligand_charge_method,
+    formal_charge,
+):
+    working_dir = Path(working_dir_name)
+    antechamber_frcmod_file_name = working_dir / "ANTECHAMBER.FRCMOD"
+
+    try:
+        run_external_command(
+            [
+                "antechamber",
+                "-i",
+                Path(ligand_sdf_file_name).name,
+                "-fi",
+                "sdf",
+                "-o",
+                Path(ligand_mol2_file_name).name,
+                "-fo",
+                "mol2",
+                "-at",
+                "gaff2",
+                "-c",
+                ligand_charge_method,
+                "-nc",
+                str(formal_charge),
+                "-eq",
+                "2",
+                "-pf",
+                "y",
+            ],
+            cwd=working_dir,
+            log_file_name="ligand_temp_antechamber.log",
+            append_log=True,
+            expected_output_file_names=[ligand_mol2_file_name],
+        )
+        run_external_command(
+            [
+                "parmchk2",
+                "-i",
+                Path(ligand_mol2_file_name).name,
+                "-f",
+                "mol2",
+                "-a",
+                "Y",
+                "-s",
+                "2",
+                "-o",
+                Path(ligand_frcmod_file_name).name,
+            ],
+            cwd=working_dir,
+            log_file_name="ligand_temp_parmchk2.log",
+            expected_output_file_names=[ligand_frcmod_file_name],
+        )
+    finally:
+        antechamber_frcmod_file_name.unlink(missing_ok=True)
+
+
+# Preserve the legacy Antechamber preprocessing workaround: protonate selected
+# anionic nitrogens in the parameterization copy before atom typing/charge assignment.
+_ANIONIC_NITROGEN_SMARTS_LIST = [
+    "[$(NS=O),$(NP=O);-1]",  # sulfonamide and phosphonamide
+    "[n;H0;-1]",  # any aromatic anionic N; historically intended for tetrazoles
+]
+
+
+def _protonate_anionic_nitrogens(mol):
+    for anionic_nitrogen_smarts in _ANIONIC_NITROGEN_SMARTS_LIST:
+        anionic_nitrogen_pattern = Chem.MolFromSmarts(anionic_nitrogen_smarts)
+        nitrogen_match_tuple_list = mol.GetSubstructMatches(anionic_nitrogen_pattern)
+
+        for nitrogen_match_tuple in nitrogen_match_tuple_list:
+            atom = mol.GetAtomWithIdx(nitrogen_match_tuple[0])
+            num_implicit_Hs = atom.GetNumImplicitHs()
+            num_explicit_Hs = atom.GetNumExplicitHs()
+            total_current_num_Hs = num_implicit_Hs + num_explicit_Hs
+            atom.SetFormalCharge(0)
+            atom.SetNoImplicit(True)
+            atom.SetNumExplicitHs(total_current_num_Hs + 1)
+
+
 def record_gaff2_atom_types_and_parameters(
     ligand_sdf_file_name, ligand_charge_method, working_dir_name
 ):
-    ## Deal with sulfonamide with negative charge on Nitrogen atom cases
-    ##############################################################################
-    ##############################################################################
+    working_dir_name = os.path.abspath(working_dir_name)
+
+
     mol = Chem.SDMolSupplier(ligand_sdf_file_name, removeHs=False)[0]
     num_atoms = mol.GetNumAtoms()
 
     mol_copy = deepcopy(mol)
-    sulfonamide_pattern = Chem.MolFromSmarts("[$(NS=O),$(NP=O);-1]")
-    sulfonamide_N_tuple_list = list(mol_copy.GetSubstructMatches(sulfonamide_pattern))
-    sulfonamide_N_atom_idx_list = [
-        sulfonamide_N_tuple[0] for sulfonamide_N_tuple in sulfonamide_N_tuple_list
-    ]
-
-    for atom_idx in sulfonamide_N_atom_idx_list:
-        atom = mol_copy.GetAtomWithIdx(atom_idx)
-        num_implicit_Hs = atom.GetNumImplicitHs()
-        num_explicit_Hs = atom.GetNumExplicitHs()
-        total_current_num_Hs = num_implicit_Hs + num_explicit_Hs
-        atom.SetFormalCharge(0)
-        atom.SetNoImplicit(True)
-        atom.SetNumExplicitHs(total_current_num_Hs + 1)
-
-    tetazole_pattern = Chem.MolFromSmarts("[n;H0;-1]")
-    tetazole_N_tuple_list = list(mol_copy.GetSubstructMatches(tetazole_pattern))
-    tetazole_N_atom_idx_list = [
-        tetazole_N_tuple[0] for tetazole_N_tuple in tetazole_N_tuple_list
-    ]
-
-    for atom_idx in tetazole_N_atom_idx_list:
-        atom = mol_copy.GetAtomWithIdx(atom_idx)
-        num_implicit_Hs = atom.GetNumImplicitHs()
-        num_explicit_Hs = atom.GetNumExplicitHs()
-        total_current_num_Hs = num_implicit_Hs + num_explicit_Hs
-        atom.SetFormalCharge(0)
-        atom.SetNoImplicit(True)
-        atom.SetNumExplicitHs(total_current_num_Hs + 1)
+    _protonate_anionic_nitrogens(mol_copy)
 
     Chem.GetSymmSSSR(mol_copy)
     mol_copy.UpdatePropertyCache(strict=False)
@@ -513,40 +571,19 @@ def record_gaff2_atom_types_and_parameters(
     temp_ligand_sdf_file_name = os.path.join(working_dir_name, "ligand_temp.sdf")
     temp_ligand_mol2_file_name = os.path.join(working_dir_name, "ligand_temp.mol2")
     temp_ligand_frcmod_file_name = os.path.join(working_dir_name, "ligand_temp.frcmod")
-    temp_antechamber_log_file_name = os.path.join(
-        working_dir_name, "ligand_temp_antechamber.log"
-    )
-    temp_antechamber_frcmod_file_name = os.path.join(
-        working_dir_name, "ANTECHAMBER.FRCMOD"
-    )
 
     convert_v3000_mol_to_v2000_sdf(mol_copy_h, temp_ligand_sdf_file_name)
-    ##############################################################################
-    ##############################################################################
 
-    ##############################################################################
     ## Execute ambertools
-    antechamber_command = (
-        f"cd {working_dir_name}; "
-        f"antechamber -i {temp_ligand_sdf_file_name} -fi sdf "
-        f"-o {temp_ligand_mol2_file_name} -fo mol2 "
-        f"-at gaff2 -c {ligand_charge_method} -nc {formal_charge} "
-        f"-eq 2 -pf y >> {temp_antechamber_log_file_name}"
+    _run_ambertools_for_gaff2(
+        working_dir_name,
+        temp_ligand_sdf_file_name,
+        temp_ligand_mol2_file_name,
+        temp_ligand_frcmod_file_name,
+        ligand_charge_method,
+        formal_charge,
     )
-    parmchk_command = (
-        f"cd {working_dir_name}; "
-        f"parmchk2 -i {temp_ligand_mol2_file_name} -f mol2 "
-        f"-a Y -s 2 -o {temp_ligand_frcmod_file_name}"
-    )
-    remove_files_command = (
-        f"cd {working_dir_name}; rm {temp_antechamber_frcmod_file_name}"
-    )
-    os.system(antechamber_command)
-    os.system(parmchk_command)
-    os.system(remove_files_command)
-    ##############################################################################
 
-    ##############################################################################
     ## Record atom types and parameters
     ## mol2 file parsing
     atom_type_list = [None] * num_atoms

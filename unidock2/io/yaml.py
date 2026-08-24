@@ -1,133 +1,107 @@
-from typing import Dict, Any, Optional, List, Tuple, ClassVar, Type
-from pydantic import BaseModel, Field, ValidationError, create_model, field_validator
+"""YAML adapter for the typed Uni-Dock2 configuration models."""
+
+from pathlib import Path
+
+from pydantic import ValidationError
 import yaml
 
-class RequiredConfig(BaseModel):
-    receptor: Optional[str] = None
-    ligand: Optional[str] = None
-    ligand_batch: Optional[str] = None
-    center: List[float] = Field(
-        default_factory=lambda: [0.0, 0.0, 0.0]
-    )
+from unidock2.config.models import (
+    AdvancedConfig,
+    HardwareConfig,
+    PreprocessingConfig,
+    RequiredConfig,
+    SettingsConfig,
+    UnidockConfig,
+    UnknownConfigurationWarning,
+)
 
-    @field_validator('center')
-    def validate_center(cls, v):
-        if len(v) != 3:
-            raise ValueError('Center requires 3 elements')
-        return v
-
-class AdvancedConfig(BaseModel):
-    exhaustiveness: int = 512
-    randomize: bool = True
-    mc_steps: int = 40
-    opt_steps: int = -1
-    refine_steps: int = 5
-    num_pose: int = 10
-    rmsd_limit: float = 1.0
-    energy_range: float = 5.0
-    seed: int = 1234567
-    use_tor_lib: bool = False
-    energy_decomp: bool = False
-
-class HardwareConfig(BaseModel):
-    n_cpu: Optional[int] = None
-    gpu_device_id: int = 0
-
-class SettingsConfig(BaseModel):
-    box_size: List[float] = Field(
-        default_factory=lambda: [30.0, 30.0, 30.0]
-    )
-    task: str = 'screen'
-    search_mode: str = 'balance'
-
-    @field_validator('box_size')
-    def validate_box_size(cls, v):
-        if len(v) != 3:
-            raise ValueError('Box Size requires 3 elements')
-        return v
-
-class PreprocessingConfig(BaseModel):
-    construct_ff: bool = False
-    template_docking: bool = False
-    reference_sdf_file_name: Optional[str] = None
-    compute_center: bool = True
-    core_atom_mapping_dict_list: Optional[List[Dict[str, Any]]] = None
-    covalent_ligand: bool = False
-    covalent_residue_atom_info_list: Optional[List[Any]] = None
-    preserve_receptor_hydrogen: bool = False
-    temp_dir_name: str = '/tmp'
-    engine_checkpoint: bool = False
-    output_receptor_dms_file_name: str = 'receptor_parameterized.dms'
-    output_docking_pose_sdf_file_name: str = 'unidock2_pose.sdf'
-
-CONFIG_MAPPING: ClassVar[List[Tuple[str, str, Type[BaseModel], List[str]]]] = [
-    ('Required', 'required', RequiredConfig,
-     ['receptor', 'ligand', 'ligand_batch', 'center']),
-    ('Advanced', 'advanced', AdvancedConfig, [
-     'exhaustiveness', 'randomize', 'mc_steps', 'opt_steps',
-     'refine_steps', 'num_pose', 'rmsd_limit', 'energy_range',
-     'seed', 'use_tor_lib', 'energy_decomp']),
-    ('Hardware', 'hardware', HardwareConfig, ['n_cpu', 'gpu_device_id']),
-    ('Settings', 'settings', SettingsConfig, ['box_size', 'task', 'search_mode']),
-    ('Preprocessing', 'preprocessing', PreprocessingConfig, [
-     'construct_ff', 'template_docking', 'reference_sdf_file_name',
-     'compute_center', 'core_atom_mapping_dict_list', 'covalent_ligand',
-     'covalent_residue_atom_info_list', 'preserve_receptor_hydrogen',
-     'temp_dir_name', 'engine_checkpoint',
-     'output_receptor_dms_file_name', 'output_docking_pose_sdf_file_name'])
+__all__ = [
+    "AdvancedConfig",
+    "DEFAULT_CONFIG_FILE_NAME",
+    "HardwareConfig",
+    "PreprocessingConfig",
+    "RequiredConfig",
+    "SettingsConfig",
+    "UnidockConfig",
+    "UnknownConfigurationWarning",
+    "dump_default_config_yaml",
+    "read_unidock_params_from_yaml",
+    "render_default_config_yaml",
 ]
 
-def build_unidock_model():
-    field_definitions = {}
-    for _, attr_name, model_cls, _ in CONFIG_MAPPING:
-        field_definitions[attr_name] = (model_cls, Field(default_factory=model_cls))
+DEFAULT_CONFIG_FILE_NAME = "unidock2_config.yaml"
 
-    UnidockModel = create_model(
-        'UnidockConfig',
-        **field_definitions,
-        __base__= BaseModel
-    )
 
-    class UnidockConfig(UnidockModel):
-        @classmethod
-        def from_dict(cls, data: Dict[str, Any]) -> 'UnidockConfig':
-            """Create UnidockConfig from a dictionary."""
-            processed_data = {}
-            for dict_key, attr_name, model_cls, _ in CONFIG_MAPPING:
-                if dict_key in data:
-                    processed_data[attr_name] = model_cls(**data[dict_key])
+class _IndentedSafeDumper(yaml.SafeDumper):
+    """Indent sequence items below their mapping key for a readable template."""
 
-            return cls(**processed_data)
+    def increase_indent(self, flow=False, indentless=False):
+        return super().increase_indent(flow, indentless=False)
 
-        def to_protocol_kwargs(self) -> Dict[str, Any]:
-            """Flatten to a dict"""
-            kwargs_dict = {}
-            for _, attr_name, _, field_names in CONFIG_MAPPING:
-                config = getattr(self, attr_name)
-                for field_name in field_names:
-                    kwargs_dict[field_name] = getattr(config, field_name)
 
-            return kwargs_dict
+def _render_field(field_name, value):
+    return yaml.dump(
+        {field_name: value},
+        Dumper=_IndentedSafeDumper,
+        allow_unicode=True,
+        default_flow_style=False,
+        sort_keys=False,
+    ).rstrip()
 
-    return UnidockConfig
 
-UnidockConfig = build_unidock_model()
+def render_default_config_yaml() -> str:
+    """Render the Pydantic defaults as an annotated, round-trippable YAML template."""
+    config = UnidockConfig()
+    lines = [
+        "# Uni-Dock2 default docking configuration.",
+        "# Replace null input paths before running docking.",
+        "# Run with: unidock2 docking -cf <this-file>",
+        "# Explicit command-line values override values in this file.",
+    ]
+
+    for section_name, section_field in type(config).model_fields.items():
+        section = getattr(config, section_name)
+        section_alias = section_field.alias or section_name
+        section_description = (type(section).__doc__ or "").strip()
+
+        lines.append("")
+        if section_description:
+            lines.append(f"# {section_description}")
+        lines.append(f"{section_alias}:")
+
+        for field_name, field in type(section).model_fields.items():
+            if field.description:
+                lines.append(f"  # {field.description}")
+            field_yaml = _render_field(field_name, getattr(section, field_name))
+            lines.extend(f"  {line}" for line in field_yaml.splitlines())
+
+    return "\n".join(lines) + "\n"
+
+
+def dump_default_config_yaml(output_file: str | Path = DEFAULT_CONFIG_FILE_NAME) -> Path:
+    """Write the annotated default configuration and return its absolute path."""
+    output_path = Path(output_file).expanduser()
+    if not output_path.is_absolute():
+        output_path = Path.cwd() / output_path
+    output_path = output_path.resolve()
+    try:
+        with output_path.open("x", encoding="utf-8") as file:
+            file.write(render_default_config_yaml())
+    except FileExistsError as error:
+        raise FileExistsError(f"Refusing to overwrite existing configuration file: {output_path}") from error
+    return output_path
+
 
 def read_unidock_params_from_yaml(yaml_file: str) -> UnidockConfig:
-    """
-    Read Unidock parameters from a yaml file and convert to UnidockConfig dataclass.
+    """Read and validate Uni-Dock2 parameters from a YAML file."""
+    with open(yaml_file, encoding="utf-8") as file:
+        params = yaml.safe_load(file)
 
-    Args:
-        yaml_file: Path to the yaml file
-
-    Returns:
-        UnidockConfig object
-    """
-    with open(yaml_file, 'r') as f:
-        params = yaml.safe_load(f)
+    if params is None:
+        params = {}
 
     try:
         return UnidockConfig.from_dict(params)
-    except ValidationError as e:
-        print(f'Configuration Error:\n{e.json(indent=2)}')
+    except ValidationError as error:
+        print(f"Configuration Error:\n{error.json(indent=2)}")
         raise

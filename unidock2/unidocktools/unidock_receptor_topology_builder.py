@@ -1,7 +1,9 @@
 import os
+from itertools import chain
 from shutil import which
 import msys
 
+from unidock2.utils.external_command import run_external_command
 from unidock2.utils.molecule_processing import get_mol_without_indices
 from unidock2.unidocktools.protein_topology import (
     prepare_receptor_residue_mol_list,
@@ -11,6 +13,20 @@ from unidock2.unidocktools.receptor_topology_preparation import (
 )
 from unidock2.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
 from unidock2.atom_types.unidock_ff_atom_types import FF_ATOM_TYPE_DICT
+
+
+def _receptor_atom_to_engine_record(atom):
+    ff_atom_type = atom.GetProp("ff_atom_type")
+    vina_atom_type = atom.GetProp("vina_atom_type")
+    return [
+        atom.GetDoubleProp("x"),
+        atom.GetDoubleProp("y"),
+        atom.GetDoubleProp("z"),
+        VINA_ATOM_TYPE_DICT[vina_atom_type],
+        FF_ATOM_TYPE_DICT[ff_atom_type],
+        atom.GetDoubleProp("atom_charge"),
+    ]
+
 
 class UnidockReceptorTopologyBuilder(object):
     def __init__(
@@ -36,26 +52,38 @@ class UnidockReceptorTopologyBuilder(object):
         )
 
     def run_protein_preparation(self):
-        if which("fepfixer") is not None and which("utop") is not None:
+        fepfixer_executable = which("fepfixer")
+        utop_executable = which("utop")
+        if fepfixer_executable is not None and utop_executable is not None:
+            fepfixer_command = [
+                fepfixer_executable,
+                "-i",
+                os.path.abspath(self.receptor_file_name),
+                "-o",
+                os.path.basename(self.receptor_structure_dms_file_name),
+            ]
             if self.prepared_hydrogen:
-                fep_fixer_command = (
-                    f"fepfixer -i {self.receptor_file_name} "
-                    f"-o {self.receptor_structure_dms_file_name} "
-                    "--custom-protonation-states"
-                )
-            else:
-                fep_fixer_command = (
-                    f"fepfixer -i {self.receptor_file_name} "
-                    f"-o {self.receptor_structure_dms_file_name}"
-                )
+                fepfixer_command.append("--custom-protonation-states")
 
-            unitop_command = (
-                f"utop prm -i {self.receptor_structure_dms_file_name} "
-                f"-o {self.receptor_parameterized_dms_file_name}"
+            run_external_command(
+                fepfixer_command,
+                cwd=self.working_dir_name,
+                log_file_name="fepfixer.log",
+                expected_output_file_names=[self.receptor_structure_dms_file_name],
             )
-
-            os.system(fep_fixer_command)
-            os.system(unitop_command)
+            run_external_command(
+                [
+                    utop_executable,
+                    "prm",
+                    "-i",
+                    os.path.basename(self.receptor_structure_dms_file_name),
+                    "-o",
+                    os.path.basename(self.receptor_parameterized_dms_file_name),
+                ],
+                cwd=self.working_dir_name,
+                log_file_name="utop.log",
+                expected_output_file_names=[self.receptor_parameterized_dms_file_name],
+            )
         else:
             receptor_topology_preparation = ReceptorTopologyPreparation(
                 self.receptor_file_name, self.working_dir_name
@@ -164,64 +192,15 @@ class UnidockReceptorTopologyBuilder(object):
         if self.covalent_residue_atom_info_list is not None:
             self.prepare_covalent_bond_on_residue()
 
-        num_protein_residues = len(self.protein_residue_property_mol_list)
-        num_cofactor_residues = len(self.cofactor_residue_property_mol_list)
-
-        num_protein_atoms = 0
-        for protein_residue_idx in range(num_protein_residues):
-            protein_residue_property_mol = self.protein_residue_property_mol_list[
-                protein_residue_idx
-            ]
-            num_protein_atoms += protein_residue_property_mol.GetNumAtoms()
-
-        num_cofactor_atoms = 0
-        for cofactor_residue_idx in range(num_cofactor_residues):
-            cofactor_residue_property_mol = self.cofactor_residue_property_mol_list[
-                cofactor_residue_idx
-            ]
-            num_cofactor_atoms += cofactor_residue_property_mol.GetNumAtoms()
-
-        num_receptor_atoms = num_protein_atoms + num_cofactor_atoms
-        self.atom_info_nested_list = [None] * num_receptor_atoms
-        atom_idx = 0
-
-        for protein_residue_idx in range(num_protein_residues):
-            protein_residue_property_mol = self.protein_residue_property_mol_list[
-                protein_residue_idx
-            ]
-            for atom in protein_residue_property_mol.GetAtoms():
-                ff_atom_type = atom.GetProp("ff_atom_type")
-                vina_atom_type = atom.GetProp("vina_atom_type")
-
-                atom_info_list = [None] * 6
-                atom_info_list[0] = atom.GetDoubleProp("x")
-                atom_info_list[1] = atom.GetDoubleProp("y")
-                atom_info_list[2] = atom.GetDoubleProp("z")
-                atom_info_list[3] = VINA_ATOM_TYPE_DICT[vina_atom_type]
-                atom_info_list[4] = FF_ATOM_TYPE_DICT[ff_atom_type]
-                atom_info_list[5] = atom.GetDoubleProp("atom_charge")
-
-                self.atom_info_nested_list[atom_idx] = atom_info_list
-                atom_idx += 1
-
-        for cofactor_residue_idx in range(num_cofactor_residues):
-            cofactor_residue_property_mol = self.cofactor_residue_property_mol_list[
-                cofactor_residue_idx
-            ]
-            for atom in cofactor_residue_property_mol.GetAtoms():
-                ff_atom_type = atom.GetProp("ff_atom_type")
-                vina_atom_type = atom.GetProp("vina_atom_type")
-
-                atom_info_list = [None] * 6
-                atom_info_list[0] = atom.GetDoubleProp("x")
-                atom_info_list[1] = atom.GetDoubleProp("y")
-                atom_info_list[2] = atom.GetDoubleProp("z")
-                atom_info_list[3] = VINA_ATOM_TYPE_DICT[vina_atom_type]
-                atom_info_list[4] = FF_ATOM_TYPE_DICT[ff_atom_type]
-                atom_info_list[5] = atom.GetDoubleProp("atom_charge")
-
-                self.atom_info_nested_list[atom_idx] = atom_info_list
-                atom_idx += 1
+        residue_property_mols = chain(
+            self.protein_residue_property_mol_list,
+            self.cofactor_residue_property_mol_list,
+        )
+        self.atom_info_nested_list = [
+            _receptor_atom_to_engine_record(atom)
+            for residue_property_mol in residue_property_mols
+            for atom in residue_property_mol.GetAtoms()
+        ]
 
     def get_summary_receptor_info(self):
         self.summary_receptor_info_dict = {}

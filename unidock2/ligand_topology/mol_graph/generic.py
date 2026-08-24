@@ -168,7 +168,7 @@ class GenericMolGraph(BaseMolGraph):
 
         if self.construct_ff:
             atom_type_list, partial_charge_list, torsion_parameter_nested_dict = self.construct_gaff2()
-        else:
+        else:  # allow for no-ff construction
             num_atoms = self.mol.GetNumAtoms()
             atom_type_list = ['c'] * num_atoms
             partial_charge_list = [0.0] * num_atoms
