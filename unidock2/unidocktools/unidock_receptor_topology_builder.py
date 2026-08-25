@@ -12,7 +12,7 @@ from unidock2.unidocktools.receptor_topology_preparation import (
     ReceptorTopologyPreparation,
 )
 from unidock2.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
-from unidock2.atom_types.unidock_ff_atom_types import FF_ATOM_TYPE_DICT
+from unidock2.force_field.atom_type_mapping import FF_ATOM_TYPE_DICT
 
 
 def _receptor_atom_to_engine_record(atom):

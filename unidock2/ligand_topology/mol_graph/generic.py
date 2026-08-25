@@ -4,7 +4,7 @@ from rdkit.Chem import GetMolFrags, FragmentOnBonds
 from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
 from unidock2.atom_types.vina_atom_type import AtomType
 from unidock2.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
-from unidock2.atom_types.unidock_ff_atom_types import FF_ATOM_TYPE_DICT
+from unidock2.force_field.atom_type_mapping import FF_ATOM_TYPE_DICT
 from unidock2.torsion_library.torsion_library_driver import TorsionLibraryDriver
 from unidock2.ligand_topology import utils
 from unidock2.ligand_topology.rotatable_bond import BaseRotatableBond
