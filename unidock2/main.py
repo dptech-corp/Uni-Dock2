@@ -69,6 +69,7 @@ class CLIDriver(object):
             module = import_module(module_name).CLICommand
             docstring = module.__doc__ or ''
             cmd_parser = subparsers.add_parser(command,
+                                              help=getattr(module, 'help', None),
                                               description=docstring,
                                               formatter_class=argparse.RawDescriptionHelpFormatter)
 

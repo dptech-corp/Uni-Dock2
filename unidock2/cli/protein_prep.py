@@ -12,6 +12,8 @@ class CLICommand:
     then explicitly supplied command-line arguments.
     """
 
+    help = "Perform protein preparation"
+
     @staticmethod
     def add_arguments(parser):
         add_config_arguments(parser, "protein_prep")
