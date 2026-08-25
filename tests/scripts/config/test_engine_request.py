@@ -3,7 +3,6 @@ import json
 import pytest
 
 from unidock2._engine import (
-    ENGINE_REQUEST_SCHEMA_VERSION,
     build_engine_request,
     dump_engine_request,
     load_engine_request,
@@ -57,7 +56,6 @@ def test_engine_request_is_derived_from_config_and_runtime(tmp_path):
     )
 
     assert request == {
-        "schema_version": ENGINE_REQUEST_SCHEMA_VERSION,
         "parameters": {
             "center": [1.0, 2.0, 3.0],
             "box_size": [10.0, 20.0, 30.0],

@@ -34,7 +34,6 @@ def _run_pipeline(
     output_prefix = input_path.stem
     pipeline.run(
         {
-            "schema_version": pipeline.ENGINE_REQUEST_SCHEMA_VERSION,
             "parameters": parameters,
             "runtime": {
                 "output_dir": str(output_dir),

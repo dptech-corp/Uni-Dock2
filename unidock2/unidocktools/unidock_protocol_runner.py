@@ -15,7 +15,7 @@ UNSET = _UnsetType()
 
 
 def _write_engine_checkpoints(engine_request, working_dir):
-    """Write the legacy topology payload and the replayable versioned request."""
+    """Write the legacy topology payload and the replayable engine request."""
     with open(
         os.path.join(working_dir, "ud2_engine_inputs.json"),
         "w",

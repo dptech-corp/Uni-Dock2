@@ -246,7 +246,7 @@ class PreprocessingConfig(_ConfigurationSection):
     )
     engine_checkpoint: bool = Field(
         default=False,
-        description="Write legacy topology inputs and a versioned, replayable engine request",
+        description="Write legacy topology inputs and a replayable engine request",
     )
     output_receptor_dms_file_name: str = Field(
         default="receptor_parameterized.dms",

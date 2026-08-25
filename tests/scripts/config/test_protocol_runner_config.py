@@ -5,7 +5,6 @@ import pytest
 
 from unidock2._engine import (
     DEFAULT_ENGINE_OUTPUT_PREFIX,
-    ENGINE_REQUEST_SCHEMA_VERSION,
     build_engine_request,
 )
 from unidock2.config import UnidockConfig
@@ -109,7 +108,6 @@ def test_from_config_builds_the_complete_native_request(tmp_path):
         receptor=[{"atom": "receptor"}],
         ligands={"ligand_0": {"atom": "ligand"}},
     ) == {
-        "schema_version": ENGINE_REQUEST_SCHEMA_VERSION,
         "parameters": {
             "center": [1.0, 2.0, 3.0],
             "box_size": [10.0, 20.0, 30.0],

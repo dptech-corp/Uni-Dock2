@@ -1,4 +1,4 @@
-"""Build and serialize the private, versioned native-engine request."""
+"""Build and serialize the private native-engine request."""
 
 from __future__ import annotations
 
@@ -9,14 +9,12 @@ from typing import Any, Mapping, TypedDict, cast
 from unidock2.config import UnidockConfig
 
 
-ENGINE_REQUEST_SCHEMA_VERSION = 1
 DEFAULT_ENGINE_OUTPUT_PREFIX = "from_python_obj"
 
 
 class EngineRequest(TypedDict):
     """JSON-compatible data accepted by the private native engine binding."""
 
-    schema_version: int
     parameters: dict[str, Any]
     runtime: dict[str, Any]
     molecules: dict[str, Any]
@@ -61,7 +59,6 @@ def build_engine_request(
     molecules = {"receptor": receptor, **ligand_data}
 
     return {
-        "schema_version": ENGINE_REQUEST_SCHEMA_VERSION,
         "parameters": parameters,
         "runtime": runtime,
         "molecules": molecules,

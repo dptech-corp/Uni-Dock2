@@ -11,7 +11,7 @@ import pipeline
 TEST_DATA = Path(__file__).resolve().parent / "data" / "1W1P"
 
 
-def test_pipeline_smoke(tmp_path: Path):
+def test_pipeline_smoke_ignores_extra_request_keys(tmp_path: Path):
     input_path = TEST_DATA / "1W1P_unidock2.json"
     with input_path.open(encoding="utf-8") as input_file:
         input_data = json.load(input_file)
@@ -21,7 +21,7 @@ def test_pipeline_smoke(tmp_path: Path):
 
     pipeline.run(
         {
-            "schema_version": pipeline.ENGINE_REQUEST_SCHEMA_VERSION,
+            "ignored_metadata": {"source": "native-smoke-test"},
             "parameters": {
                 "center": [43.20550987534587, 75.61079763066026, 51.93665163136053],
                 "box_size": [30.0, 30.0, 30.0],
@@ -41,12 +41,14 @@ def test_pipeline_smoke(tmp_path: Path):
                 "constraint_docking": False,
                 "use_tor_lib": False,
                 "energy_decomp": False,
+                "ignored_parameter": True,
             },
             "runtime": {
                 "output_dir": str(tmp_path),
                 "output_prefix": input_path.stem,
                 "gpu_device_id": 0,
                 "max_gpu_memory": 0,
+                "ignored_runtime_value": "test",
             },
             "molecules": {"receptor": receptor, **input_data},
         }

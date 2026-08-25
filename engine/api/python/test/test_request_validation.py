@@ -1,4 +1,4 @@
-"""Validation tests for the private, versioned engine request boundary."""
+"""Validation tests for the private engine request boundary."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ import pipeline
 
 def _valid_request() -> dict:
     return {
-        "schema_version": 1,
         "parameters": {
             "center": [0.0, 0.0, 0.0],
             "box_size": [30.0, 30.0, 30.0],
@@ -42,31 +41,11 @@ def _valid_request() -> dict:
     }
 
 
-def test_exposes_supported_schema_version():
-    assert pipeline.ENGINE_REQUEST_SCHEMA_VERSION == 1
-
-
-def test_rejects_unsupported_schema_before_engine_execution():
-    request = _valid_request()
-    request["schema_version"] = 2
-
-    with pytest.raises(ValueError, match="Unsupported engine request schema_version 2"):
-        pipeline.run(request)
-
-
 def test_rejects_missing_top_level_key_before_engine_execution():
     request = _valid_request()
     del request["runtime"]
 
     with pytest.raises(KeyError, match="runtime"):
-        pipeline.run(request)
-
-
-def test_rejects_unknown_parameter_before_engine_execution():
-    request = _valid_request()
-    request["parameters"]["future_option"] = True
-
-    with pytest.raises(KeyError, match="future_option"):
         pipeline.run(request)
 
 

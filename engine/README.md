@@ -4,11 +4,11 @@ This directory contains the private C++/CUDA implementation used by the
 `unidock2` Python package. It does not provide a standalone product interface.
 
 The Python binding in `api/python` is the only runtime adapter. Its one-shot
-`pipeline.run(request)` entry point accepts a versioned, JSON-compatible
-dictionary, validates the private engine schema, converts it into `CoreInput`,
-and calls `core_pipeline()`. User-facing defaults, documentation, and
-validation remain in the Python `UnidockConfig` model; the C++ engine does not
-define a second set of product defaults.
+`pipeline.run(request)` entry point accepts a JSON-compatible
+dictionary, validates and converts its required values into `CoreInput`, and
+calls `core_pipeline()`. User-facing defaults, documentation, and validation
+remain in the Python `UnidockConfig` model; the C++ engine does not define a
+second set of product defaults.
 
 ## Developer build
 
@@ -33,7 +33,7 @@ the Python binding, and validate the generated poses.
 
 When `engine_checkpoint` is enabled, `UnidockProtocolRunner` writes both the
 legacy topology-only `ud2_engine_inputs.json` and the replayable,
-schema-versioned `ud2_engine_request.json` during the compatibility period.
+private `ud2_engine_request.json` during the compatibility period.
 
 ## Native debugging through Python
 

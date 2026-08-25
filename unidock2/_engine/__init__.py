@@ -1,8 +1,7 @@
-"""Private native-engine binding and its versioned request adapter."""
+"""Private native-engine binding and its request adapter."""
 
 from unidock2._engine.request import (
     DEFAULT_ENGINE_OUTPUT_PREFIX,
-    ENGINE_REQUEST_SCHEMA_VERSION,
     EngineRequest,
     build_engine_request,
     dump_engine_request,
@@ -11,7 +10,6 @@ from unidock2._engine.request import (
 
 __all__ = [
     "DEFAULT_ENGINE_OUTPUT_PREFIX",
-    "ENGINE_REQUEST_SCHEMA_VERSION",
     "EngineRequest",
     "build_engine_request",
     "dump_engine_request",

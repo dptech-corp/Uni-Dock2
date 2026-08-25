@@ -1,10 +1,8 @@
 #include <array>
 #include <cmath>
-#include <set>
-#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <vector>
+#include <utility>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -15,88 +13,6 @@
 namespace py = pybind11;
 
 namespace {
-
-constexpr int ENGINE_REQUEST_SCHEMA_VERSION = 1;
-
-const std::set<std::string> TOP_LEVEL_KEYS = {
-    "schema_version",
-    "parameters",
-    "runtime",
-    "molecules",
-};
-
-const std::set<std::string> PARAMETER_KEYS = {
-    "center",
-    "box_size",
-    "task",
-    "search_mode",
-    "exhaustiveness",
-    "randomize",
-    "mc_steps",
-    "opt_steps",
-    "refine_steps",
-    "num_pose",
-    "rmsd_limit",
-    "energy_range",
-    "seed",
-    "bias",
-    "bias_k",
-    "use_tor_lib",
-    "energy_decomp",
-    "constraint_docking",
-};
-
-const std::set<std::string> RUNTIME_KEYS = {
-    "output_dir",
-    "output_prefix",
-    "gpu_device_id",
-    "max_gpu_memory",
-};
-
-std::string join_keys(const std::vector<std::string>& keys) {
-    std::ostringstream message;
-    for (std::size_t index = 0; index < keys.size(); ++index) {
-        if (index != 0) {
-            message << ", ";
-        }
-        message << keys[index];
-    }
-    return message.str();
-}
-
-void validate_exact_keys(
-    const py::dict& mapping,
-    const std::set<std::string>& expected_keys,
-    const std::string& location
-) {
-    std::set<std::string> actual_keys;
-    for (const auto& item : mapping) {
-        if (!py::isinstance<py::str>(item.first)) {
-            throw py::type_error(location + " keys must be strings");
-        }
-        actual_keys.insert(py::cast<std::string>(item.first));
-    }
-
-    std::vector<std::string> missing_keys;
-    std::vector<std::string> unknown_keys;
-    for (const auto& key : expected_keys) {
-        if (actual_keys.count(key) == 0) {
-            missing_keys.push_back(key);
-        }
-    }
-    for (const auto& key : actual_keys) {
-        if (expected_keys.count(key) == 0) {
-            unknown_keys.push_back(key);
-        }
-    }
-
-    if (!missing_keys.empty()) {
-        throw py::key_error(location + " is missing required keys: " + join_keys(missing_keys));
-    }
-    if (!unknown_keys.empty()) {
-        throw py::key_error(location + " contains unknown keys: " + join_keys(unknown_keys));
-    }
-}
 
 py::object get_item(const py::dict& mapping, const char* key) {
     return mapping[py::str(key)];
@@ -187,21 +103,9 @@ struct ParsedEngineRequest {
 };
 
 ParsedEngineRequest parse_engine_request(const py::dict& request) {
-    validate_exact_keys(request, TOP_LEVEL_KEYS, "request");
-
-    const int schema_version = get_integer(request, "schema_version", "request");
-    if (schema_version != ENGINE_REQUEST_SCHEMA_VERSION) {
-        throw py::value_error(
-            "Unsupported engine request schema_version " + std::to_string(schema_version) +
-            "; expected " + std::to_string(ENGINE_REQUEST_SCHEMA_VERSION)
-        );
-    }
-
     const py::dict parameters = get_dict(request, "parameters", "request");
     const py::dict runtime = get_dict(request, "runtime", "request");
     py::dict molecules = get_dict(request, "molecules", "request");
-    validate_exact_keys(parameters, PARAMETER_KEYS, "request.parameters");
-    validate_exact_keys(runtime, RUNTIME_KEYS, "request.runtime");
 
     for (const auto& item : molecules) {
         if (!py::isinstance<py::str>(item.first)) {
@@ -278,7 +182,6 @@ void run_engine_request(const py::dict& request) {
 
 PYBIND11_MODULE(pipeline, module) {
     module.doc() = "Private Python binding for the Uni-Dock2 molecular docking engine";
-    module.attr("ENGINE_REQUEST_SCHEMA_VERSION") = ENGINE_REQUEST_SCHEMA_VERSION;
     module.def(
         "run",
         &run_engine_request,
@@ -286,7 +189,7 @@ PYBIND11_MODULE(pipeline, module) {
         R"pbdoc(
 Run one docking request.
 
-The request must be a versioned, JSON-compatible dictionary produced by
+The request must be a JSON-compatible dictionary produced by
 ``unidock2._engine.build_engine_request``. This native module is private; use
 ``UnidockProtocolRunner`` for the supported public workflow.
         )pbdoc"
