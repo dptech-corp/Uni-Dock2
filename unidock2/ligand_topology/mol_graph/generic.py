@@ -2,9 +2,12 @@ import os
 from rdkit import Chem
 from rdkit.Chem import GetMolFrags, FragmentOnBonds
 from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
-from unidock2.atom_types.vina_atom_type import AtomType
-from unidock2.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
-from unidock2.force_field.atom_type_mapping import FF_ATOM_TYPE_DICT
+from unidock2.atom_types.vina import (
+    VINA_ATOM_TYPE_DICT,
+    VINA_ATOM_TYPE_PROPERTY,
+    VinaAtomTyper,
+)
+from unidock2.force_field.gaff2_mapping import FF_ATOM_TYPE_DICT
 from unidock2.torsion_library.torsion_library_driver import TorsionLibraryDriver
 from unidock2.ligand_topology import utils
 from unidock2.ligand_topology.rotatable_bond import BaseRotatableBond
@@ -28,7 +31,7 @@ class GenericMolGraph(BaseMolGraph):
 
     def preprocess_mol(self):
         mol = self.mol
-        atom_typer = AtomType()
+        atom_typer = VinaAtomTyper()
         atom_typer.assign_atom_types(mol)
         ComputeGasteigerCharges(mol)
         utils.assign_atom_properties(mol)
@@ -89,7 +92,7 @@ class GenericMolGraph(BaseMolGraph):
         for atom_idx in range(mol.GetNumAtoms()):
             atom = mol.GetAtomWithIdx(atom_idx)
             ff_atom_type = atom_type_list[atom_idx]
-            vina_atom_type = atom.GetProp('vina_atom_type')
+            vina_atom_type = atom.GetProp(VINA_ATOM_TYPE_PROPERTY)
 
             atom_info = (
                 atom.GetDoubleProp('x'),

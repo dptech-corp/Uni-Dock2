@@ -10,7 +10,7 @@ from unidock2.utils.molecule_processing import (
     get_mol_with_indices,
     get_mol_without_indices,
 )
-from unidock2.atom_types.vina_atom_type import AtomType
+from unidock2.atom_types.vina import VinaAtomTyper
 from unidock2.unidocktools.supported_protein_residue_name import (
     PROTEIN_RESIUDE_NAME_LIST,
 )
@@ -229,7 +229,7 @@ def prepare_receptor_residue_mol_list(receptor_msys_system):
         keep_properties=RECEPTOR_ATOM_PROPERTY_NAMES,
     )
 
-    atom_typer = AtomType()
+    atom_typer = VinaAtomTyper()
     atom_typer.assign_atom_types(protein_mol)
 
     protein_residue_mol_list = split_mol_by_residues(protein_mol)

@@ -11,13 +11,13 @@ from unidock2.unidocktools.protein_topology import (
 from unidock2.unidocktools.receptor_topology_preparation import (
     ReceptorTopologyPreparation,
 )
-from unidock2.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
-from unidock2.force_field.atom_type_mapping import FF_ATOM_TYPE_DICT
+from unidock2.atom_types.vina import VINA_ATOM_TYPE_DICT, VINA_ATOM_TYPE_PROPERTY
+from unidock2.force_field.gaff2_mapping import FF_ATOM_TYPE_DICT
 
 
 def _receptor_atom_to_engine_record(atom):
     ff_atom_type = atom.GetProp("ff_atom_type")
-    vina_atom_type = atom.GetProp("vina_atom_type")
+    vina_atom_type = atom.GetProp(VINA_ATOM_TYPE_PROPERTY)
     return [
         atom.GetDoubleProp("x"),
         atom.GetDoubleProp("y"),
@@ -152,7 +152,7 @@ class UnidockReceptorTopologyBuilder(object):
                 "atom_name",
                 "atom_charge",
                 "ff_atom_type",
-                "vina_atom_type",
+                VINA_ATOM_TYPE_PROPERTY,
                 "residue_idx",
                 "residue_name",
                 "chain_idx",

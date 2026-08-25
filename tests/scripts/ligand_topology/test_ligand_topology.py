@@ -10,8 +10,7 @@ from context import TEST_DATA_DIR
 from unidock2.ligand_topology import utils
 from unidock2.ligand_topology.rotatable_bond import BaseRotatableBond
 
-from unidock2.atom_types.vina_atom_type import AtomType
-from unidock2.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
+from unidock2.atom_types.vina import VINA_ATOM_TYPE_DICT, VinaAtomTyper
 
 TEST_LIGAND_DATA_DIR = os.path.join(TEST_DATA_DIR, 'ligand_topology')
 
@@ -216,12 +215,11 @@ def test_vina_atom_typing(
     vina_atom_type_test_molecule_2,
     vina_atom_type_test_molecule_3,
 ):
-    atom_typer = AtomType()
     mol_1 = Chem.SDMolSupplier(vina_atom_type_test_molecule_1, removeHs=False)[0]
     mol_2 = Chem.SDMolSupplier(vina_atom_type_test_molecule_2, removeHs=False)[0]
     mol_3 = Chem.SDMolSupplier(vina_atom_type_test_molecule_3, removeHs=False)[0]
 
-    atom_typer = AtomType()
+    atom_typer = VinaAtomTyper()
     atom_typer.assign_atom_types(mol_1)
     atom_typer.assign_atom_types(mol_2)
     atom_typer.assign_atom_types(mol_3)
