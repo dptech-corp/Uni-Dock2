@@ -105,7 +105,6 @@ def test_free_docking_by_yaml(
         unidock2_option_dict['Required']['ligand'] = ligand
         unidock2_option_dict['Required']['center'] = list(pocket_center)
 
-        unidock2_option_dict['Preprocessing']['temp_dir_name'] = working_dir_name
         unidock2_option_dict['Preprocessing']['output_sdf'] = docking_pose_sdf_file_name
 
         test_configuration_file_name = os.path.join(
@@ -121,14 +120,13 @@ def test_free_docking_by_yaml(
         ligand_sdf_file_name = unidock_kwargs_dict.pop('ligand', None)
         _ = unidock_kwargs_dict.pop('ligand_batch', None)
         target_center = unidock_kwargs_dict.pop('center', None)
-        temp_dir_name = unidock_kwargs_dict.pop('temp_dir_name', None)
         docking_pose_sdf_file_name = unidock_kwargs_dict.pop('output_sdf', None)
 
         unidock_protocol_runner = UnidockProtocolRunner(
             receptor_file_name,
             [ligand_sdf_file_name],
             target_center=tuple(target_center),
-            working_dir_name=temp_dir_name,
+            working_dir_name=working_dir_name,
             docking_pose_sdf_file_name=docking_pose_sdf_file_name,
             **unidock_kwargs_dict,
         )

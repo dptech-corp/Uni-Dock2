@@ -54,7 +54,7 @@ def test_yaml_parsing(
     assert not yaml_params.preprocessing.covalent_ligand
     assert yaml_params.preprocessing.covalent_residue_atom_info_list is None
     assert not yaml_params.preprocessing.preserve_receptor_hydrogen
-    assert yaml_params.preprocessing.temp_dir_name == '/tmp'
+    assert not yaml_params.preprocessing.keep_workdir
     assert yaml_params.preprocessing.engine_checkpoint
     assert yaml_params.preprocessing.output_sdf == 'unidock2_pose.sdf'
 
@@ -89,7 +89,7 @@ def test_yaml_parsing(
                                  'covalent_ligand': False,
                                  'covalent_residue_atom_info_list': None,
                                  'preserve_receptor_hydrogen': False,
-                                 'temp_dir_name': '/tmp',
+                                 'keep_workdir': False,
                                  'engine_checkpoint': True,
                                  'output_sdf': 'unidock2_pose.sdf'}
 

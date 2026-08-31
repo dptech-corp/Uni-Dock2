@@ -173,12 +173,8 @@ class UnidockProtocolRunner:
             os.path.abspath(self.reference_sdf_file_name) if self.reference_sdf_file_name else None
         )
         self.working_dir_name = os.path.abspath(working_dir_name)
-        self.unidock2_output_dir_name = os.path.join(
-            self.working_dir_name,
-            "unidock2_output",
-        )
         self.docking_pose_sdf_file_name = os.path.abspath(self.output_sdf)
-        os.makedirs(self.unidock2_output_dir_name, exist_ok=True)
+        os.makedirs(self.working_dir_name, exist_ok=True)
 
         self.core_atom_mapping_dict_list = (
             [
@@ -287,7 +283,6 @@ class UnidockProtocolRunner:
         engine_request = build_engine_request(
             self._current_config(),
             target_center=self.target_center,
-            output_dir=self.unidock2_output_dir_name,
             receptor=receptor_atom_info_list,
             ligands=ligand_info_dict,
         )

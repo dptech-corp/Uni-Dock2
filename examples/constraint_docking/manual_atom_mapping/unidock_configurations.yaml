@@ -47,5 +47,4 @@ Preprocessing:
   covalent_ligand: false
   covalent_residue_atom_info_list: null
   preserve_receptor_hydrogen: true
-  temp_dir_name: /tmp
   output_sdf: unidock2_pose.sdf

@@ -26,7 +26,6 @@ set(sources
         myutils/common.h
         myutils/errors.h        myutils/errors.cpp
         myutils/matrix.h
-        myutils/myio.h          myutils/myio.cpp
         myutils/mymath.h
 
         optimize/bfgs.h

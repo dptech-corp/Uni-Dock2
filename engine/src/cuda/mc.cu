@@ -4,7 +4,6 @@
 
 #include <cooperative_groups.h>
 
-#include "myutils/myio.h"
 #include "model/model.h"
 #include "search/mc.h"
 

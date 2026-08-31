@@ -247,9 +247,15 @@ class PreprocessingConfig(_ConfigurationSection):
         default=False,
         description="Preserve receptor hydrogens during topology preparation",
     )
-    temp_dir_name: str = Field(
-        default="/tmp",
-        description="Parent directory for temporary working directories",
+    keep_workdir: bool = Field(
+        default=False,
+        description=(
+            "Keep the working directory after a successful run; a failed run always keeps it"
+        ),
+        json_schema_extra=cli(
+            "--keep_workdir",
+            commands=("docking", "prepare_protein", "prepare_ligands"),
+        ),
     )
     engine_checkpoint: bool = Field(
         default=True,

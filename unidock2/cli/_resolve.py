@@ -20,6 +20,7 @@ from unidock2.io.ud2lig import (
     load_ud2lig_manifest,
     validate_ud2lig_against_config,
 )
+from unidock2.io.workdir import workdir_root_for
 from unidock2.io.yaml import read_unidock_params_from_yaml
 
 
@@ -102,16 +103,16 @@ def resolve_docking_request(args, config=None):
         manifest = load_ud2lig_manifest(os.path.join(ud2lig_dir, "manifest.json"))
         validate_ud2lig_against_config(manifest, config)
 
-    root_temp_dir_name = os.path.abspath(config.preprocessing.temp_dir_name)
+    docking_pose_sdf_file_name = os.path.abspath(config.preprocessing.output_sdf)
     return ResolvedDockingRequest(
         receptor_file_name=os.path.abspath(receptor),
         ligand_source=ligand_source,
         ligand_sdf_file_name_list=ligand_sdf_file_name_list,
         ud2lig_dir=ud2lig_dir,
         target_center=tuple(config.required.center),
-        root_temp_dir_name=root_temp_dir_name,
-        docking_pose_sdf_file_name=os.path.abspath(config.preprocessing.output_sdf),
-        remove_temp_dir=root_temp_dir_name == "/tmp",
+        workdir_root=workdir_root_for(docking_pose_sdf_file_name),
+        docking_pose_sdf_file_name=docking_pose_sdf_file_name,
+        keep_workdir=config.preprocessing.keep_workdir,
         config=config,
     )
 
@@ -130,12 +131,12 @@ def resolve_prepare_protein_request(args, config=None):
     if not output_dms:
         raise ValueError("Output receptor DMS file (-o) is required!")
 
-    root_temp_dir_name = os.path.abspath(config.preprocessing.temp_dir_name)
+    receptor_dms_file_name = os.path.abspath(output_dms)
     return ResolvedPrepareProteinRequest(
         receptor_file_name=os.path.abspath(receptor),
-        root_temp_dir_name=root_temp_dir_name,
-        receptor_dms_file_name=os.path.abspath(output_dms),
-        remove_temp_dir=root_temp_dir_name == "/tmp",
+        workdir_root=workdir_root_for(receptor_dms_file_name),
+        receptor_dms_file_name=receptor_dms_file_name,
+        keep_workdir=config.preprocessing.keep_workdir,
         config=config,
     )
 
@@ -156,11 +157,11 @@ def resolve_prepare_ligands_request(args, config=None):
         allow_ud2lig=False,
     )
 
-    root_temp_dir_name = os.path.abspath(config.preprocessing.temp_dir_name)
+    output_ud2lig_dir = os.path.abspath(output_ud2lig_dir)
     return ResolvedPrepareLigandsRequest(
         ligand_sdf_file_name_list=ligand_sdf_file_name_list,
-        output_ud2lig_dir=os.path.abspath(output_ud2lig_dir),
-        root_temp_dir_name=root_temp_dir_name,
-        remove_temp_dir=root_temp_dir_name == "/tmp",
+        output_ud2lig_dir=output_ud2lig_dir,
+        workdir_root=workdir_root_for(output_ud2lig_dir),
+        keep_workdir=config.preprocessing.keep_workdir,
         config=config,
     )

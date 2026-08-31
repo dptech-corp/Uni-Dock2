@@ -40,7 +40,7 @@ DEFAULT_CONFIG = {
         "covalent_ligand": False,
         "covalent_residue_atom_info_list": None,
         "preserve_receptor_hydrogen": False,
-        "temp_dir_name": "/tmp",
+        "keep_workdir": False,
         "engine_checkpoint": True,
         "output_sdf": "unidock2_pose.sdf",
     },

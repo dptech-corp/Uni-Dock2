@@ -18,7 +18,7 @@ def _minimal_molecules():
     return receptor, ligands
 
 
-def test_engine_request_is_derived_from_config_and_runtime(tmp_path):
+def test_engine_request_is_derived_from_config_and_runtime():
     config = UnidockConfig().with_overrides(
         box_size=[10, 20, 30],
         task="score",
@@ -45,8 +45,6 @@ def test_engine_request_is_derived_from_config_and_runtime(tmp_path):
     request = build_engine_request(
         config,
         target_center=(1, 2, 3),
-        output_dir=tmp_path / "output",
-        output_prefix="batch",
         receptor=receptor,
         ligands=ligands,
     )
@@ -73,8 +71,6 @@ def test_engine_request_is_derived_from_config_and_runtime(tmp_path):
             "constraint_docking": True,
         },
         "runtime": {
-            "output_dir": str(tmp_path / "output"),
-            "output_prefix": "batch",
             "gpu_device_id": 2,
             "max_gpu_memory": 4096,
         },
@@ -82,12 +78,11 @@ def test_engine_request_is_derived_from_config_and_runtime(tmp_path):
     }
 
 
-def test_engine_request_is_strict_json_serializable(tmp_path):
+def test_engine_request_is_strict_json_serializable():
     receptor, ligands = _minimal_molecules()
     request = build_engine_request(
         UnidockConfig(),
         target_center=(1, 2, 3),
-        output_dir=tmp_path / "output",
         receptor=receptor,
         ligands=ligands,
     )
@@ -95,12 +90,11 @@ def test_engine_request_is_strict_json_serializable(tmp_path):
     assert json.loads(json.dumps(request, allow_nan=False)) == request
 
 
-def test_engine_request_rejects_non_serializable_numbers(tmp_path):
+def test_engine_request_rejects_non_serializable_numbers():
     receptor, ligands = _minimal_molecules()
     request = build_engine_request(
         UnidockConfig(),
         target_center=(1, 2, 3),
-        output_dir=tmp_path / "output",
         receptor=receptor,
         ligands=ligands,
     )
@@ -110,7 +104,7 @@ def test_engine_request_rejects_non_serializable_numbers(tmp_path):
         json.dumps(request, allow_nan=False)
 
 
-def test_engine_request_rejects_reserved_receptor_ligand_key(tmp_path):
+def test_engine_request_rejects_reserved_receptor_ligand_key():
     receptor, ligands = _minimal_molecules()
     ligands["receptor"] = []
 
@@ -118,7 +112,6 @@ def test_engine_request_rejects_reserved_receptor_ligand_key(tmp_path):
         build_engine_request(
             UnidockConfig(),
             target_center=(1, 2, 3),
-            output_dir=tmp_path / "output",
             receptor=receptor,
             ligands=ligands,
         )

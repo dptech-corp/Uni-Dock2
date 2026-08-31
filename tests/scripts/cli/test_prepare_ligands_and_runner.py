@@ -51,8 +51,8 @@ def test_prepare_ligands_writes_ud2lig(tmp_path, monkeypatch):
     request = SimpleNamespace(
         ligand_sdf_file_name_list=(str(tmp_path / "ligand.sdf"),),
         output_ud2lig_dir=str(tmp_path / "lib.ud2lig"),
-        root_temp_dir_name=str(tmp_path / "tmp"),
-        remove_temp_dir=True,
+        workdir_root=str(tmp_path / "tmp"),
+        keep_workdir=False,
         config=UnidockConfig(),
     )
     monkeypatch.setattr(prepare_ligands, "resolve_prepare_ligands_request", lambda args: request)

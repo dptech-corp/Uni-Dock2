@@ -32,8 +32,6 @@ def _valid_request() -> dict:
             "constraint_docking": False,
         },
         "runtime": {
-            "output_dir": ".",
-            "output_prefix": "validation",
             "gpu_device_id": 0,
             "max_gpu_memory": 0,
         },

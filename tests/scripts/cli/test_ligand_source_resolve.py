@@ -222,3 +222,59 @@ def test_prepare_protein_requires_output_dms(tmp_path):
 
     with pytest.raises(ValueError, match="Output receptor DMS file"):
         resolve_prepare_protein_request(args)
+
+
+def test_docking_workdir_root_sits_beside_the_output_sdf(tmp_path):
+    ligand = tmp_path / "ligand.sdf"
+    _write_sdf(ligand)
+    receptor = tmp_path / "receptor.pdb"
+    receptor.write_text("ATOM\n", encoding="utf-8")
+    output_sdf = tmp_path / "results" / "poses.sdf"
+    args = SimpleNamespace(
+        configurations=None,
+        receptor=str(receptor),
+        ligand=str(ligand),
+        ligand_batch=None,
+        center=None,
+        output_sdf=str(output_sdf),
+        keep_workdir=None,
+    )
+
+    request = resolve_docking_request(args)
+
+    assert request.workdir_root == str(tmp_path / "results" / "unidock2_temp")
+    assert not request.keep_workdir
+
+
+def test_docking_keep_workdir_comes_from_the_command_line(tmp_path):
+    ligand = tmp_path / "ligand.sdf"
+    _write_sdf(ligand)
+    receptor = tmp_path / "receptor.pdb"
+    receptor.write_text("ATOM\n", encoding="utf-8")
+    args = SimpleNamespace(
+        configurations=None,
+        receptor=str(receptor),
+        ligand=str(ligand),
+        ligand_batch=None,
+        center=None,
+        output_sdf=str(tmp_path / "poses.sdf"),
+        keep_workdir=True,
+    )
+
+    request = resolve_docking_request(args)
+
+    assert request.workdir_root == str(tmp_path / "unidock2_temp")
+    assert request.keep_workdir
+
+
+def test_prepare_protein_workdir_root_defaults_beside_the_output_dms(tmp_path):
+    receptor = tmp_path / "receptor.pdb"
+    receptor.write_text("ATOM\n", encoding="utf-8")
+    args = SimpleNamespace(
+        receptor=str(receptor),
+        output_dms=str(tmp_path / "prepared" / "receptor.dms"),
+    )
+
+    request = resolve_prepare_protein_request(args)
+
+    assert request.workdir_root == str(tmp_path / "prepared" / "unidock2_temp")

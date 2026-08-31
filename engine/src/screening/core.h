@@ -17,10 +17,8 @@ struct CoreInput {
     Real energy_range = 0;
     int max_gpu_memory = 0;
     int mc_steps = 0;
-    std::string name_json;
     int num_pose = 0;
     int opt_steps = 0;
-    std::string output_dir;
     int refine_steps = 0;
     bool randomize = false;
     Real rmsd_limit = 0;
@@ -40,8 +38,6 @@ struct CoreInput {
 struct CoreContext {
     int max_memory = 0;
     std::string task;
-    std::string output_dir;
-    std::string name_json;
     bool energy_decomp = false;
     UDFixMol fix_mol;
     UDFlexMolList flex_mol_list;

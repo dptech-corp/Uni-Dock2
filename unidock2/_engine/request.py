@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Mapping, TypedDict
 
 from unidock2.config import UnidockConfig
-
-
-DEFAULT_ENGINE_OUTPUT_PREFIX = "from_python_obj"
 
 
 class EngineRequest(TypedDict):
@@ -23,10 +19,8 @@ def build_engine_request(
     config: UnidockConfig,
     *,
     target_center,
-    output_dir: str | Path,
     receptor: list,
     ligands: Mapping[str, Any],
-    output_prefix: str = DEFAULT_ENGINE_OUTPUT_PREFIX,
 ) -> EngineRequest:
     """Translate validated public configuration and prepared topology to the native contract."""
     if not isinstance(config, UnidockConfig):
@@ -50,8 +44,6 @@ def build_engine_request(
         "constraint_docking": (config.preprocessing.template_docking or config.preprocessing.covalent_ligand),
     }
     runtime = {
-        "output_dir": str(output_dir),
-        "output_prefix": str(output_prefix),
         "gpu_device_id": config.hardware.gpu_device_id,
         "max_gpu_memory": config.hardware.max_gpu_memory,
     }

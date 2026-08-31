@@ -1,4 +1,3 @@
-#include <filesystem>
 #include <string>
 #include <vector> // ligand paths
 #include <chrono>
@@ -83,18 +82,6 @@ CoreContext prepare_context_by_input(CoreInput& ipt) {
     CoreContext ctx;
 
     ctx.task = ipt.task;
-
-    ctx.output_dir = ipt.output_dir;
-    UD2_REQUIRE(!ctx.output_dir.empty(), "No output directory is specified!");
-    if (!std::filesystem::exists(ctx.output_dir)) {
-        try {
-            std::filesystem::create_directories(ctx.output_dir);
-        } catch (const std::filesystem::filesystem_error& e) {
-            UD2_FATALF("Failed to create output directory {}: {}", ctx.output_dir, e.what());
-        }
-    }
-
-    ctx.name_json = ipt.name_json;
     ctx.max_memory = decide_memory_limit_mb(ipt.gpu_device_id, ipt.max_gpu_memory);
     ctx.fix_mol = std::move(ipt.fix_mol);
     ctx.flex_mol_list = std::move(ipt.flex_mol_list);

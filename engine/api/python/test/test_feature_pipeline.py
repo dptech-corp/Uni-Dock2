@@ -31,13 +31,10 @@ def _run_pipeline(
     parameters: dict,
 ) -> dict:
     receptor, ligands = _load_prepared_input(input_path)
-    output_prefix = input_path.stem
     output_data = pipeline.run(
         {
             "parameters": parameters,
             "runtime": {
-                "output_dir": str(output_dir),
-                "output_prefix": output_prefix,
                 "gpu_device_id": 0,
                 "max_gpu_memory": 0,
             },
@@ -45,7 +42,7 @@ def _run_pipeline(
         }
     )
 
-    assert not list(output_dir.glob("*.json"))
+    assert not list(output_dir.iterdir())
     return output_data
 
 

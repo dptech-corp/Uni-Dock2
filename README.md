@@ -70,6 +70,18 @@ Use `unidock2 docking --help` to check how to write the YAML file.
 * Ligand (`-l` / `Required.ligand`): a single SDF file, a directory of SDF files (non-recursive `*.sdf`), or a **UD2LIG** directory that contains `manifest.json` with magic `ud2lig`. UD2LIG skips ligand preprocessing. Produce one with `unidock2 prepare_ligands -l ... -o mylibrary.ud2lig`, or reuse the `{pose_stem}.ud2lig` directory that `unidock2 docking` writes next to `-o` / `--output_sdf` by default.
 * Ligand batch (`-lb`) is unchanged: a text file with one SDF path per line. It can be combined with a single SDF or an SDF directory, but **not** with a UD2LIG directory.
 
+## Working Directory
+Intermediate files (receptor preparation chain, per-batch ligand topology, external tool logs) go to **one directory per run**, created under `unidock2_temp` beside the command output. There is nothing to configure: point `-o` at the disk you want and the intermediates follow. The absolute path is printed when the run starts.
+
+* A **successful** run removes its working directory, and removes `unidock2_temp` too when nothing else is left in it.
+* A **failed** run keeps the working directory so you can inspect the intermediates.
+* `--keep_workdir` (`Preprocessing.keep_workdir`) keeps it even when the run succeeds.
+
+```sh
+# Intermediates go to /data/results/unidock2_temp/docking_<host>_<pid>_<timestamp>_<id>/
+unidock2 docking -cf experiment.yaml -o /data/results/poses.sdf --keep_workdir
+```
+
 ## Command Line Parameters
 All supported parameters can be configured in YAML. Frequently changed scalar and short-list parameters also have command-line equivalents; explicit command-line inputs override YAML values. Run `unidock2 docking --help` for the generated list and current defaults.
 

@@ -44,8 +44,6 @@ def test_pipeline_smoke_ignores_extra_request_keys(tmp_path: Path):
                 "ignored_parameter": True,
             },
             "runtime": {
-                "output_dir": str(tmp_path),
-                "output_prefix": input_path.stem,
                 "gpu_device_id": 0,
                 "max_gpu_memory": 0,
                 "ignored_runtime_value": "test",
@@ -54,6 +52,6 @@ def test_pipeline_smoke_ignores_extra_request_keys(tmp_path: Path):
         }
     )
 
-    assert not list(tmp_path.glob("*.json"))
+    assert not list(tmp_path.iterdir())
     assert len(output_data) == 1
     assert next(iter(output_data.values()))

@@ -144,8 +144,6 @@ ParsedEngineRequest parse_engine_request(const py::dict& request) {
     parsed.input.energy_decomp = get_boolean(parameters, "energy_decomp", "request.parameters");
     parsed.input.constraint_docking = get_boolean(parameters, "constraint_docking", "request.parameters");
 
-    parsed.input.output_dir = get_string(runtime, "output_dir", "request.runtime");
-    parsed.input.name_json = get_string(runtime, "output_prefix", "request.runtime");
     parsed.input.gpu_device_id = get_integer(runtime, "gpu_device_id", "request.runtime");
     parsed.input.max_gpu_memory = get_integer(runtime, "max_gpu_memory", "request.runtime");
     parsed.molecules = std::move(molecules);

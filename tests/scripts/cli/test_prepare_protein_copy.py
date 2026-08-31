@@ -10,9 +10,9 @@ def test_prepare_protein_copies_dms_when_paths_contain_spaces(tmp_path, monkeypa
     output_file = tmp_path / "prepared receptor output.dms"
     request = SimpleNamespace(
         receptor_file_name=str(tmp_path / "input receptor.pdb"),
-        root_temp_dir_name=str(root_temp_dir),
+        workdir_root=str(root_temp_dir),
         receptor_dms_file_name=str(output_file),
-        remove_temp_dir=True,
+        keep_workdir=False,
         config=SimpleNamespace(
             preprocessing=SimpleNamespace(
                 preserve_receptor_hydrogen=True,

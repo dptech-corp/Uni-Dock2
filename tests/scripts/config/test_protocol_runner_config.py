@@ -2,10 +2,7 @@ import os
 
 import pytest
 
-from unidock2._engine import (
-    DEFAULT_ENGINE_OUTPUT_PREFIX,
-    build_engine_request,
-)
+from unidock2._engine import build_engine_request
 from unidock2.config import UnidockConfig
 from unidock2.unidocktools.unidock_protocol_runner import UnidockProtocolRunner
 from unidock2.unidocktools.unidock_protocol_runner import (
@@ -106,7 +103,6 @@ def test_from_config_builds_the_complete_native_request(tmp_path):
     assert build_engine_request(
         runner._current_config(),
         target_center=runner.target_center,
-        output_dir=runner.unidock2_output_dir_name,
         receptor=[{"atom": "receptor"}],
         ligands={"ligand_0": {"atom": "ligand"}},
     ) == {
@@ -131,8 +127,6 @@ def test_from_config_builds_the_complete_native_request(tmp_path):
             "constraint_docking": True,
         },
         "runtime": {
-            "output_dir": str(tmp_path / "unidock2_output"),
-            "output_prefix": DEFAULT_ENGINE_OUTPUT_PREFIX,
             "gpu_device_id": 2,
             "max_gpu_memory": 2048,
         },
@@ -167,14 +161,13 @@ def test_mutating_legacy_public_attributes_still_affects_engine_request(tmp_path
     request = build_engine_request(
         runner._current_config(),
         target_center=runner.target_center,
-        output_dir=runner.unidock2_output_dir_name,
         receptor=[],
         ligands={},
     )
 
     assert request["parameters"]["mc_steps"] == 99
     assert request["parameters"]["box_size"] == [7.0, 8.0, 9.0]
-    assert os.path.isdir(runner.unidock2_output_dir_name)
+    assert os.path.isdir(runner.working_dir_name)
 
 
 def test_engine_checkpoint_writes_ud2lig_next_to_pose_sdf(tmp_path):
