@@ -42,8 +42,7 @@ DEFAULT_CONFIG = {
         "preserve_receptor_hydrogen": False,
         "temp_dir_name": "/tmp",
         "engine_checkpoint": True,
-        "output_receptor_dms_file_name": "receptor_parameterized.dms",
-        "output_docking_pose_sdf_file_name": "unidock2_pose.sdf",
+        "output_sdf": "unidock2_pose.sdf",
     },
 }
 

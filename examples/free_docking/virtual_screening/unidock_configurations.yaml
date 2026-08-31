@@ -30,4 +30,4 @@ Preprocessing:
   preserve_receptor_hydrogen: false
   remove_temp_files: true
   temp_dir_name: /tmp
-  output_docking_pose_sdf_file_name: unidock2_pose.sdf
+  output_sdf: unidock2_pose.sdf

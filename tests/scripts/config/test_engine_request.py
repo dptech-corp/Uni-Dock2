@@ -2,11 +2,7 @@ import json
 
 import pytest
 
-from unidock2._engine import (
-    build_engine_request,
-    dump_engine_request,
-    load_engine_request,
-)
+from unidock2._engine import build_engine_request
 from unidock2.config import UnidockConfig
 
 
@@ -86,7 +82,7 @@ def test_engine_request_is_derived_from_config_and_runtime(tmp_path):
     }
 
 
-def test_engine_request_round_trips_through_strict_json(tmp_path):
+def test_engine_request_is_strict_json_serializable(tmp_path):
     receptor, ligands = _minimal_molecules()
     request = build_engine_request(
         UnidockConfig(),
@@ -96,10 +92,7 @@ def test_engine_request_round_trips_through_strict_json(tmp_path):
         ligands=ligands,
     )
 
-    checkpoint_path = dump_engine_request(request, tmp_path / "request.json")
-
-    assert load_engine_request(checkpoint_path) == request
-    assert json.loads(checkpoint_path.read_text(encoding="utf-8")) == request
+    assert json.loads(json.dumps(request, allow_nan=False)) == request
 
 
 def test_engine_request_rejects_non_serializable_numbers(tmp_path):
@@ -114,7 +107,7 @@ def test_engine_request_rejects_non_serializable_numbers(tmp_path):
     request["molecules"]["receptor"][0][0] = float("nan")
 
     with pytest.raises(ValueError, match="Out of range float values"):
-        dump_engine_request(request, tmp_path / "request.json")
+        json.dumps(request, allow_nan=False)
 
 
 def test_engine_request_rejects_reserved_receptor_ligand_key(tmp_path):

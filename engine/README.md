@@ -51,13 +51,8 @@ Set breakpoints in `api/python/pipeline.cpp`, `screening/core.cpp`, or the
 relevant C++/CUDA implementation. The debugger enters native code when the
 Python test calls the binding.
 
-A saved request can also be replayed from a focused Python debugger session:
-
-```python
-from unidock2._engine import load_engine_request, pipeline
-
-pipeline.run(load_engine_request("ud2_engine_request.json"))
-```
+`pipeline.run(request)` returns poses in memory. The reusable ligand dump is a
+UD2LIG directory written next to the pose SDF, not an engine request JSON file.
 
 The native module and request schema are private engine interfaces. External
 workflows should continue to use `UnidockProtocolRunner`.

@@ -3,7 +3,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from unidock2.cli._resolve import resolve_docking_request, resolve_ligand_inputs, resolve_prepare_ligands_request
+from unidock2.cli._resolve import (
+    resolve_docking_request,
+    resolve_ligand_inputs,
+    resolve_prepare_ligands_request,
+    resolve_prepare_protein_request,
+)
 from unidock2.config import LIGAND_SOURCE_SDF_FILES, LIGAND_SOURCE_UD2LIG, UnidockConfig
 from unidock2.io.ud2lig import UD2LIG_MAGIC, UD2LIG_SPEC_VERSION
 
@@ -165,7 +170,7 @@ def test_docking_rejects_construct_ff_mismatch(tmp_path):
         ligand=str(library),
         ligand_batch=None,
         center=None,
-        output_docking_pose_sdf_file_name=None,
+        output_sdf=None,
     )
     config = UnidockConfig().with_overrides(construct_ff=True)
 
@@ -186,5 +191,34 @@ def test_docking_cli_uses_output_and_config_long_names():
         if action.option_strings
     }
 
-    assert option_strings["output_docking_pose_sdf_file_name"] == ["-o", "--output"]
+    assert option_strings["output_sdf"] == ["-o", "--output_sdf"]
     assert option_strings["configurations"] == ["-cf", "--config"]
+
+
+def test_prepare_protein_cli_has_output_and_no_config_file():
+    import argparse
+
+    from unidock2.cli.prepare_protein import CLICommand
+
+    parser = argparse.ArgumentParser()
+    CLICommand.add_arguments(parser)
+    option_strings = {
+        action.dest: action.option_strings
+        for action in parser._actions
+        if action.option_strings
+    }
+
+    assert option_strings["output_dms"] == ["-o", "--output"]
+    assert "configurations" not in option_strings
+
+
+def test_prepare_protein_requires_output_dms(tmp_path):
+    receptor = tmp_path / "receptor.pdb"
+    receptor.write_text("ATOM\n", encoding="utf-8")
+    args = SimpleNamespace(
+        receptor=str(receptor),
+        output_dms=None,
+    )
+
+    with pytest.raises(ValueError, match="Output receptor DMS file"):
+        resolve_prepare_protein_request(args)

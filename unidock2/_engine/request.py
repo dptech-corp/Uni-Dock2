@@ -1,10 +1,9 @@
-"""Build and serialize the private native-engine request."""
+"""Build the private native-engine request."""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from typing import Any, Mapping, TypedDict, cast
+from typing import Any, Mapping, TypedDict
 
 from unidock2.config import UnidockConfig
 
@@ -63,22 +62,3 @@ def build_engine_request(
         "runtime": runtime,
         "molecules": molecules,
     }
-
-
-def dump_engine_request(request: EngineRequest, output_file: str | Path) -> Path:
-    """Write a request as strict JSON and return its absolute path."""
-    output_path = Path(output_file).expanduser().resolve()
-    with output_path.open("w", encoding="utf-8") as file:
-        json.dump(request, file, allow_nan=False)
-    return output_path
-
-
-def load_engine_request(input_file: str | Path) -> EngineRequest:
-    """Load a JSON request; native schema validation occurs when it is run."""
-    input_path = Path(input_file).expanduser().resolve()
-    with input_path.open(encoding="utf-8") as file:
-        request = json.load(file)
-
-    if not isinstance(request, dict):
-        raise ValueError("Engine request must be a JSON object")
-    return cast(EngineRequest, request)

@@ -32,7 +32,7 @@ def _argument_type(annotation):
     return annotation
 
 
-def add_config_arguments(parser, command):
+def add_config_arguments(parser, command, *, with_config_file=True):
     """Add command-specific arguments whose metadata lives in the schema."""
     for field_name, field, business_default, cli_info in _iter_cli_fields(command):
         argument_type = _argument_type(field.annotation)
@@ -51,11 +51,12 @@ def add_config_arguments(parser, command):
             options["metavar"] = cli_info["metavar"]
         parser.add_argument(*cli_info["flags"], **options)
 
-    parser.add_argument(
-        "-cf",
-        "--config",
-        dest="configurations",
-        metavar="FILE",
-        default=None,
-        help="Uni-Dock2 configuration YAML file",
-    )
+    if with_config_file:
+        parser.add_argument(
+            "-cf",
+            "--config",
+            dest="configurations",
+            metavar="FILE",
+            default=None,
+            help="Uni-Dock2 configuration YAML file",
+        )

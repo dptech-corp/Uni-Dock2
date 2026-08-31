@@ -15,7 +15,9 @@ class CLICommand:
     unchanged and cannot be combined with a UD2LIG directory.
 
     After ligand preparation, docking writes a reusable UD2LIG directory next
-    to ``-o`` / ``--output`` by default. Disable with ``--no-engine_checkpoint``.
+    to ``-o`` / ``--output_sdf`` by default. Disable with ``--no-engine_checkpoint``.
+    Intermediate receptor DMS in the working directory is always
+    ``receptor_parameterized.dms``.
 
     Values are resolved in this order: Pydantic defaults, YAML configuration,
     then explicitly supplied command-line arguments.

@@ -67,7 +67,7 @@ Use `unidock2 docking --help` to check how to write the YAML file.
 
 ## Receptor and Ligand Inputs
 * Receptor (`-r` / `Required.receptor`): PDB or DMS. A **DMS** file is treated as an already prepared receptor and **skips protein preparation**. Use `unidock2 prepare_protein` to turn a PDB into a reusable DMS.
-* Ligand (`-l` / `Required.ligand`): a single SDF file, a directory of SDF files (non-recursive `*.sdf`), or a **UD2LIG** directory that contains `manifest.json` with magic `ud2lig`. UD2LIG skips ligand preprocessing. Produce one with `unidock2 prepare_ligands -l ... -o mylibrary.ud2lig`, or reuse the `{pose_stem}.ud2lig` directory that `unidock2 docking` writes next to `-o` / `--output` by default.
+* Ligand (`-l` / `Required.ligand`): a single SDF file, a directory of SDF files (non-recursive `*.sdf`), or a **UD2LIG** directory that contains `manifest.json` with magic `ud2lig`. UD2LIG skips ligand preprocessing. Produce one with `unidock2 prepare_ligands -l ... -o mylibrary.ud2lig`, or reuse the `{pose_stem}.ud2lig` directory that `unidock2 docking` writes next to `-o` / `--output_sdf` by default.
 * Ligand batch (`-lb`) is unchanged: a text file with one SDF path per line. It can be combined with a single SDF or an SDF directory, but **not** with a UD2LIG directory.
 
 ## Command Line Parameters

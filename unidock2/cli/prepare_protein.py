@@ -11,15 +11,22 @@ class CLICommand:
     A PDB input runs protein preparation and writes a DMS file. A DMS input is
     copied through as an already prepared receptor.
 
-    Values are resolved in this order: Pydantic defaults, YAML configuration,
-    then explicitly supplied command-line arguments.
+    ``-o`` is required. This command does not read a YAML configuration file.
     """
 
     help = "Prepare a receptor (PDB or DMS) into a reusable DMS file"
 
     @staticmethod
     def add_arguments(parser):
-        add_config_arguments(parser, "prepare_protein")
+        add_config_arguments(parser, "prepare_protein", with_config_file=False)
+        parser.add_argument(
+            "-o",
+            "--output",
+            required=True,
+            dest="output_dms",
+            metavar="DMS",
+            help="Output receptor DMS file",
+        )
 
     @staticmethod
     def run(args):

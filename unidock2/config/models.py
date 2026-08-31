@@ -258,21 +258,12 @@ class PreprocessingConfig(_ConfigurationSection):
             "Skipped when docking from an existing UD2LIG, or for template/covalent jobs"
         ),
     )
-    output_receptor_dms_file_name: str = Field(
-        default="receptor_parameterized.dms",
-        description="Output receptor DMS file name",
-        json_schema_extra=cli(
-            "-o",
-            "--output_receptor_dms_file_name",
-            commands=("prepare_protein",),
-        ),
-    )
-    output_docking_pose_sdf_file_name: str = Field(
+    output_sdf: str = Field(
         default="unidock2_pose.sdf",
         description="Output docking pose SDF file name",
         json_schema_extra=cli(
             "-o",
-            "--output",
+            "--output_sdf",
             commands=("docking",),
             metavar="SDF",
         ),

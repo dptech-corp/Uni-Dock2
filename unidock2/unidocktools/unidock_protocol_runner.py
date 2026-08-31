@@ -91,7 +91,7 @@ class UnidockProtocolRunner:
 
         overrides["center"] = list(target_center)
         if docking_pose_sdf_file_name is not UNSET:
-            overrides["output_docking_pose_sdf_file_name"] = docking_pose_sdf_file_name
+            overrides["output_sdf"] = docking_pose_sdf_file_name
         config = config.with_overrides(**overrides)
 
         self._initialize(
@@ -126,7 +126,7 @@ class UnidockProtocolRunner:
 
         overrides = {"center": list(target_center)}
         if docking_pose_sdf_file_name is not None:
-            overrides["output_docking_pose_sdf_file_name"] = docking_pose_sdf_file_name
+            overrides["output_sdf"] = docking_pose_sdf_file_name
         config = config.with_overrides(**overrides)
 
         runner = cls.__new__(cls)
@@ -177,7 +177,7 @@ class UnidockProtocolRunner:
             self.working_dir_name,
             "unidock2_output",
         )
-        self.docking_pose_sdf_file_name = os.path.abspath(self.output_docking_pose_sdf_file_name)
+        self.docking_pose_sdf_file_name = os.path.abspath(self.output_sdf)
         os.makedirs(self.unidock2_output_dir_name, exist_ok=True)
 
         self.core_atom_mapping_dict_list = (

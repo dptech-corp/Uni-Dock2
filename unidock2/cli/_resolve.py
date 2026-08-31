@@ -110,7 +110,7 @@ def resolve_docking_request(args, config=None):
         ud2lig_dir=ud2lig_dir,
         target_center=tuple(config.required.center),
         root_temp_dir_name=root_temp_dir_name,
-        docking_pose_sdf_file_name=os.path.abspath(config.preprocessing.output_docking_pose_sdf_file_name),
+        docking_pose_sdf_file_name=os.path.abspath(config.preprocessing.output_sdf),
         remove_temp_dir=root_temp_dir_name == "/tmp",
         config=config,
     )
@@ -126,11 +126,15 @@ def resolve_prepare_protein_request(args, config=None):
     if receptor is None:
         raise ValueError("Receptor file name not specified!")
 
+    output_dms = getattr(args, "output_dms", None)
+    if not output_dms:
+        raise ValueError("Output receptor DMS file (-o) is required!")
+
     root_temp_dir_name = os.path.abspath(config.preprocessing.temp_dir_name)
     return ResolvedPrepareProteinRequest(
         receptor_file_name=os.path.abspath(receptor),
         root_temp_dir_name=root_temp_dir_name,
-        receptor_dms_file_name=os.path.abspath(config.preprocessing.output_receptor_dms_file_name),
+        receptor_dms_file_name=os.path.abspath(output_dms),
         remove_temp_dir=root_temp_dir_name == "/tmp",
         config=config,
     )

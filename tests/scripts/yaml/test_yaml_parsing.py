@@ -56,8 +56,7 @@ def test_yaml_parsing(
     assert not yaml_params.preprocessing.preserve_receptor_hydrogen
     assert yaml_params.preprocessing.temp_dir_name == '/tmp'
     assert yaml_params.preprocessing.engine_checkpoint
-    assert yaml_params.preprocessing.output_receptor_dms_file_name == 'receptor_parameterized.dms'
-    assert yaml_params.preprocessing.output_docking_pose_sdf_file_name == 'unidock2_pose.sdf'
+    assert yaml_params.preprocessing.output_sdf == 'unidock2_pose.sdf'
 
     valid_configurations_dict = {'receptor': '1G9V_protein_water_cleaned.pdb',
                                  'ligand': 'ligand_prepared.sdf',
@@ -92,8 +91,7 @@ def test_yaml_parsing(
                                  'preserve_receptor_hydrogen': False,
                                  'temp_dir_name': '/tmp',
                                  'engine_checkpoint': True,
-                                 'output_receptor_dms_file_name': 'receptor_parameterized.dms',
-                                 'output_docking_pose_sdf_file_name': 'unidock2_pose.sdf'}
+                                 'output_sdf': 'unidock2_pose.sdf'}
 
     configurations_dict = yaml_params.to_protocol_kwargs()
     assert configurations_dict == valid_configurations_dict
