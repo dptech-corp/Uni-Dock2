@@ -1,4 +1,3 @@
-import json
 import os
 
 import pytest
@@ -9,7 +8,10 @@ from unidock2._engine import (
 )
 from unidock2.config import UnidockConfig
 from unidock2.unidocktools.unidock_protocol_runner import UnidockProtocolRunner
-from unidock2.unidocktools.unidock_protocol_runner import _write_engine_checkpoints
+from unidock2.unidocktools.unidock_protocol_runner import (
+    _ud2lig_dir_for_pose_sdf,
+    _write_ud2lig_checkpoint,
+)
 
 
 def test_legacy_runner_defaults_come_from_the_config_schema(tmp_path):
@@ -175,18 +177,39 @@ def test_mutating_legacy_public_attributes_still_affects_engine_request(tmp_path
     assert os.path.isdir(runner.unidock2_output_dir_name)
 
 
-def test_engine_checkpoint_preserves_legacy_payload_and_adds_replayable_request(tmp_path):
-    request = build_engine_request(
+def test_engine_checkpoint_writes_ud2lig_next_to_pose_sdf(tmp_path):
+    from rdkit import Chem
+
+    from context import TEST_DATA_DIR
+    from unidock2.io.ud2lig import read_ud2lig
+
+    ligand_file = os.path.join(TEST_DATA_DIR, "ligand_topology", "test_vina_atom_type_1.sdf")
+    molecule = Chem.SDMolSupplier(ligand_file, removeHs=False)[0]
+    molecule.SetProp("ud2_molecule_name", "MOL_0")
+    conformer = molecule.GetConformer()
+    atoms = []
+    for atom_idx in range(molecule.GetNumAtoms()):
+        position = conformer.GetAtomPosition(atom_idx)
+        atoms.append([position.x, position.y, position.z, 2, 0, 0.0, [], []])
+    topology = {
+        "atoms": atoms,
+        "torsions": [],
+        "root_atoms": [0],
+        "fragment_atom_idx": [[0]],
+    }
+
+    pose_sdf = tmp_path / "poses.sdf"
+    output_dir = _ud2lig_dir_for_pose_sdf(str(pose_sdf))
+    assert output_dir.endswith("poses.ud2lig")
+
+    _write_ud2lig_checkpoint(
+        output_dir,
+        {"MOL_0": topology},
+        [molecule],
         UnidockConfig(),
-        target_center=(1, 2, 3),
-        output_dir=tmp_path / "output",
-        receptor=[{"atom": "receptor"}],
-        ligands={"ligand_0": {"atom": "ligand"}},
     )
 
-    _write_engine_checkpoints(request, tmp_path)
-
-    legacy_checkpoint = json.loads((tmp_path / "ud2_engine_inputs.json").read_text(encoding="utf-8"))
-    request_checkpoint = json.loads((tmp_path / "ud2_engine_request.json").read_text(encoding="utf-8"))
-    assert legacy_checkpoint == request["molecules"]
-    assert request_checkpoint == request
+    loaded_info, loaded_mols, manifest = read_ud2lig(output_dir)
+    assert manifest["n_ligands"] == 1
+    assert list(loaded_info) == ["MOL_0"]
+    assert loaded_mols[0].GetProp("ud2_molecule_name") == "MOL_0"

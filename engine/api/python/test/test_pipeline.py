@@ -19,7 +19,7 @@ def test_pipeline_smoke_ignores_extra_request_keys(tmp_path: Path):
     receptor = input_data.pop("receptor")
     input_data.pop("score", None)
 
-    pipeline.run(
+    output_data = pipeline.run(
         {
             "ignored_metadata": {"source": "native-smoke-test"},
             "parameters": {
@@ -54,11 +54,6 @@ def test_pipeline_smoke_ignores_extra_request_keys(tmp_path: Path):
         }
     )
 
-    output_files = list(tmp_path.glob(f"{input_path.stem}_*.json"))
-    assert len(output_files) == 1
-
-    with output_files[0].open(encoding="utf-8") as output_file:
-        output_data = json.load(output_file)
-
+    assert not list(tmp_path.glob("*.json"))
     assert len(output_data) == 1
     assert next(iter(output_data.values()))

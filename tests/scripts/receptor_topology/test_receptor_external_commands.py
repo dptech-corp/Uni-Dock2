@@ -1,4 +1,4 @@
-from unidock2.unidocktools import receptor_topology_preparation as preparation_module
+from unidock2.force_field import receptor_preparation as preparation_module
 from unidock2.unidocktools import unidock_receptor_topology_builder as builder_module
 
 
@@ -13,9 +13,9 @@ def test_receptor_builder_passes_structured_arguments_to_fepfixer_and_utop(tmp_p
     }
     calls = []
 
-    monkeypatch.setattr(builder_module, "which", executables.get)
+    monkeypatch.setattr(preparation_module, "which", executables.get)
     monkeypatch.setattr(
-        builder_module,
+        preparation_module,
         "run_external_command",
         lambda command, **kwargs: calls.append((command, kwargs)),
     )

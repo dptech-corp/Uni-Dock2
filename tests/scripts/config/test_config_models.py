@@ -41,7 +41,7 @@ DEFAULT_CONFIG = {
         "covalent_residue_atom_info_list": None,
         "preserve_receptor_hydrogen": False,
         "temp_dir_name": "/tmp",
-        "engine_checkpoint": False,
+        "engine_checkpoint": True,
         "output_receptor_dms_file_name": "receptor_parameterized.dms",
         "output_docking_pose_sdf_file_name": "unidock2_pose.sdf",
     },

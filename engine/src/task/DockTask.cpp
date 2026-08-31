@@ -5,9 +5,6 @@
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <numeric>
-#include <fstream>
-#include <thread>
-#include <chrono>
 #include <cmath>
 
 #include "DockTask.h"
@@ -22,17 +19,16 @@
 
 void DockTask::set_flex(const UDFlexMolList& flex_mol_list,
                         DockParam dock_param,
-                        std::vector<std::string> fns_flex,
-                        std::string fp_json){
+                        std::vector<std::string> fns_flex){
     this->dock_param = dock_param;
     udflex_mols = flex_mol_list;
     this->fns_flex = std::move(fns_flex);
-    this->fp_json = std::move(fp_json);
     nflex = flex_mol_list.size();
 
-    // TODO: clear flex-related
     clustered_pose_inds_list.clear();
     filtered_pose_inds_list.clear();
+    decomp_list.clear();
+    pose_map.clear();
     npose_clustered = 0;
 }
 
@@ -106,11 +102,11 @@ void DockTask::run(){
 
     // Run on CPU
     try {
-        spdlog::info("Dumping the poses to {}...", fp_json);
+        spdlog::info("Collecting poses for {} flexible molecule(s)...", nflex);
         dump_poses();
-        spdlog::info("Dumping is done.");
+        spdlog::info("Pose collection is done.");
     } catch (const std::exception& e) {
-        spdlog::critical("Failed to dump poses: {}", e.what());
+        spdlog::critical("Failed to collect poses: {}", e.what());
         throw;
     }
 
@@ -283,52 +279,13 @@ void DockTask::run_score(){
 
 
 void DockTask::dump_poses(){
-    // prepare flex names
-    const int max_retries = 5;
-    int retry_count = 0;
-    int wait_seconds = 5;  // 5 seconds at the beginning, x2 each time
-    bool success = false;
-
-    while (retry_count < max_retries && !success) {
-        try {
-            write_poses_to_json(fp_json, fns_flex, filtered_pose_inds_list,
-                                flex_pose_list_manager->array_host, udflex_mols,
-                                decomp_list);
-
-            // check whether the json file is complete
-            std::ifstream file(fp_json, std::ios::binary | std::ios::ate);
-            if (!file.is_open()) {
-                throw std::runtime_error("can't open the json file for checking the completeness");
-            }
-
-            std::streampos file_size = file.tellg();
-            if (file_size == 0) {
-                throw std::runtime_error("json file is empty");
-            }
-
-            file.seekg(-1, std::ios::end);
-            char last_char;
-            file.get(last_char);
-            file.close();
-
-            if (last_char == '}') {
-                success = true;
-            } else {
-                throw std::runtime_error("JSON file is incomplete.");
-            }
-
-        } catch (const std::exception& e) {
-            retry_count++;
-            if (retry_count < max_retries) {
-                spdlog::warn("The {}th attempt failed: {}，will retry in {} seconds...",
-                           retry_count, e.what(), wait_seconds);
-                std::this_thread::sleep_for(std::chrono::seconds(wait_seconds));
-                wait_seconds *= 2;
-            } else {
-                spdlog::critical("The {}th attempt failed: {}，can't dump poses to json: {}",
-                               max_retries, e.what());
-                throw;
-            }
-        }
-    }
+    pose_map.clear();
+    collect_poses_to_map(
+        pose_map,
+        fns_flex,
+        filtered_pose_inds_list,
+        flex_pose_list_manager->array_host,
+        udflex_mols,
+        decomp_list
+    );
 }

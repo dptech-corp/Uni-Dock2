@@ -52,17 +52,23 @@ unidock2 --version
 
 ---
 # Usage
-Check `unidock2` usage by `unidock2 --help`. Basically there are two types of task: molecular docking and protein preparation. This document focuses on the docking task, since protein preparation is similar and we recommend consulting the help information.
+Check `unidock2` usage by `unidock2 --help`. The subcommands are `docking`, `prepare_protein`, and `prepare_ligands`. This document focuses on docking; the prepare commands reuse the same YAML/CLI resolution rules.
 
 ## Configuration File
 A configuration YAML file is all you need to run docking tasks:
 ```
 unidock2 docking -cf your_config.yaml
+# or: unidock2 docking --config your_config.yaml
 ```
 Use `unidock2 docking --help` to check how to write the YAML file. 
 
 **ATTENTION If a parameter is not written in the YAML, the default value of the parameter will be used (e.g., `size=[30, 30, 30]`). Carefully check the default values in the help information.**
 
+
+## Receptor and Ligand Inputs
+* Receptor (`-r` / `Required.receptor`): PDB or DMS. A **DMS** file is treated as an already prepared receptor and **skips protein preparation**. Use `unidock2 prepare_protein` to turn a PDB into a reusable DMS.
+* Ligand (`-l` / `Required.ligand`): a single SDF file, a directory of SDF files (non-recursive `*.sdf`), or a **UD2LIG** directory that contains `manifest.json` with magic `ud2lig`. UD2LIG skips ligand preprocessing. Produce one with `unidock2 prepare_ligands -l ... -o mylibrary.ud2lig`, or reuse the `{pose_stem}.ud2lig` directory that `unidock2 docking` writes next to `-o` / `--output` by default.
+* Ligand batch (`-lb`) is unchanged: a text file with one SDF path per line. It can be combined with a single SDF or an SDF directory, but **not** with a UD2LIG directory.
 
 ## Command Line Parameters
 All supported parameters can be configured in YAML. Frequently changed scalar and short-list parameters also have command-line equivalents; explicit command-line inputs override YAML values. Run `unidock2 docking --help` for the generated list and current defaults.
@@ -172,8 +178,11 @@ and run `unidock2 docking -cf test.yaml`.
 unidock2 -r 5WIU_protein_cleaned.pdb -lb test.index -c -18.0 15.2 -17.0
 ```
 
-### 1.2.3 Combined Input
-SDF files from both `ligand` and `ligand_batch` sources will be processed.
+### 1.2.3 Directory of SDF Files
+Point `-l` at a directory. Uni-Dock2 reads every `*.sdf` in that directory (not recursive). If the directory contains `manifest.json`, it is treated as a UD2LIG library instead.
+
+### 1.2.4 Combined Input
+SDF files from both `ligand` (file or SDF directory) and `ligand_batch` sources will be processed. A UD2LIG directory cannot be combined with `ligand_batch`.
 
 
 ## 2. Template Docking

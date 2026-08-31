@@ -18,7 +18,8 @@ logo_description = r"""
 
 available_commands = [
     ('docking', 'unidock2.cli.docking'),
-    ('protein_prep','unidock2.cli.protein_prep')
+    ('prepare_protein', 'unidock2.cli.prepare_protein'),
+    ('prepare_ligands', 'unidock2.cli.prepare_ligands'),
 ]
 
 class CLIDriver(object):

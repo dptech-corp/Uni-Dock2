@@ -4,6 +4,7 @@ import os
 from rdkit import Chem
 from unidock2.torsion_library.utils import get_torsion_lib_dict
 from unidock2.ligand_topology.mol_graph import BaseMolGraph
+from unidock2.ligand_topology.mol_graph.generic import GenericMolGraph
 import pytest
 from context import TEST_DATA_DIR
 
@@ -115,3 +116,65 @@ def test_torsion(query_sdf_file:str, ref_sdf_file:str, atom_mapping:dict, root_a
 
     assert torsion_ids == torsion_case_torsion_result, \
         f"Torsion info mismatch: expected {torsion_case_torsion_result}, got {torsion_ids}"
+
+
+def test_force_field_data_only_fills_legacy_engine_slots(tmp_path, monkeypatch):
+    ligand_sdf_file = os.path.join(
+        TEST_DATA_DIR,
+        "free_docking",
+        "molecular_docking",
+        "ligand_prepared.sdf",
+    )
+
+    def build_graph(construct_ff):
+        mol = Chem.SDMolSupplier(ligand_sdf_file, removeHs=False)[0]
+        graph = GenericMolGraph(
+            mol=mol,
+            torsion_library_dict=torsion_library_dict,
+            construct_ff=construct_ff,
+            working_dir_name=str(tmp_path),
+        )
+        return graph.build_graph()
+
+    disabled_graph = build_graph(False)
+    calls = []
+    torsion_parameter = {
+        "barrier_factor": 1,
+        "barrier_height": 2.0,
+        "periodicity": 3,
+        "phase": 180.0,
+    }
+
+    def fake_construct_gaff2(self):
+        calls.append(self)
+        num_atoms = self.mol.GetNumAtoms()
+        return (
+            ["c"] * num_atoms,
+            [float(atom_idx) for atom_idx in range(num_atoms)],
+            {("c", "c", "c", "c"): [torsion_parameter]},
+        )
+
+    monkeypatch.setattr(GenericMolGraph, "construct_gaff2", fake_construct_gaff2)
+    enabled_graph = build_graph(True)
+
+    disabled_atoms, disabled_torsions, disabled_root, disabled_fragments = disabled_graph
+    enabled_atoms, enabled_torsions, enabled_root, enabled_fragments = enabled_graph
+
+    assert len(calls) == 1
+    assert disabled_root == enabled_root
+    assert disabled_fragments == enabled_fragments
+    assert len(disabled_atoms) == len(enabled_atoms)
+    assert len(disabled_torsions) == len(enabled_torsions)
+    for atom_idx, (disabled_atom, enabled_atom) in enumerate(
+        zip(disabled_atoms, enabled_atoms)
+    ):
+        assert disabled_atom[:4] == enabled_atom[:4]
+        assert disabled_atom[4:6] == (0, 0.0)
+        assert enabled_atom[4:6] == (0, float(atom_idx))
+        assert disabled_atom[6:] == enabled_atom[6:]
+    for disabled_torsion, enabled_torsion in zip(
+        disabled_torsions, enabled_torsions
+    ):
+        assert disabled_torsion[:4] == enabled_torsion[:4]
+        assert disabled_torsion[4] == []
+        assert enabled_torsion[4] == [[1, 2.0, 3, 180.0]]

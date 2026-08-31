@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "format/json.h"
 #include "model/model.h"
 
 // The runtime adapter must populate every scalar field before calling core_pipeline().
@@ -32,6 +33,7 @@ struct CoreInput {
     UDFixMol fix_mol;
     UDFlexMolList flex_mol_list;
     std::vector<std::string> fns_flex;
+    PoseMap poses;
 };
 
 

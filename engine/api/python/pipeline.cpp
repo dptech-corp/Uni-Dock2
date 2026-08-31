@@ -152,7 +152,26 @@ ParsedEngineRequest parse_engine_request(const py::dict& request) {
     return parsed;
 }
 
-void run_engine_request(const py::dict& request) {
+py::dict pose_map_to_python(const PoseMap& poses) {
+    py::dict result;
+    for (const auto& item : poses) {
+        py::list py_poses;
+        for (const auto& pose : item.second) {
+            py::dict record;
+            record["energy"] = pose.energy;
+            record["coords"] = pose.coords;
+            record["dihedrals"] = pose.dihedrals;
+            if (!pose.decomp.empty()) {
+                record["decomp"] = pose.decomp;
+            }
+            py_poses.append(record);
+        }
+        result[py::str(item.first)] = py_poses;
+    }
+    return result;
+}
+
+py::dict run_engine_request(const py::dict& request) {
     ParsedEngineRequest parsed = parse_engine_request(request);
 
     py::module_ json = py::module_::import("json");
@@ -160,22 +179,27 @@ void run_engine_request(const py::dict& request) {
         json.attr("dumps")(parsed.molecules, py::arg("allow_nan") = false)
     );
 
-    py::gil_scoped_release release;
-    parsed.input.fix_mol = UDFixMol();
-    parsed.input.flex_mol_list.clear();
-    parsed.input.fns_flex.clear();
-    read_ud_from_json_string(
-        json_string,
-        parsed.input.box,
-        parsed.input.fix_mol,
-        parsed.input.flex_mol_list,
-        parsed.input.fns_flex,
-        parsed.use_tor_lib
-    );
+    {
+        py::gil_scoped_release release;
+        parsed.input.fix_mol = UDFixMol();
+        parsed.input.flex_mol_list.clear();
+        parsed.input.fns_flex.clear();
+        parsed.input.poses.clear();
+        read_ud_from_json_string(
+            json_string,
+            parsed.input.box,
+            parsed.input.fix_mol,
+            parsed.input.flex_mol_list,
+            parsed.input.fns_flex,
+            parsed.use_tor_lib
+        );
 
-    if (core_pipeline(parsed.input) != 0) {
-        throw std::runtime_error("Core pipeline failed");
+        if (core_pipeline(parsed.input) != 0) {
+            throw std::runtime_error("Core pipeline failed");
+        }
     }
+
+    return pose_map_to_python(parsed.input.poses);
 }
 
 }  // namespace
@@ -187,10 +211,11 @@ PYBIND11_MODULE(pipeline, module) {
         &run_engine_request,
         py::arg("request"),
         R"pbdoc(
-Run one docking request.
+Run one docking request and return poses keyed by ligand name.
 
-The request must be a JSON-compatible dictionary produced by
-``unidock2._engine.build_engine_request``. This native module is private; use
+Each pose is a dictionary with ``energy``, ``coords``, ``dihedrals``, and
+optional ``decomp``. The request must be a JSON-compatible dictionary produced
+by ``unidock2._engine.build_engine_request``. This native module is private; use
 ``UnidockProtocolRunner`` for the supported public workflow.
         )pbdoc"
     );

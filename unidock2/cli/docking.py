@@ -8,6 +8,15 @@ from unidock2.io.yaml import DEFAULT_CONFIG_FILE_NAME, dump_default_config_yaml
 class CLICommand:
     """Perform the complete docking protocol.
 
+    Receptor ``-r`` accepts PDB or DMS. A DMS file skips protein preparation.
+
+    Ligand ``-l`` accepts a single SDF file, a directory of SDF files, or a
+    UD2LIG directory (``manifest.json`` with magic ``ud2lig``). ``-lb`` is
+    unchanged and cannot be combined with a UD2LIG directory.
+
+    After ligand preparation, docking writes a reusable UD2LIG directory next
+    to ``-o`` / ``--output`` by default. Disable with ``--no-engine_checkpoint``.
+
     Values are resolved in this order: Pydantic defaults, YAML configuration,
     then explicitly supplied command-line arguments.
     """
@@ -59,5 +68,6 @@ class CLICommand:
                 working_dir_name=temp_dir_name,
                 docking_pose_sdf_file_name=request.docking_pose_sdf_file_name,
                 config=request.config,
+                ud2lig_dir=request.ud2lig_dir,
             )
             docking_runner.run_unidock_protocol()

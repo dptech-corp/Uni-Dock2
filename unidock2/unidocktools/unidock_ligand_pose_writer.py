@@ -9,32 +9,24 @@ from rdkit.Geometry.rdGeometry import Point3D
 
 from unidock2.ligand_topology import utils
 
+
 class UnidockLigandPoseWriter(object):
     def __init__(
         self,
         ligand_mol_list,
-        unidock2_pose_json_file_name_list,
+        unidock2_pose_dict,
         covalent_ligand=False,
         energy_decomp=False,
         docking_pose_sdf_file_name='unidock2_pose.sdf',
     ):
         self.ligand_mol_list = ligand_mol_list
         self.num_ligands = len(self.ligand_mol_list)
-        self.unidock2_pose_json_file_name_list = unidock2_pose_json_file_name_list
-        self.num_unidock2_batches = len(self.unidock2_pose_json_file_name_list)
+        if not isinstance(unidock2_pose_dict, dict):
+            raise TypeError("unidock2_pose_dict must be a ligand-name to pose-list mapping")
+        self.unidock2_pose_dict = unidock2_pose_dict
         self.covalent_ligand = covalent_ligand
         self.energy_decomp = energy_decomp
         self.docking_pose_sdf_file_name = os.path.abspath(docking_pose_sdf_file_name)
-
-        self.unidock2_pose_dict = {}
-        for batch_idx in range(self.num_unidock2_batches):
-            unidock2_pose_json_file_name = self.unidock2_pose_json_file_name_list[
-                batch_idx
-            ]
-            with open(unidock2_pose_json_file_name, 'r') as unidockd2_json_file:
-                batch_unidock2_pose_dict = json.load(unidockd2_json_file)
-
-            self.unidock2_pose_dict.update(batch_unidock2_pose_dict)
 
     def generate_docking_pose_sdf(self):
         self.docking_pose_writer = Chem.SDWriter(self.docking_pose_sdf_file_name)

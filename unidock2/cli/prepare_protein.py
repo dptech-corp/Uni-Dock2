@@ -2,21 +2,24 @@ import os
 from shutil import copyfile
 
 from unidock2.cli._arguments import add_config_arguments
-from unidock2.cli._resolve import resolve_protein_prep_request
+from unidock2.cli._resolve import resolve_prepare_protein_request
 
 
 class CLICommand:
-    """Perform protein preparation for large-batch docking.
+    """Prepare a receptor structure for docking.
+
+    A PDB input runs protein preparation and writes a DMS file. A DMS input is
+    copied through as an already prepared receptor.
 
     Values are resolved in this order: Pydantic defaults, YAML configuration,
     then explicitly supplied command-line arguments.
     """
 
-    help = "Perform protein preparation"
+    help = "Prepare a receptor (PDB or DMS) into a reusable DMS file"
 
     @staticmethod
     def add_arguments(parser):
-        add_config_arguments(parser, "protein_prep")
+        add_config_arguments(parser, "prepare_protein")
 
     @staticmethod
     def run(args):
@@ -26,10 +29,10 @@ class CLICommand:
             UnidockReceptorTopologyBuilder,
         )
 
-        request = resolve_protein_prep_request(args)
+        request = resolve_prepare_protein_request(args)
         temp_dir_prefix = os.path.join(
             request.root_temp_dir_name,
-            get_temp_dir_prefix("protein_prep"),
+            get_temp_dir_prefix("prepare_protein"),
         )
 
         with TemporaryDirectory(

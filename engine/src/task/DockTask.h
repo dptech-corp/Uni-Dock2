@@ -9,6 +9,7 @@
 #include "model/model.h"
 #include <string>
 #include <vector>
+#include "format/json.h"
 #include "score/vina.h"
 #include "score/score.h"
 #include "cuda/struct_array_manager.cuh"
@@ -35,7 +36,7 @@ public:
     std::vector<std::string> fns_flex;
 
     // CPU - Output Model
-    std::string fp_json;
+    PoseMap pose_map;
 
     // Construction
 
@@ -44,14 +45,13 @@ public:
     };
 
     DockTask(const UDFixMol& fix_mol, const UDFlexMolList& flex_mol_list, DockParam dock_param,
-             std::vector<std::string> fns_flex, std::string fp_json) :
-        udfix_mol(fix_mol), udflex_mols(flex_mol_list), dock_param(dock_param), fns_flex(fns_flex), fp_json(fp_json){
+             std::vector<std::string> fns_flex) :
+        udfix_mol(fix_mol), udflex_mols(flex_mol_list), dock_param(dock_param), fns_flex(fns_flex){
         nflex = flex_mol_list.size();
     };
 
     void set_flex(const UDFlexMolList& flex_mol_list, DockParam dock_param,
-                  std::vector<std::string> fns_flex,
-                  std::string fp_json);
+                  std::vector<std::string> fns_flex);
 
     /**
      * @brief Run a whole process: global search, cluster by RMSD, refinement by optimization and final output.
@@ -62,7 +62,6 @@ public:
     void from_json(std::string fp); // todo: resume a task from file
 
     // Output
-    void dump_poses_to_json(std::string fp_json);
     void free_fix_mol_gpu();
 
 private:

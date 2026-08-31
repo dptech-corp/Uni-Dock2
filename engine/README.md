@@ -29,11 +29,11 @@ ctest --test-dir build/engine --output-on-failure
 
 The test suite contains C++ unit tests and pybind integration tests. The
 integration tests load prepared engine JSON fixtures, execute docking through
-the Python binding, and validate the generated poses.
+the Python binding, and validate the poses returned by `pipeline.run`.
 
-When `engine_checkpoint` is enabled, `UnidockProtocolRunner` writes both the
-legacy topology-only `ud2_engine_inputs.json` and the replayable,
-private `ud2_engine_request.json` during the compatibility period.
+When `engine_checkpoint` is enabled (the default), `UnidockProtocolRunner`
+writes a reusable UD2LIG directory next to the pose SDF. Template and covalent
+jobs skip that dump, as does docking that already starts from a UD2LIG library.
 
 ## Native debugging through Python
 

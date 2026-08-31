@@ -1,4 +1,5 @@
 *.o
+*.so
 __pycache__
 build/
 cmake-build-release/

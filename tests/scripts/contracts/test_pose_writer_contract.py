@@ -23,7 +23,6 @@ ENERGY_PROPERTIES = (
     "vina_torsion_number_energy",
 )
 NUM_SCREENING_LIGANDS = 224
-NUM_FAKE_BATCHES = 7
 TWO_POSE_LIGAND_IDX = 37
 
 
@@ -93,8 +92,8 @@ def _make_pose(ligand_mol, ligand_idx, pose_idx):
     }
 
 
-def _write_shuffled_pose_batches(tmp_path, ligand_mol_list):
-    batches = [{} for _ in range(NUM_FAKE_BATCHES)]
+def _shuffled_pose_dict(ligand_mol_list):
+    pose_dict = {}
     expected_poses = []
 
     for ligand_idx, ligand_mol in enumerate(ligand_mol_list):
@@ -111,16 +110,9 @@ def _write_shuffled_pose_batches(tmp_path, ligand_mol_list):
                     "pose": pose,
                 }
             )
-        batches[ligand_idx % NUM_FAKE_BATCHES][ligand_name] = poses
+        pose_dict[ligand_name] = poses
 
-    batch_file_names = []
-    for batch_idx, batch in enumerate(batches):
-        batch_file_name = tmp_path / f"batch_{batch_idx}.json"
-        reversed_batch = dict(reversed(list(batch.items())))
-        batch_file_name.write_text(json.dumps(reversed_batch))
-        batch_file_names.append(str(batch_file_name))
-
-    return list(reversed(batch_file_names)), expected_poses
+    return dict(reversed(list(pose_dict.items()))), expected_poses
 
 
 def _read_valid_sdf_molecules(sdf_file_name):
@@ -133,15 +125,12 @@ def test_pose_writer_preserves_ligand_order_across_shuffled_batches(
     screening_ligands,
     tmp_path,
 ):
-    batch_file_names, expected_poses = _write_shuffled_pose_batches(
-        tmp_path,
-        screening_ligands,
-    )
+    pose_dict, expected_poses = _shuffled_pose_dict(screening_ligands)
     output_file_name = tmp_path / "screening_poses.sdf"
 
     pose_writer = UnidockLigandPoseWriter(
         screening_ligands,
-        batch_file_names,
+        pose_dict,
         energy_decomp=True,
         docking_pose_sdf_file_name=str(output_file_name),
     )
@@ -215,19 +204,11 @@ def test_pose_writer_preserves_ligand_order_across_shuffled_batches(
 
 def test_pose_writer_omits_decomp_when_disabled(screening_ligands, tmp_path):
     ligand_mol = screening_ligands[0]
-    pose_file_name = tmp_path / "pose_with_decomp.json"
-    pose_file_name.write_text(
-        json.dumps(
-            {
-                "MOL_0": [_make_pose(ligand_mol, 0, 0)],
-            }
-        )
-    )
     output_file_name = tmp_path / "pose_without_decomp.sdf"
 
     pose_writer = UnidockLigandPoseWriter(
         [ligand_mol],
-        [str(pose_file_name)],
+        {"MOL_0": [_make_pose(ligand_mol, 0, 0)]},
         energy_decomp=False,
         docking_pose_sdf_file_name=str(output_file_name),
     )
@@ -242,12 +223,10 @@ def test_pose_writer_rejects_incorrect_coordinate_count(screening_ligands, tmp_p
     invalid_pose = _make_pose(ligand_mol, 0, 0)
     invalid_pose["coords"].pop()
 
-    pose_file_name = tmp_path / "invalid_coordinates.json"
-    pose_file_name.write_text(json.dumps({"MOL_0": [invalid_pose]}))
     output_file_name = tmp_path / "invalid_coordinates.sdf"
     pose_writer = UnidockLigandPoseWriter(
         [ligand_mol],
-        [str(pose_file_name)],
+        {"MOL_0": [invalid_pose]},
         docking_pose_sdf_file_name=str(output_file_name),
     )
 
@@ -261,18 +240,10 @@ def test_pose_writer_rejects_incorrect_coordinate_count(screening_ligands, tmp_p
 
 def test_pose_writer_rejects_missing_ligand_result(screening_ligands, tmp_path):
     first_ligand = screening_ligands[0]
-    pose_file_name = tmp_path / "missing_ligand.json"
-    pose_file_name.write_text(
-        json.dumps(
-            {
-                "MOL_0": [_make_pose(first_ligand, 0, 0)],
-            }
-        )
-    )
     output_file_name = tmp_path / "missing_ligand.sdf"
     pose_writer = UnidockLigandPoseWriter(
         screening_ligands[:2],
-        [str(pose_file_name)],
+        {"MOL_0": [_make_pose(first_ligand, 0, 0)]},
         docking_pose_sdf_file_name=str(output_file_name),
     )
 

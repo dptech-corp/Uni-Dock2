@@ -52,22 +52,28 @@ class RequiredConfig(_ConfigurationSection):
 
     receptor: str | None = Field(
         default=None,
-        description="Receptor structure file in PDB or DMS format",
+        description=(
+            "Receptor structure file in PDB or DMS format. "
+            "A DMS file is treated as an already prepared receptor and skips protein preparation"
+        ),
         json_schema_extra=cli(
             "-r",
             "--receptor",
-            commands=("docking", "protein_prep"),
+            commands=("docking", "prepare_protein"),
         ),
     )
     ligand: str | None = Field(
         default=None,
-        description="Single ligand structure file in SDF format",
-        json_schema_extra=cli("-l", "--ligand", commands=("docking",)),
+        description=(
+            "Ligand input: a single SDF file, a directory of SDF files, "
+            "or a UD2LIG directory that contains manifest.json"
+        ),
+        json_schema_extra=cli("-l", "--ligand", commands=("docking", "prepare_ligands")),
     )
     ligand_batch: str | None = Field(
         default=None,
         description="Text file containing one ligand SDF file path per line",
-        json_schema_extra=cli("-lb", "--ligand_batch", commands=("docking",)),
+        json_schema_extra=cli("-lb", "--ligand_batch", commands=("docking", "prepare_ligands")),
     )
     center: list[float] = Field(
         default_factory=lambda: [0.0, 0.0, 0.0],
@@ -211,6 +217,7 @@ class PreprocessingConfig(_ConfigurationSection):
     construct_ff: bool = Field(
         default=False,
         description="Construct force-field atom types and bonded parameters for ligands",
+        json_schema_extra=cli("--construct_ff", commands=("prepare_ligands",)),
     )
     template_docking: bool = Field(
         default=False,
@@ -245,8 +252,11 @@ class PreprocessingConfig(_ConfigurationSection):
         description="Parent directory for temporary working directories",
     )
     engine_checkpoint: bool = Field(
-        default=False,
-        description="Write legacy topology inputs and a replayable engine request",
+        default=True,
+        description=(
+            "Write a UD2LIG library next to the pose SDF after ligand preparation. "
+            "Skipped when docking from an existing UD2LIG, or for template/covalent jobs"
+        ),
     )
     output_receptor_dms_file_name: str = Field(
         default="receptor_parameterized.dms",
@@ -254,7 +264,7 @@ class PreprocessingConfig(_ConfigurationSection):
         json_schema_extra=cli(
             "-o",
             "--output_receptor_dms_file_name",
-            commands=("protein_prep",),
+            commands=("prepare_protein",),
         ),
     )
     output_docking_pose_sdf_file_name: str = Field(
@@ -262,8 +272,9 @@ class PreprocessingConfig(_ConfigurationSection):
         description="Output docking pose SDF file name",
         json_schema_extra=cli(
             "-o",
-            "--output_docking_pose_sdf_file_name",
+            "--output",
             commands=("docking",),
+            metavar="SDF",
         ),
     )
 

@@ -3,10 +3,11 @@
 //
 
 #include "model/model.h"
-#include "myutils/myio.h"
 #include "task/DockTask.h"
 #include "screening.h"
 #include "cuda/common.cuh"
+#include <chrono>
+#include <utility>
 #include <spdlog/spdlog.h>
 
 /**
@@ -133,13 +134,13 @@ size_t predict_gpu_flex(UDFlexMolList& udflex_mols, int exhaustiveness, bool pri
  * @param dpfix_mol
  * @param dpflex_mols
  * @param fns_flex
- * @param dp_out
  * @param dock_param
  * @param device_max_memory
+ * @param pose_map collected poses keyed by ligand name
  */
 void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::vector<std::string>& fns_flex,
-                   const std::string &dp_out, DockParam& dock_param, int device_max_memory,
-                   std::string name_json, bool energy_decomp){
+                   DockParam& dock_param, int device_max_memory,
+                   bool energy_decomp, PoseMap& pose_map){
 
     // print docking prameters
     dock_param.show();
@@ -197,7 +198,6 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
             spdlog::info("Batch {} size: {}", batch_id, batch_size);
             UD2_REQUIRE(batch_size > 0, "Not enough GPU Memory to process at least one ligand in batch {}", batch_id);
             num_flex_processed += batch_size;
-            std::string fp_json = gen_filepath(name_json + "_" + std::to_string(batch_id) + ".json", dp_out);
 
             // run on this batch. An individual procedure for global_search_with_local_optimize
             spdlog::info("Perform the Task...");
@@ -206,8 +206,11 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
             if (dock_param.opt_steps == -1){ // heuristic, aligned with Uni-Dock1: (25 + num_movable_atoms) / 3
                 dock_param.opt_steps = unsigned((25 + natom_max) / 3);
             }
-            task.set_flex(batch_flex_mol_list, dock_param, batch_fns_flex, fp_json);
+            task.set_flex(batch_flex_mol_list, dock_param, batch_fns_flex);
             task.run();
+            for (auto& item : task.pose_map) {
+                pose_map[item.first] = std::move(item.second);
+            }
             spdlog::info("Task is done.");
 
             std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() - start;

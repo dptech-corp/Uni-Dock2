@@ -10,17 +10,23 @@ from unidock2.config.models import (
     UnknownConfigurationWarning,
 )
 from unidock2.config.requests import (
+    LIGAND_SOURCE_SDF_FILES,
+    LIGAND_SOURCE_UD2LIG,
     ResolvedDockingRequest,
-    ResolvedProteinPrepRequest,
+    ResolvedPrepareLigandsRequest,
+    ResolvedPrepareProteinRequest,
 )
 
 __all__ = [
     "AdvancedConfig",
     "HardwareConfig",
+    "LIGAND_SOURCE_SDF_FILES",
+    "LIGAND_SOURCE_UD2LIG",
     "PreprocessingConfig",
     "RequiredConfig",
     "ResolvedDockingRequest",
-    "ResolvedProteinPrepRequest",
+    "ResolvedPrepareLigandsRequest",
+    "ResolvedPrepareProteinRequest",
     "SettingsConfig",
     "UnidockConfig",
     "UnknownConfigurationWarning",

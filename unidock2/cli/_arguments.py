@@ -53,7 +53,9 @@ def add_config_arguments(parser, command):
 
     parser.add_argument(
         "-cf",
-        "--configurations",
+        "--config",
+        dest="configurations",
+        metavar="FILE",
         default=None,
         help="Uni-Dock2 configuration YAML file",
     )

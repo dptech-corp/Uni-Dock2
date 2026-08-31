@@ -29,10 +29,10 @@ def _run_pipeline(
     input_path: Path,
     output_dir: Path,
     parameters: dict,
-) -> Path:
+) -> dict:
     receptor, ligands = _load_prepared_input(input_path)
     output_prefix = input_path.stem
-    pipeline.run(
+    output_data = pipeline.run(
         {
             "parameters": parameters,
             "runtime": {
@@ -45,15 +45,11 @@ def _run_pipeline(
         }
     )
 
-    output_files = list(output_dir.glob(f"{output_prefix}_*.json"))
-    assert len(output_files) == 1
-    return output_files[0]
+    assert not list(output_dir.glob("*.json"))
+    return output_data
 
 
-def _load_first_ligand_poses(output_path: Path) -> list[dict]:
-    with output_path.open(encoding="utf-8") as output_file:
-        output_data = json.load(output_file)
-
+def _load_first_ligand_poses(output_data: dict) -> list[dict]:
     assert len(output_data) == 1
     poses = next(iter(output_data.values()))
     assert poses
