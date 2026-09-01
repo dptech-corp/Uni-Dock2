@@ -1,51 +1,10 @@
-import numpy as np
 from rdkit import Chem
 from rdkit.Chem import GetMolFrags, FragmentOnBonds
-from rdkit.Geometry.rdGeometry import Point3D
 from rdkit import RDLogger
 
 
 rdlg = RDLogger.logger()
 rdlg.setLevel(RDLogger.CRITICAL)
-
-
-def _calc_dihedral(position_0, position_1, position_2, position_3):
-    """Calculate the signed dihedral angle in radians."""
-    bond_0 = position_0 - position_1
-    bond_1 = position_2 - position_1
-    bond_2 = position_3 - position_2
-
-    bond_1_unit = bond_1 / np.linalg.norm(bond_1)
-    projected_0 = bond_0 - np.dot(bond_0, bond_1_unit) * bond_1_unit
-    projected_2 = bond_2 - np.dot(bond_2, bond_1_unit) * bond_1_unit
-
-    return np.arctan2(
-        np.dot(np.cross(bond_1_unit, projected_0), projected_2),
-        np.dot(projected_0, projected_2),
-    )
-
-
-def _get_rotation_matrix(angle, direction, point):
-    """Build a homogeneous matrix for rotation around an axis through a point."""
-    direction = direction / np.linalg.norm(direction)
-    sine = np.sin(angle)
-    cosine = np.cos(angle)
-
-    rotation = np.diag([cosine, cosine, cosine])
-    rotation += np.outer(direction, direction) * (1.0 - cosine)
-    scaled_direction = direction * sine
-    rotation += np.array(
-        [
-            [0.0, -scaled_direction[2], scaled_direction[1]],
-            [scaled_direction[2], 0.0, -scaled_direction[0]],
-            [-scaled_direction[1], scaled_direction[0], 0.0],
-        ]
-    )
-
-    transformation = np.identity(4)
-    transformation[:3, :3] = rotation
-    transformation[:3, 3] = point - np.dot(rotation, point)
-    return transformation
 
 
 def get_pattern_atom_mapping(pattern_mol):
@@ -264,69 +223,6 @@ def get_torsion_mobile_atom_idx_list(mol, rotatable_bond_info, root_atom_idx):
         mobile_atom_idx_list[idx] = atom.GetIntProp("internal_atom_idx")
 
     return mobile_atom_idx_list
-
-
-def rotate_torsion_angle(
-    mol, torsion_atom_idx_list, mobile_atom_idx_list, torsion_angle
-):
-    torsion_atom_idx_0 = torsion_atom_idx_list[0]
-    torsion_atom_idx_1 = torsion_atom_idx_list[1]
-    torsion_atom_idx_2 = torsion_atom_idx_list[2]
-    torsion_atom_idx_3 = torsion_atom_idx_list[3]
-
-    target_rotatable_bond_info = (torsion_atom_idx_1, torsion_atom_idx_2)
-
-    conformer = mol.GetConformer()
-    positions = conformer.GetPositions()
-
-    torsion_atom_position_0 = positions[torsion_atom_idx_0, :]
-    torsion_atom_position_1 = positions[torsion_atom_idx_1, :]
-    torsion_atom_position_2 = positions[torsion_atom_idx_2, :]
-    torsion_atom_position_3 = positions[torsion_atom_idx_3, :]
-
-    target_torsion_value = np.degrees(
-        _calc_dihedral(
-            torsion_atom_position_0,
-            torsion_atom_position_1,
-            torsion_atom_position_2,
-            torsion_atom_position_3,
-        )
-    )
-
-    mobile_positions = positions[mobile_atom_idx_list, :]
-
-    if target_rotatable_bond_info[0] not in mobile_atom_idx_list:
-        torsion_bond_position_0 = positions[target_rotatable_bond_info[0], :]
-        torsion_bond_position_1 = positions[target_rotatable_bond_info[1], :]
-    else:
-        torsion_bond_position_0 = positions[target_rotatable_bond_info[1], :]
-        torsion_bond_position_1 = positions[target_rotatable_bond_info[0], :]
-
-    dihedral_rotate_axis = torsion_bond_position_1 - torsion_bond_position_0
-    unit_dihedral_rotate_axis = dihedral_rotate_axis / np.linalg.norm(
-        dihedral_rotate_axis
-    )
-
-    delta_torsion_angle = torsion_angle - target_torsion_value
-    delta_torsion_angle = np.radians(delta_torsion_angle)
-
-    transformation_matrix = _get_rotation_matrix(
-        delta_torsion_angle, unit_dihedral_rotate_axis, torsion_bond_position_0
-    )
-    rotation = transformation_matrix[:3, :3].T
-    translation = transformation_matrix[:3, 3]
-    transformed_mobile_positions = np.dot(mobile_positions, rotation)
-    transformed_mobile_positions += translation
-
-    positions[mobile_atom_idx_list, :] = transformed_mobile_positions
-
-    num_total_atoms = mol.GetNumAtoms()
-    for atom_idx in range(num_total_atoms):
-        atom_positions = positions[atom_idx, :]
-        atom_coord_point_3D = Point3D(
-            atom_positions[0], atom_positions[1], atom_positions[2]
-        )
-        conformer.SetAtomPosition(atom_idx, atom_coord_point_3D)
 
 
 def get_torsion_lib_dict() -> dict:

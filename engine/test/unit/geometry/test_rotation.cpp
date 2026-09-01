@@ -134,7 +134,7 @@ TEST_CASE("tmp", "tmp me"){
 
                 rotate_vec_by_rodrigues(r.data(), axis_unit.data(), dihe_incre);
                 rotate_vec_by_rodrigues(r_norm.data(), axis_unit.data(), dihe_incre_norm);
-                REQUIRE_THAT(dist(r.data(), r_norm.data()), Catch::Matchers::WithinAbs(0, LIMIT));
+                REQUIRE_THAT(sqrt(dist_sq(r.data(), r_norm.data())), Catch::Matchers::WithinAbs(0, LIMIT));
 
                 // REQUIRE_THAT(sin(dihe_incre), Catch::Matchers::WithinAbs(sin(dihe_incre_norm), LIMIT));
                 // REQUIRE_THAT(cos(dihe_incre), Catch::Matchers::WithinAbs(cos(dihe_incre_norm), LIMIT));

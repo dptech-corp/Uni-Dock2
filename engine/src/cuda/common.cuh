@@ -73,21 +73,6 @@ SCOPE_INLINE Real get_real_within_by_int(int c, Real min, Real max, int n=1001) 
 
 
 
-/**
- * @brief Generate a real number in [min, max] on CUDA
- * 
- * @param state CUDA random state
- * @param min Minimum value (Real)
- * @param max Maximum value (Real)
- * @return A real number in [min, max]
- */
-__forceinline__ __device__ Real gen_rand_real_within(curandStatePhilox4_32_10_t* state, Real min, Real max) {
-    return get_real_within_by_int(curand(state), min, max);
-}
-
-
-
-
 __forceinline__ __device__ void gen_4_rand_in_sphere(Real *out_rand_4, curandStatePhilox4_32_10_t *state) {
     float4 rand_4;
     while (true) {  // on average, this will have to be run about twice

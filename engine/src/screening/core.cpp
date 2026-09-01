@@ -149,11 +149,6 @@ int core_pipeline(CoreInput& ipt) {
             ctx.dock_param.energy_range = 999;
             ctx.dock_param.rmsd_limit = 999;
             run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.dock_param, ctx.max_memory, ctx.energy_decomp, ipt.poses);
-        } else if (ctx.task == "benchmark_one") {
-            spdlog::warn("benchmark task is not implemented");
-            spdlog::info("----------------------- RUN Benchmark on One-Crystal-Ligand Cases -----------------------");
-            spdlog::info("----------------------- Given poses are deemed as reference poses -----------------------");
-            spdlog::info("----------------------- NOT Loaded Yet -----------------------");
         } else if (ctx.task == "mc") {
             ctx.dock_param.randomize = true;
             ctx.dock_param.opt_steps = 0;
@@ -181,7 +176,7 @@ int core_pipeline(CoreInput& ipt) {
             spdlog::info("----------------------- RUN Only Optimization on Input Pose (for `refine_steps) -----------------------");
             run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.dock_param, ctx.max_memory, ctx.energy_decomp, ipt.poses);
         } else {
-            UD2_FATALF("Not supported task: {} doesn't belong to (screen, local_only, mc)", ctx.task);
+            UD2_FATALF("Not supported task: {} doesn't belong to (screen, score, mc, randomize, optimize)", ctx.task);
         }
 
         std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() - start;

@@ -58,9 +58,6 @@ public:
      */
     void run();
 
-    // Create dpfix_mol and dpflex_mols
-    void from_json(std::string fp); // todo: resume a task from file
-
     // Output
     void free_fix_gpu();
 

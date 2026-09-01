@@ -38,14 +38,6 @@ void free_FixParamVina_gpu(FixParamVina* fix_param_vina);
 
 
 
-struct VinaScore{
-    // todo: further modification
-    Real e = 0;
-    Real e_inter = 0;
-    Real e_intra = 0;
-};
-
-
 SCOPE_INLINE bool vn_is_hydrophobic(int t){
     return t == VN_TYPE_C_H || t == VN_TYPE_F_H || t == VN_TYPE_Cl_H || t == VN_TYPE_Br_H
         || t == VN_TYPE_I_H;
@@ -121,10 +113,6 @@ private:
     const Real weight_hbond = -0.587439;
 
     const Real weight_conf_indep = 0.05846;
-
-    void cal_pair_dists(Real* __restrict__ coords_fix, Real* __restrict__ coords_flex, int* pair_list, int npair,
-                        Real* out_dists);
-
 
 public:
     const Real r2_cutoff = 64.0;
