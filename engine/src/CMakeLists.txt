@@ -35,9 +35,7 @@ set(sources
         screening/core.cpp screening/core.h
 
         search/mc.h
-        search/bvh.cpp          search/bvh.h
 
-        score/gaff2.cpp         score/gaff2.h
         score/score.cpp         score/score.h
         score/vina.h
 

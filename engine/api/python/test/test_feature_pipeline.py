@@ -20,7 +20,6 @@ def _load_prepared_input(input_path: Path) -> tuple[list, dict]:
         data = json.load(input_file)
 
     receptor = data.pop("receptor")
-    data.pop("score", None)
     return receptor, data
 
 

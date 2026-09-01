@@ -62,7 +62,7 @@ public:
     void from_json(std::string fp); // todo: resume a task from file
 
     // Output
-    void free_fix_mol_gpu();
+    void free_fix_gpu();
 
 private:
     // CPU
@@ -73,8 +73,9 @@ private:
     std::vector<std::vector<std::vector<AtomEnergyDecomp>>> decomp_list;
 
     // GPU
-    FixMol* fix_mol_cu;
-    Real* fix_mol_real_cu;
+    // Receptor-side buffers live across batches; see DockTask::alloc_gpu().
+    FixMol* fix_mol_cu = nullptr;
+    Real* fix_mol_real_cu = nullptr;
 
     FlexPose* flex_pose_list_cu; // size: nflex * exhaustiveness
     StructArrayManager<FlexPose>* flex_pose_list_manager = nullptr;
@@ -88,8 +89,8 @@ private:
     FlexParamVina* flex_param_list_cu;
     StructArrayManager<FlexParamVina>* flex_param_list_manager = nullptr;
     
-    FixParamVina* fix_param_cu;
-    int* fix_param_int_cu;
+    FixParamVina* fix_param_cu = nullptr;
+    int* fix_param_int_cu = nullptr;
 
     Real* aux_list_e_cu; // saves energy of all poses of all flexes, size: nflex * exhaustiveness
     int npose_clustered = 0;

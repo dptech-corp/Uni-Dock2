@@ -25,11 +25,7 @@ extern __constant__ Real BIAS_K;
 extern __constant__ Box CU_BOX;
 extern __constant__ Real CU_VDW_RADII[21];
 
-#if true
 extern __constant__ Vina Score;
-#else
-extern __constant__ Gaff2 Score;
-#endif
 
 void init_constants(const DockParam& dock_param);
 

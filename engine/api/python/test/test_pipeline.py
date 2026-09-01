@@ -17,7 +17,6 @@ def test_pipeline_smoke_ignores_extra_request_keys(tmp_path: Path):
         input_data = json.load(input_file)
 
     receptor = input_data.pop("receptor")
-    input_data.pop("score", None)
 
     output_data = pipeline.run(
         {

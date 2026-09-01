@@ -5,7 +5,6 @@
 #include "spdlog/spdlog.h"
 #include <cmath>
 #include <string>
-#include <set>
 #include <fstream>
 #include <utility>
 #include <rapidjson/document.h>
@@ -39,15 +38,6 @@ void read_ud_from_json_string(const std::string& json_str, const Box& box, UDFix
 
     spdlog::info("Json is successfully parsed");
 
-    //---------------- Parse score types ----------------
-    std::set<std::string> score_types;
-    if (doc.HasMember("score")) {
-        const auto& scores = doc["score"].GetArray();
-        for (const auto& score : scores) {
-            score_types.insert(score.GetString());
-        }
-    }
-    
     // Use RapidJsonParser to parse the data
     RapidJsonParser parser(doc);
 

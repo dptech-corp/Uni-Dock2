@@ -218,7 +218,7 @@ void run_screening(UDFixMol & dpfix_mol, UDFlexMolList &dpflex_mols, const std::
 
         }
     }
-    task.free_fix_mol_gpu();
+    task.free_fix_gpu();
 }
 
 

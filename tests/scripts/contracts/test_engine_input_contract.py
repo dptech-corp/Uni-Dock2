@@ -13,7 +13,7 @@ from unidock2.unidocktools.unidock_receptor_topology_builder import (
 )
 
 
-RESERVED_TOP_LEVEL_KEYS = {"receptor", "score"}
+RESERVED_TOP_LEVEL_KEYS = {"receptor"}
 REQUIRED_LIGAND_KEYS = {"atoms", "torsions", "root_atoms"}
 OPTIONAL_LIGAND_KEYS = {"fragment_atom_idx"}
 
@@ -215,12 +215,6 @@ def assert_valid_engine_input(data):
     _require(isinstance(data, dict), "root", "expected an object")
     _require("receptor" in data, "receptor", "missing required field")
     _validate_receptor(data["receptor"])
-
-    if "score" in data:
-        score = data["score"]
-        _require(isinstance(score, list), "score", "expected a list")
-        for score_idx, score_name in enumerate(score):
-            _require(isinstance(score_name, str), f"score[{score_idx}]", "expected a string")
 
     ligand_names = [key for key in data if key not in RESERVED_TOP_LEVEL_KEYS]
     _require(ligand_names, "root", "must contain at least one ligand")

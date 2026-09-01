@@ -124,10 +124,6 @@ FixMol* alloccp_FixMol_gpu(const FixMol& fix_mol);
 void free_FixMol_gpu(FixMol* fix_mol_cu);
 
 
-enum ScoreFunc{vina, gaff2};
-const std::array<std::string, 2> SCOREFUNC_NAMES = {"vina", "gaff2"};
-
-
 struct Box{ 
     // Box is the docking area.
     // Ligand atoms are not allowed to move out of the box.
@@ -160,21 +156,19 @@ struct DockParam{
     Real energy_range = 10.0;
     Real rmsd_limit = 1.0; // a limit to judge whether two poses are the same during clustering
 
-    ScoreFunc search_score = vina;
-    ScoreFunc opt_score = vina;
     Box box;
     BiasType bias_type;
     Real bias_k = 0.1;
     DockParam() = default;
 
     void show() const{
-        spdlog::info("DockParam: seed={}, search_score={}, opt_score={}, \n"
+        spdlog::info("DockParam: seed={}, \n"
                      "box: x_lo={} Angstrom, x_hi={} Angstrom, y_lo={} Angstrom, y_hi={} Angstrom, z_lo={} Angstrom, z_hi={} Angstrom, \n"
                      "constraint_docking={}, exhaustiveness={}, \n"
                      "mc_steps={}, opt_steps={}, refine_steps={}, \n"
                      "num_pose={}, rmsd_limit={} Angstrom, \n"
                      "bias_type={}, bias_k={}\n",
-                     seed, static_cast<int>(search_score), static_cast<int>(opt_score),
+                     seed,
                      box.x_lo, box.x_hi, box.y_lo, box.y_hi, box.z_lo, box.z_hi,
                      constraint_docking, exhaustiveness,
                      mc_steps, opt_steps, refine_steps,
@@ -194,7 +188,6 @@ struct UDTorsion{
     int atoms[4] = {-1};
     std::vector<int> rotated_atoms; // all atoms rotated by this torsion
     std::vector<Real> range_list; // each two is v_lo, v_
-    std::vector<Real> param_gaff2; // each 4 elements are one group 
 };
 
 
@@ -213,8 +206,6 @@ struct UDFlexMol{
     std::string name;
     std::vector<Real> coords;
     std::vector<int> vina_types; // vina in default todo?
-    std::vector<int> ff_types;
-    std::vector<Real> charges;
     std::set<std::pair<int, int>> pairs_1213; // ignored pairs in vdw summation
     std::set<std::pair<int, int>> pairs_14; // ignored torsions in dihedral calculation
     std::vector<UDTorsion> torsions;
@@ -234,8 +225,6 @@ struct UDFixMol{
     int natom; // only records those inside box
     std::vector<Real> coords;
     std::vector<int> vina_types; // vina in default todo?
-    std::vector<int> ff_types;
-    std::vector<Real> charges;
 };
 
 
