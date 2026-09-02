@@ -10,7 +10,11 @@ from context import TEST_DATA_DIR
 from unidock2.ligand_topology import utils
 from unidock2.ligand_topology.rotatable_bond import BaseRotatableBond
 
-from unidock2.atom_types.vina import VINA_ATOM_TYPE_DICT, VinaAtomTyper
+from unidock2.atom_types.vina import (
+    VINA_ATOM_TYPE_DICT,
+    VINA_ATOM_TYPE_PROPERTY,
+    VinaAtomTyper,
+)
 
 TEST_LIGAND_DATA_DIR = os.path.join(TEST_DATA_DIR, 'ligand_topology')
 
@@ -228,21 +232,21 @@ def test_vina_atom_typing(
     atom_type_list_1 = [None] * num_atoms_1
     for atom_idx in range(num_atoms_1):
         atom = mol_1.GetAtomWithIdx(atom_idx)
-        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp("vina_atom_type")]
+        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp(VINA_ATOM_TYPE_PROPERTY)]
         atom_type_list_1[atom_idx] = atom_type
 
     num_atoms_2 = mol_2.GetNumAtoms()
     atom_type_list_2 = [None] * num_atoms_2
     for atom_idx in range(num_atoms_2):
         atom = mol_2.GetAtomWithIdx(atom_idx)
-        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp("vina_atom_type")]
+        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp(VINA_ATOM_TYPE_PROPERTY)]
         atom_type_list_2[atom_idx] = atom_type
 
     num_atoms_3 = mol_3.GetNumAtoms()
     atom_type_list_3 = [None] * num_atoms_3
     for atom_idx in range(num_atoms_3):
         atom = mol_3.GetAtomWithIdx(atom_idx)
-        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp("vina_atom_type")]
+        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp(VINA_ATOM_TYPE_PROPERTY)]
         atom_type_list_3[atom_idx] = atom_type
 
     valid_atom_type_list_1 = [

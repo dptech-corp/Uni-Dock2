@@ -2,11 +2,7 @@ import pytest
 from rdkit import Chem
 
 from unidock2.atom_types.smarts_atom_typer import SmartsAtomTyper, SmartsRule
-from unidock2.atom_types.vina import (
-    VINA_ATOM_TYPE_DICT,
-    VINA_ATOM_TYPE_PROPERTY,
-    VINA_ATOM_TYPE_RULES,
-)
+from unidock2.atom_types.vina import VINA_ATOM_TYPE_DICT, VINA_ATOM_TYPE_RULES
 
 
 def test_later_smarts_rules_override_earlier_rules():
