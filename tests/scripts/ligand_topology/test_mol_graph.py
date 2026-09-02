@@ -118,7 +118,7 @@ def test_torsion(query_sdf_file:str, ref_sdf_file:str, atom_mapping:dict, root_a
         f"Torsion info mismatch: expected {torsion_case_torsion_result}, got {torsion_ids}"
 
 
-def test_force_field_data_only_fills_legacy_engine_slots(tmp_path, monkeypatch):
+def test_force_field_construction_leaves_engine_read_fields_untouched(tmp_path, monkeypatch):
     ligand_sdf_file = os.path.join(
         TEST_DATA_DIR,
         "free_docking",
@@ -165,12 +165,10 @@ def test_force_field_data_only_fills_legacy_engine_slots(tmp_path, monkeypatch):
     assert disabled_fragments == enabled_fragments
     assert len(disabled_atoms) == len(enabled_atoms)
     assert len(disabled_torsions) == len(enabled_torsions)
-    for atom_idx, (disabled_atom, enabled_atom) in enumerate(
-        zip(disabled_atoms, enabled_atoms)
-    ):
+    # Slots 4 and 5 carry force-field type and charge, which the engine skips.
+    # Everything the engine does read must be identical either way.
+    for disabled_atom, enabled_atom in zip(disabled_atoms, enabled_atoms):
         assert disabled_atom[:4] == enabled_atom[:4]
-        assert disabled_atom[4:6] == (0, 0.0)
-        assert enabled_atom[4:6] == (0, float(atom_idx))
         assert disabled_atom[6:] == enabled_atom[6:]
     for disabled_torsion, enabled_torsion in zip(
         disabled_torsions, enabled_torsions

@@ -1,9 +1,12 @@
 import os
+
 import pytest
 
 from context import TEST_DATA_DIR
 
+from unidock2.config import UnidockConfig
 from unidock2.io.yaml import read_unidock_params_from_yaml
+
 
 @pytest.mark.parametrize(
     'configurations_file',
@@ -17,81 +20,32 @@ from unidock2.io.yaml import read_unidock_params_from_yaml
 def test_yaml_parsing(
     configurations_file,
 ):
+    """Values in the file win; fields the file omits fall back to the schema.
+
+    The default values themselves are covered by
+    `tests/scripts/config/test_config_models.py`.
+    """
 
     yaml_params = read_unidock_params_from_yaml(configurations_file)
+    defaults = UnidockConfig()
 
+    # Written in the YAML file, and different from the schema default.
     assert yaml_params.required.receptor == '1G9V_protein_water_cleaned.pdb'
     assert yaml_params.required.ligand == 'ligand_prepared.sdf'
-    assert yaml_params.required.ligand_batch is None
     assert yaml_params.required.center == [5.122, 18.327, 37.332]
-
-    assert yaml_params.advanced.exhaustiveness == 512
-    assert yaml_params.advanced.randomize
     assert yaml_params.advanced.mc_steps == 20
-    assert yaml_params.advanced.opt_steps == -1
-    assert yaml_params.advanced.refine_steps == 5
-    assert yaml_params.advanced.num_pose == 10
-    assert yaml_params.advanced.rmsd_limit == 1.0
     assert yaml_params.advanced.energy_range == 3.0
     assert yaml_params.advanced.seed == 12345
-    assert yaml_params.advanced.bias == "no"
-    assert yaml_params.advanced.bias_k == 0.1
-    assert not yaml_params.advanced.use_tor_lib
-    assert not yaml_params.advanced.energy_decomp
 
-    assert yaml_params.hardware.n_cpu is None
-    assert yaml_params.hardware.gpu_device_id == 0
-    assert yaml_params.hardware.max_gpu_memory == 0
+    # Absent from the YAML file, so the schema default applies. engine_checkpoint
+    # guards against an omitted field silently becoming falsy.
+    assert yaml_params.advanced.bias == defaults.advanced.bias
+    assert yaml_params.advanced.energy_decomp == defaults.advanced.energy_decomp
+    assert yaml_params.hardware.n_cpu == defaults.hardware.n_cpu
+    assert yaml_params.hardware.max_gpu_memory == defaults.hardware.max_gpu_memory
+    assert yaml_params.preprocessing.construct_ff == defaults.preprocessing.construct_ff
+    assert yaml_params.preprocessing.keep_workdir == defaults.preprocessing.keep_workdir
+    assert yaml_params.preprocessing.engine_checkpoint is True
 
-    assert yaml_params.settings.box_size == [30.0, 30.0, 30.0]
-    assert yaml_params.settings.task == 'screen'
-    assert yaml_params.settings.search_mode == 'balance'
-
-    assert not yaml_params.preprocessing.template_docking
-    assert yaml_params.preprocessing.reference_sdf_file_name is None
-    assert yaml_params.preprocessing.compute_center
-    assert yaml_params.preprocessing.core_atom_mapping_dict_list is None
-    assert not yaml_params.preprocessing.covalent_ligand
-    assert yaml_params.preprocessing.covalent_residue_atom_info_list is None
-    assert not yaml_params.preprocessing.preserve_receptor_hydrogen
-    assert not yaml_params.preprocessing.keep_workdir
-    assert yaml_params.preprocessing.engine_checkpoint
-    assert yaml_params.preprocessing.output_sdf == 'unidock2_pose.sdf'
-
-    valid_configurations_dict = {'receptor': '1G9V_protein_water_cleaned.pdb',
-                                 'ligand': 'ligand_prepared.sdf',
-                                 'ligand_batch': None,
-                                 'center': [5.122, 18.327, 37.332],
-                                 'exhaustiveness': 512,
-                                 'randomize': True,
-                                 'mc_steps': 20,
-                                 'opt_steps': -1,
-                                 'refine_steps': 5,
-                                 'num_pose': 10,
-                                 'rmsd_limit': 1.0,
-                                 'energy_range': 3.0,
-                                 'seed': 12345,
-                                 'bias': 'no',
-                                 'bias_k': 0.1,
-                                 'use_tor_lib': False,
-                                 'energy_decomp': False,
-                                 'n_cpu': None,
-                                 'gpu_device_id': 0,
-                                 'max_gpu_memory': 0,
-                                 'box_size': [30.0, 30.0, 30.0],
-                                 'task': 'screen',
-                                 'search_mode': 'balance',
-                                 'construct_ff': False,
-                                 'template_docking': False,
-                                 'reference_sdf_file_name': None,
-                                 'compute_center': True,
-                                 'core_atom_mapping_dict_list': None,
-                                 'covalent_ligand': False,
-                                 'covalent_residue_atom_info_list': None,
-                                 'preserve_receptor_hydrogen': False,
-                                 'keep_workdir': False,
-                                 'engine_checkpoint': True,
-                                 'output_sdf': 'unidock2_pose.sdf'}
-
-    configurations_dict = yaml_params.to_protocol_kwargs()
-    assert configurations_dict == valid_configurations_dict
+    # The flattened view exposes exactly the schema fields, whatever the file holds.
+    assert set(yaml_params.to_protocol_kwargs()) == set(defaults.to_protocol_kwargs())

@@ -15,11 +15,6 @@ from unidock2.utils.molecule_processing import (
     get_mol_without_indices,
     get_mol_with_indices,
 )
-# Legacy import paths; the implementations live in unidock2.force_field.
-from unidock2.force_field.ligand_gaff2 import (
-    convert_v3000_mol_to_v2000_sdf as convert_v3000_mol_to_v2000_sdf,
-    record_gaff2_atom_types_and_parameters as record_gaff2_atom_types_and_parameters,
-)
 
 
 def prepare_covalent_ligand_mol(mol):
