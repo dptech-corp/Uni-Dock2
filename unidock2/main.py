@@ -18,7 +18,8 @@ logo_description = r"""
 
 available_commands = [
     ('docking', 'unidock2.cli.docking'),
-    ('protein_prep','unidock2.cli.protein_prep')
+    ('prepare_protein', 'unidock2.cli.prepare_protein'),
+    ('prepare_ligands', 'unidock2.cli.prepare_ligands'),
 ]
 
 class CLIDriver(object):
@@ -69,6 +70,7 @@ class CLIDriver(object):
             module = import_module(module_name).CLICommand
             docstring = module.__doc__ or ''
             cmd_parser = subparsers.add_parser(command,
+                                              help=getattr(module, 'help', None),
                                               description=docstring,
                                               formatter_class=argparse.RawDescriptionHelpFormatter)
 

@@ -10,8 +10,11 @@ from context import TEST_DATA_DIR
 from unidock2.ligand_topology import utils
 from unidock2.ligand_topology.rotatable_bond import BaseRotatableBond
 
-from unidock2.atom_types.vina_atom_type import AtomType
-from unidock2.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
+from unidock2.atom_types.vina import (
+    VINA_ATOM_TYPE_DICT,
+    VINA_ATOM_TYPE_PROPERTY,
+    VinaAtomTyper,
+)
 
 TEST_LIGAND_DATA_DIR = os.path.join(TEST_DATA_DIR, 'ligand_topology')
 
@@ -216,12 +219,11 @@ def test_vina_atom_typing(
     vina_atom_type_test_molecule_2,
     vina_atom_type_test_molecule_3,
 ):
-    atom_typer = AtomType()
     mol_1 = Chem.SDMolSupplier(vina_atom_type_test_molecule_1, removeHs=False)[0]
     mol_2 = Chem.SDMolSupplier(vina_atom_type_test_molecule_2, removeHs=False)[0]
     mol_3 = Chem.SDMolSupplier(vina_atom_type_test_molecule_3, removeHs=False)[0]
 
-    atom_typer = AtomType()
+    atom_typer = VinaAtomTyper()
     atom_typer.assign_atom_types(mol_1)
     atom_typer.assign_atom_types(mol_2)
     atom_typer.assign_atom_types(mol_3)
@@ -230,21 +232,21 @@ def test_vina_atom_typing(
     atom_type_list_1 = [None] * num_atoms_1
     for atom_idx in range(num_atoms_1):
         atom = mol_1.GetAtomWithIdx(atom_idx)
-        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp("vina_atom_type")]
+        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp(VINA_ATOM_TYPE_PROPERTY)]
         atom_type_list_1[atom_idx] = atom_type
 
     num_atoms_2 = mol_2.GetNumAtoms()
     atom_type_list_2 = [None] * num_atoms_2
     for atom_idx in range(num_atoms_2):
         atom = mol_2.GetAtomWithIdx(atom_idx)
-        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp("vina_atom_type")]
+        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp(VINA_ATOM_TYPE_PROPERTY)]
         atom_type_list_2[atom_idx] = atom_type
 
     num_atoms_3 = mol_3.GetNumAtoms()
     atom_type_list_3 = [None] * num_atoms_3
     for atom_idx in range(num_atoms_3):
         atom = mol_3.GetAtomWithIdx(atom_idx)
-        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp("vina_atom_type")]
+        atom_type = VINA_ATOM_TYPE_DICT[atom.GetProp(VINA_ATOM_TYPE_PROPERTY)]
         atom_type_list_3[atom_idx] = atom_type
 
     valid_atom_type_list_1 = [

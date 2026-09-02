@@ -2,10 +2,12 @@ import os
 
 import pytest
 
+from unidock2._engine import build_engine_request
 from unidock2.config import UnidockConfig
+from unidock2.unidocktools.unidock_protocol_runner import UnidockProtocolRunner
 from unidock2.unidocktools.unidock_protocol_runner import (
-    UnidockProtocolRunner,
-    _build_pipeline_kwargs,
+    _ud2lig_dir_for_pose_sdf,
+    _write_ud2lig_checkpoint,
 )
 
 
@@ -66,7 +68,7 @@ def test_legacy_runner_keeps_optional_none_core_mappings(tmp_path):
     assert runner.core_atom_mapping_dict_list == [None]
 
 
-def test_from_config_and_pipeline_kwargs_preserve_the_native_contract(tmp_path):
+def test_from_config_builds_the_complete_native_request(tmp_path):
     config = UnidockConfig().with_overrides(
         box_size=[10, 20, 30],
         task="score",
@@ -80,11 +82,14 @@ def test_from_config_and_pipeline_kwargs_preserve_the_native_contract(tmp_path):
         rmsd_limit=1.5,
         energy_range=6.0,
         seed=42,
+        bias="align",
+        bias_k=0.75,
         use_tor_lib=True,
         energy_decomp=True,
         template_docking=True,
         compute_center=False,
         gpu_device_id=2,
+        max_gpu_memory=2048,
     )
     runner = UnidockProtocolRunner.from_config(
         "receptor.pdb",
@@ -95,33 +100,40 @@ def test_from_config_and_pipeline_kwargs_preserve_the_native_contract(tmp_path):
         docking_pose_sdf_file_name=str(tmp_path / "poses.sdf"),
     )
 
-    assert _build_pipeline_kwargs(
+    assert build_engine_request(
         runner._current_config(),
-        runner.target_center,
-        runner.unidock2_output_dir_name,
+        target_center=runner.target_center,
+        receptor=[{"atom": "receptor"}],
+        ligands={"ligand_0": {"atom": "ligand"}},
     ) == {
-        "output_dir": str(tmp_path / "unidock2_output"),
-        "center_x": 1.0,
-        "center_y": 2.0,
-        "center_z": 3.0,
-        "size_x": 10.0,
-        "size_y": 20.0,
-        "size_z": 30.0,
-        "task": "score",
-        "search_mode": "free",
-        "exhaustiveness": 64,
-        "randomize": False,
-        "mc_steps": 12,
-        "opt_steps": 13,
-        "refine_steps": 14,
-        "num_pose": 4,
-        "rmsd_limit": 1.5,
-        "energy_range": 6.0,
-        "seed": 42,
-        "use_tor_lib": True,
-        "energy_decomp": True,
-        "constraint_docking": True,
-        "gpu_device_id": 2,
+        "parameters": {
+            "center": [1.0, 2.0, 3.0],
+            "box_size": [10.0, 20.0, 30.0],
+            "task": "score",
+            "search_mode": "free",
+            "exhaustiveness": 64,
+            "randomize": False,
+            "mc_steps": 12,
+            "opt_steps": 13,
+            "refine_steps": 14,
+            "num_pose": 4,
+            "rmsd_limit": 1.5,
+            "energy_range": 6.0,
+            "seed": 42,
+            "bias": "align",
+            "bias_k": 0.75,
+            "use_tor_lib": True,
+            "energy_decomp": True,
+            "constraint_docking": True,
+        },
+        "runtime": {
+            "gpu_device_id": 2,
+            "max_gpu_memory": 2048,
+        },
+        "molecules": {
+            "receptor": [{"atom": "receptor"}],
+            "ligand_0": {"atom": "ligand"},
+        },
     }
 
 
@@ -136,7 +148,7 @@ def test_runner_rejects_unknown_config_overrides(tmp_path):
         )
 
 
-def test_mutating_legacy_public_attributes_still_affects_pipeline_kwargs(tmp_path):
+def test_mutating_legacy_public_attributes_still_affects_engine_request(tmp_path):
     runner = UnidockProtocolRunner(
         "receptor.pdb",
         ["ligand.sdf"],
@@ -146,16 +158,51 @@ def test_mutating_legacy_public_attributes_still_affects_pipeline_kwargs(tmp_pat
     runner.mc_steps = 99
     runner.box_size = [7, 8, 9]
 
-    kwargs = _build_pipeline_kwargs(
+    request = build_engine_request(
         runner._current_config(),
-        runner.target_center,
-        runner.unidock2_output_dir_name,
+        target_center=runner.target_center,
+        receptor=[],
+        ligands={},
     )
 
-    assert kwargs["mc_steps"] == 99
-    assert (kwargs["size_x"], kwargs["size_y"], kwargs["size_z"]) == (
-        7.0,
-        8.0,
-        9.0,
+    assert request["parameters"]["mc_steps"] == 99
+    assert request["parameters"]["box_size"] == [7.0, 8.0, 9.0]
+    assert os.path.isdir(runner.working_dir_name)
+
+
+def test_engine_checkpoint_writes_ud2lig_next_to_pose_sdf(tmp_path):
+    from rdkit import Chem
+
+    from context import TEST_DATA_DIR
+    from unidock2.io.ud2lig import read_ud2lig
+
+    ligand_file = os.path.join(TEST_DATA_DIR, "ligand_topology", "test_vina_atom_type_1.sdf")
+    molecule = Chem.SDMolSupplier(ligand_file, removeHs=False)[0]
+    molecule.SetProp("ud2_molecule_name", "MOL_0")
+    conformer = molecule.GetConformer()
+    atoms = []
+    for atom_idx in range(molecule.GetNumAtoms()):
+        position = conformer.GetAtomPosition(atom_idx)
+        atoms.append([position.x, position.y, position.z, 2, 0, 0.0, [], []])
+    topology = {
+        "atoms": atoms,
+        "torsions": [],
+        "root_atoms": [0],
+        "fragment_atom_idx": [[0]],
+    }
+
+    pose_sdf = tmp_path / "poses.sdf"
+    output_dir = _ud2lig_dir_for_pose_sdf(str(pose_sdf))
+    assert output_dir.endswith("poses.ud2lig")
+
+    _write_ud2lig_checkpoint(
+        output_dir,
+        {"MOL_0": topology},
+        [molecule],
+        UnidockConfig(),
     )
-    assert os.path.isdir(runner.unidock2_output_dir_name)
+
+    loaded_info, loaded_mols, manifest = read_ud2lig(output_dir)
+    assert manifest["n_ligands"] == 1
+    assert list(loaded_info) == ["MOL_0"]
+    assert loaded_mols[0].GetProp("ud2_molecule_name") == "MOL_0"

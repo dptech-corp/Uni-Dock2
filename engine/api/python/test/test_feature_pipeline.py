@@ -20,7 +20,6 @@ def _load_prepared_input(input_path: Path) -> tuple[list, dict]:
         data = json.load(input_file)
 
     receptor = data.pop("receptor")
-    data.pop("score", None)
     return receptor, data
 
 
@@ -28,29 +27,25 @@ def _run_pipeline(
     *,
     input_path: Path,
     output_dir: Path,
-    pipeline_kwargs: dict,
-) -> Path:
+    parameters: dict,
+) -> dict:
     receptor, ligands = _load_prepared_input(input_path)
-    name_json = input_path.stem
-
-    docking_pipeline = pipeline.DockingPipeline(
-        output_dir=str(output_dir),
-        name_json=name_json,
-        **pipeline_kwargs,
+    output_data = pipeline.run(
+        {
+            "parameters": parameters,
+            "runtime": {
+                "gpu_device_id": 0,
+                "max_gpu_memory": 0,
+            },
+            "molecules": {"receptor": receptor, **ligands},
+        }
     )
-    docking_pipeline.set_receptor(receptor)
-    docking_pipeline.add_ligands(ligands)
-    docking_pipeline.run()
 
-    output_files = list(output_dir.glob(f"{name_json}_*.json"))
-    assert len(output_files) == 1
-    return output_files[0]
+    assert not list(output_dir.iterdir())
+    return output_data
 
 
-def _load_first_ligand_poses(output_path: Path) -> list[dict]:
-    with output_path.open(encoding="utf-8") as output_file:
-        output_data = json.load(output_file)
-
+def _load_first_ligand_poses(output_data: dict) -> list[dict]:
     assert len(output_data) == 1
     poses = next(iter(output_data.values()))
     assert poses
@@ -87,13 +82,9 @@ def test_5s8i_best_pose_rmsd(tmp_path: Path):
     output_path = _run_pipeline(
         input_path=case_dir / "5S8I_unidock2.json",
         output_dir=tmp_path,
-        pipeline_kwargs={
-            "center_x": -22.33497980811559,
-            "center_y": 13.31094327905649,
-            "center_z": 27.36396790165424,
-            "size_x": 30.0,
-            "size_y": 30.0,
-            "size_z": 30.0,
+        parameters={
+            "center": [-22.33497980811559, 13.31094327905649, 27.36396790165424],
+            "box_size": [30.0, 30.0, 30.0],
             "task": "screen",
             "search_mode": "free",
             "exhaustiveness": 512,
@@ -110,8 +101,6 @@ def test_5s8i_best_pose_rmsd(tmp_path: Path):
             "constraint_docking": False,
             "use_tor_lib": False,
             "energy_decomp": False,
-            "gpu_device_id": 0,
-            "max_gpu_mem": 0,
         },
     )
 
@@ -127,13 +116,9 @@ def test_position_bias_keeps_anchor_atom_near_target(tmp_path: Path):
     output_path = _run_pipeline(
         input_path=case_dir / "input.json",
         output_dir=tmp_path,
-        pipeline_kwargs={
-            "center_x": 2.0,
-            "center_y": 60.0,
-            "center_z": 10.0,
-            "size_x": 30.0,
-            "size_y": 30.0,
-            "size_z": 30.0,
+        parameters={
+            "center": [2.0, 60.0, 10.0],
+            "box_size": [30.0, 30.0, 30.0],
             "task": "screen",
             "search_mode": "free",
             "exhaustiveness": 512,
@@ -150,8 +135,6 @@ def test_position_bias_keeps_anchor_atom_near_target(tmp_path: Path):
             "constraint_docking": False,
             "use_tor_lib": False,
             "energy_decomp": False,
-            "gpu_device_id": 0,
-            "max_gpu_mem": 0,
         },
     )
 

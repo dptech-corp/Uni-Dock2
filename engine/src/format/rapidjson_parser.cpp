@@ -25,9 +25,10 @@ bool checkInAnySameSet(const std::vector<std::set<int>>& frags, int v1, int v2) 
 void RapidJsonParser::parse_receptor_info(const Box& box_protein, UDFixMol& fix_mol) {
     fix_mol.coords.clear();
     fix_mol.vina_types.clear();
-    fix_mol.ff_types.clear();
-    fix_mol.charges.clear();
-    
+
+    // Atom entries carry force-field type and charge at indices 4 and 5. The Vina
+    // scoring path does not use them, so they are skipped without shifting the
+    // indices the engine does read.
     const auto& receptor = doc_["receptor"].GetArray();
     for (const auto& atom_info : receptor) {
         int type = atom_info[3].GetInt();
@@ -43,16 +44,14 @@ void RapidJsonParser::parse_receptor_info(const Box& box_protein, UDFixMol& fix_
             fix_mol.coords.push_back(y);
             fix_mol.coords.push_back(z);
             fix_mol.vina_types.push_back(type);
-            fix_mol.ff_types.push_back(atom_info[4].GetInt());
-            fix_mol.charges.push_back(atom_info[5].GetFloat());
         }
     }
-    fix_mol.natom = fix_mol.charges.size();
+    fix_mol.natom = fix_mol.vina_types.size();
     spdlog::info("Json data: Receptor is successfully extracted.");
 }
 
 void RapidJsonParser::parse_ligands_info(UDFlexMolList& flex_mol_list, std::vector<std::string>& fns_flex, bool use_tor_lib) {
-    std::set<std::string> exclude_keys = {"score", "receptor"};
+    std::set<std::string> exclude_keys = {"receptor"};
     
     for (auto it = doc_.MemberBegin(); it != doc_.MemberEnd(); ++it) {
         std::string key = it->name.GetString();
@@ -81,9 +80,9 @@ void RapidJsonParser::parse_ligands_info(UDFlexMolList& flex_mol_list, std::vect
             coords_sum[1] += y;
             coords_sum[2] += z;
             
+            // Indices 4 and 5 hold force-field type and charge, which the Vina
+            // scoring path does not use.
             flex_mol.vina_types.push_back(atom_line[3].GetInt());
-            flex_mol.ff_types.push_back(atom_line[4].GetInt());
-            flex_mol.charges.push_back(atom_line[5].GetFloat());
             
             // 1-2 & 1-3 pairs
             for (const auto& a : atom_line[6].GetArray()) {
@@ -176,15 +175,10 @@ void RapidJsonParser::parse_ligands_info(UDFlexMolList& flex_mol_list, std::vect
             for (const auto& a : tor_info[3].GetArray()) {
                 torsion.rotated_atoms.push_back(a.GetInt());
             }
-            
-            // gaff2 parameters
-            for (const auto& gaff2 : tor_info[4].GetArray()) {
-                torsion.param_gaff2.push_back(gaff2.GetArray()[0].GetFloat());
-                torsion.param_gaff2.push_back(gaff2.GetArray()[1].GetFloat());
-                torsion.param_gaff2.push_back(gaff2.GetArray()[2].GetFloat());
-                torsion.param_gaff2.push_back(gaff2.GetArray()[3].GetFloat());
-            }
-            
+
+            // Index 4 holds the GAFF2 torsion parameters, which the Vina scoring
+            // path does not use.
+
             flex_mol.torsions.push_back(torsion);
         }
         
@@ -193,7 +187,7 @@ void RapidJsonParser::parse_ligands_info(UDFlexMolList& flex_mol_list, std::vect
         
         // Compute properties
         flex_mol.name = key;
-        flex_mol.natom = flex_mol.charges.size();
+        flex_mol.natom = flex_mol.vina_types.size();
         flex_mol.center[0] = coords_sum[0] / flex_mol.natom;
         flex_mol.center[1] = coords_sum[1] / flex_mol.natom;
         flex_mol.center[2] = coords_sum[2] / flex_mol.natom;

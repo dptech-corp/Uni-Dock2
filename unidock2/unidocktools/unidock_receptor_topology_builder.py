@@ -1,30 +1,25 @@
 import os
 from itertools import chain
-from shutil import which
 import msys
 
-from unidock2.utils.external_command import run_external_command
 from unidock2.utils.molecule_processing import get_mol_without_indices
 from unidock2.unidocktools.protein_topology import (
     prepare_receptor_residue_mol_list,
 )
-from unidock2.unidocktools.receptor_topology_preparation import (
-    ReceptorTopologyPreparation,
-)
-from unidock2.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
-from unidock2.atom_types.unidock_ff_atom_types import FF_ATOM_TYPE_DICT
+from unidock2.atom_types.vina import VINA_ATOM_TYPE_DICT, VINA_ATOM_TYPE_PROPERTY
+from unidock2.force_field.receptor_parameters import encode_receptor_force_field
 
 
 def _receptor_atom_to_engine_record(atom):
-    ff_atom_type = atom.GetProp("ff_atom_type")
-    vina_atom_type = atom.GetProp("vina_atom_type")
+    vina_atom_type = atom.GetProp(VINA_ATOM_TYPE_PROPERTY)
+    ff_atom_type, atom_charge = encode_receptor_force_field(atom)
     return [
         atom.GetDoubleProp("x"),
         atom.GetDoubleProp("y"),
         atom.GetDoubleProp("z"),
         VINA_ATOM_TYPE_DICT[vina_atom_type],
-        FF_ATOM_TYPE_DICT[ff_atom_type],
-        atom.GetDoubleProp("atom_charge"),
+        ff_atom_type,
+        atom_charge,
     ]
 
 
@@ -52,43 +47,13 @@ class UnidockReceptorTopologyBuilder(object):
         )
 
     def run_protein_preparation(self):
-        fepfixer_executable = which("fepfixer")
-        utop_executable = which("utop")
-        if fepfixer_executable is not None and utop_executable is not None:
-            fepfixer_command = [
-                fepfixer_executable,
-                "-i",
-                os.path.abspath(self.receptor_file_name),
-                "-o",
-                os.path.basename(self.receptor_structure_dms_file_name),
-            ]
-            if self.prepared_hydrogen:
-                fepfixer_command.append("--custom-protonation-states")
+        from unidock2.force_field.receptor_preparation import parameterize_receptor
 
-            run_external_command(
-                fepfixer_command,
-                cwd=self.working_dir_name,
-                log_file_name="fepfixer.log",
-                expected_output_file_names=[self.receptor_structure_dms_file_name],
-            )
-            run_external_command(
-                [
-                    utop_executable,
-                    "prm",
-                    "-i",
-                    os.path.basename(self.receptor_structure_dms_file_name),
-                    "-o",
-                    os.path.basename(self.receptor_parameterized_dms_file_name),
-                ],
-                cwd=self.working_dir_name,
-                log_file_name="utop.log",
-                expected_output_file_names=[self.receptor_parameterized_dms_file_name],
-            )
-        else:
-            receptor_topology_preparation = ReceptorTopologyPreparation(
-                self.receptor_file_name, self.working_dir_name
-            )
-            receptor_topology_preparation.run_preparation()
+        parameterize_receptor(
+            self.receptor_file_name,
+            self.prepared_hydrogen,
+            self.working_dir_name,
+        )
 
     def find_covalent_hydrogen_atoms(self, atom):
         for neighbor_atom in atom.GetNeighbors():
@@ -152,7 +117,7 @@ class UnidockReceptorTopologyBuilder(object):
                 "atom_name",
                 "atom_charge",
                 "ff_atom_type",
-                "vina_atom_type",
+                VINA_ATOM_TYPE_PROPERTY,
                 "residue_idx",
                 "residue_name",
                 "chain_idx",

@@ -9,12 +9,6 @@
 #include <cassert>
 
 
-SCOPE_INLINE Real map_01_to_dot5(Real a){
-    // todo: test
-    assert(0 < a && a <= 1);
-    return a - 0.5;
-}
-
 /**
  * @brief Normalize an angle to the range [0, 2pi]
  * @snippet test_math.cpp normalize_angle
@@ -73,24 +67,6 @@ SCOPE_INLINE Real rad_to_ang(Real rad){
 //------------------------------------------------------
 //------------------- Range Operations -----------------
 //------------------------------------------------------
-
-/**
- * @brief Check if a value is in a given range
- * @snippet test/unit/myutils/test_math.cpp isInRanges
- * @param value The value to check
- * @param ranges The range array, each range is represented by two values, indicating the start and end of the range
- * @param num_range The number of ranges
- * @return True if the value is in any range, false otherwise
- */
-SCOPE_INLINE bool isInRanges(Real value, int* ranges, int num_range){
-    for (int i = 0; i < num_range; i++){
-        if (value >= ranges[i * 2] && value <= ranges[i * 2 + 1]){
-            return true;
-        }
-    }
-    return false;
-}
-
 
 /**
  * @brief Randomly select a value from a given range fixme: the boundary values can be missed
@@ -277,28 +253,6 @@ SCOPE_INLINE Real cal_norm(const Real* a){
 }
 
 /**
- * @brief Normalize a rotation vector
- * @snippet test_math.cpp norm_rotvec
- * @param v The vector
- */
-SCOPE_INLINE void norm_rotvec(Real* out_v){
-    Real l = cal_norm(out_v);
-    Real angle  = normalize_angle(l);
-    // the real rotation angle
-    if (l > EPSILON){
-        out_v[0] = out_v[0] / l * angle;
-        out_v[1] = out_v[1] / l * angle;
-        out_v[2] = out_v[2] / l * angle;
-
-    } else {
-        out_v[0] = 0;
-        out_v[1] = 0;
-        out_v[2] = 0;
-    }
-}
-
-
-/**
  * @brief Calculate the squared distance between two vectors
  * @snippet test_math.cpp dist_norm2
  * @param a The first vector
@@ -308,10 +262,6 @@ SCOPE_INLINE void norm_rotvec(Real* out_v){
 SCOPE_INLINE Real dist_sq(const Real* a, const Real* b){
     return (a[0] - b[0]) * (a[0] - b[0]) + (a[1] - b[1]) * (a[1] - b[1])
         + (a[2] - b[2]) * (a[2] - b[2]);
-}
-
-SCOPE_INLINE Real dist(const Real* a, const Real* b){
-    return sqrt(dist_sq(a, b));
 }
 
 

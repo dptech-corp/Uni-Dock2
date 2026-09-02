@@ -1,4 +1,3 @@
-#include <filesystem>
 #include <string>
 #include <vector> // ligand paths
 #include <chrono>
@@ -83,18 +82,6 @@ CoreContext prepare_context_by_input(CoreInput& ipt) {
     CoreContext ctx;
 
     ctx.task = ipt.task;
-
-    ctx.output_dir = ipt.output_dir;
-    UD2_REQUIRE(!ctx.output_dir.empty(), "No output directory is specified!");
-    if (!std::filesystem::exists(ctx.output_dir)) {
-        try {
-            std::filesystem::create_directories(ctx.output_dir);
-        } catch (const std::filesystem::filesystem_error& e) {
-            UD2_FATALF("Failed to create output directory {}: {}", ctx.output_dir, e.what());
-        }
-    }
-
-    ctx.name_json = ipt.name_json;
     ctx.max_memory = decide_memory_limit_mb(ipt.gpu_device_id, ipt.max_gpu_memory);
     ctx.fix_mol = std::move(ipt.fix_mol);
     ctx.flex_mol_list = std::move(ipt.flex_mol_list);
@@ -150,7 +137,7 @@ int core_pipeline(CoreInput& ipt) {
         // ------------------------------- Run Task -------------------------------
         if (ctx.task == "screen") { // allow changing every parameter
             spdlog::info("----------------------- RUN Screening -----------------------");
-            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.output_dir, ctx.dock_param, ctx.max_memory, ctx.name_json, ctx.energy_decomp);
+            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.dock_param, ctx.max_memory, ctx.energy_decomp, ipt.poses);
         } else if (ctx.task == "score") {
             spdlog::info("----------------------- RUN Only Scoring -----------------------");
             ctx.dock_param.randomize = false;
@@ -161,18 +148,13 @@ int core_pipeline(CoreInput& ipt) {
             ctx.dock_param.num_pose = 1;
             ctx.dock_param.energy_range = 999;
             ctx.dock_param.rmsd_limit = 999;
-            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.output_dir, ctx.dock_param, ctx.max_memory, ctx.name_json, ctx.energy_decomp);
-        } else if (ctx.task == "benchmark_one") {
-            spdlog::warn("benchmark task is not implemented");
-            spdlog::info("----------------------- RUN Benchmark on One-Crystal-Ligand Cases -----------------------");
-            spdlog::info("----------------------- Given poses are deemed as reference poses -----------------------");
-            spdlog::info("----------------------- NOT Loaded Yet -----------------------");
+            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.dock_param, ctx.max_memory, ctx.energy_decomp, ipt.poses);
         } else if (ctx.task == "mc") {
             ctx.dock_param.randomize = true;
             ctx.dock_param.opt_steps = 0;
             ctx.dock_param.refine_steps = 0;
             spdlog::info("----------------------- RUN Only Monte Carlo Random Walking (With Clustering) -----------------------");
-            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.output_dir, ctx.dock_param, ctx.max_memory, ctx.name_json, ctx.energy_decomp);
+            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.dock_param, ctx.max_memory, ctx.energy_decomp, ipt.poses);
         } else if (ctx.task == "randomize") {
             ctx.dock_param.randomize = true;
             ctx.dock_param.mc_steps = 0;
@@ -182,7 +164,7 @@ int core_pipeline(CoreInput& ipt) {
             ctx.dock_param.energy_range = 1e9;
             ctx.dock_param.rmsd_limit = 0.;
             spdlog::info("----------------------- RUN Only Randomization (No Clustering) -----------------------");
-            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.output_dir, ctx.dock_param, ctx.max_memory, ctx.name_json, ctx.energy_decomp);
+            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.dock_param, ctx.max_memory, ctx.energy_decomp, ipt.poses);
         } else if (ctx.task == "optimize") {
             ctx.dock_param.randomize = false;
             ctx.dock_param.exhaustiveness = 1;
@@ -192,9 +174,9 @@ int core_pipeline(CoreInput& ipt) {
             ctx.dock_param.energy_range = 1e9;
             ctx.dock_param.rmsd_limit = 0.;
             spdlog::info("----------------------- RUN Only Optimization on Input Pose (for `refine_steps) -----------------------");
-            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.output_dir, ctx.dock_param, ctx.max_memory, ctx.name_json, ctx.energy_decomp);
+            run_screening(ctx.fix_mol, ctx.flex_mol_list, ctx.fns_flex, ctx.dock_param, ctx.max_memory, ctx.energy_decomp, ipt.poses);
         } else {
-            UD2_FATALF("Not supported task: {} doesn't belong to (screen, local_only, mc)", ctx.task);
+            UD2_FATALF("Not supported task: {} doesn't belong to (screen, score, mc, randomize, optimize)", ctx.task);
         }
 
         std::chrono::duration<double, std::milli> duration = std::chrono::high_resolution_clock::now() - start;

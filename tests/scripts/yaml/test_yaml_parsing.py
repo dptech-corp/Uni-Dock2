@@ -34,11 +34,14 @@ def test_yaml_parsing(
     assert yaml_params.advanced.rmsd_limit == 1.0
     assert yaml_params.advanced.energy_range == 3.0
     assert yaml_params.advanced.seed == 12345
+    assert yaml_params.advanced.bias == "no"
+    assert yaml_params.advanced.bias_k == 0.1
     assert not yaml_params.advanced.use_tor_lib
     assert not yaml_params.advanced.energy_decomp
 
     assert yaml_params.hardware.n_cpu is None
     assert yaml_params.hardware.gpu_device_id == 0
+    assert yaml_params.hardware.max_gpu_memory == 0
 
     assert yaml_params.settings.box_size == [30.0, 30.0, 30.0]
     assert yaml_params.settings.task == 'screen'
@@ -51,9 +54,9 @@ def test_yaml_parsing(
     assert not yaml_params.preprocessing.covalent_ligand
     assert yaml_params.preprocessing.covalent_residue_atom_info_list is None
     assert not yaml_params.preprocessing.preserve_receptor_hydrogen
-    assert yaml_params.preprocessing.temp_dir_name == '/tmp'
-    assert yaml_params.preprocessing.output_receptor_dms_file_name == 'receptor_parameterized.dms'
-    assert yaml_params.preprocessing.output_docking_pose_sdf_file_name == 'unidock2_pose.sdf'
+    assert not yaml_params.preprocessing.keep_workdir
+    assert yaml_params.preprocessing.engine_checkpoint
+    assert yaml_params.preprocessing.output_sdf == 'unidock2_pose.sdf'
 
     valid_configurations_dict = {'receptor': '1G9V_protein_water_cleaned.pdb',
                                  'ligand': 'ligand_prepared.sdf',
@@ -68,10 +71,13 @@ def test_yaml_parsing(
                                  'rmsd_limit': 1.0,
                                  'energy_range': 3.0,
                                  'seed': 12345,
+                                 'bias': 'no',
+                                 'bias_k': 0.1,
                                  'use_tor_lib': False,
                                  'energy_decomp': False,
                                  'n_cpu': None,
                                  'gpu_device_id': 0,
+                                 'max_gpu_memory': 0,
                                  'box_size': [30.0, 30.0, 30.0],
                                  'task': 'screen',
                                  'search_mode': 'balance',
@@ -83,10 +89,9 @@ def test_yaml_parsing(
                                  'covalent_ligand': False,
                                  'covalent_residue_atom_info_list': None,
                                  'preserve_receptor_hydrogen': False,
-                                 'temp_dir_name': '/tmp',
-                                 'engine_checkpoint': False,
-                                 'output_receptor_dms_file_name': 'receptor_parameterized.dms',
-                                 'output_docking_pose_sdf_file_name': 'unidock2_pose.sdf'}
+                                 'keep_workdir': False,
+                                 'engine_checkpoint': True,
+                                 'output_sdf': 'unidock2_pose.sdf'}
 
     configurations_dict = yaml_params.to_protocol_kwargs()
     assert configurations_dict == valid_configurations_dict

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from unidock2.force_field import ligand_gaff2
 from unidock2.ligand_topology import utils as ligand_utils
 
 
@@ -14,12 +15,12 @@ def test_gaff2_tools_use_structured_arguments_and_remove_only_known_temporary_fi
     calls = []
 
     monkeypatch.setattr(
-        ligand_utils,
+        ligand_gaff2,
         "run_external_command",
         lambda command, **kwargs: calls.append((command, kwargs)),
     )
 
-    ligand_utils._run_ambertools_for_gaff2(
+    ligand_gaff2._run_ambertools_for_gaff2(
         str(working_dir),
         str(ligand_sdf_file),
         str(ligand_mol2_file),
@@ -80,3 +81,55 @@ def test_gaff2_tools_use_structured_arguments_and_remove_only_known_temporary_fi
             },
         ),
     ]
+
+
+def test_disabled_ligand_force_field_data_preserves_engine_placeholders():
+    class Molecule:
+        def GetNumAtoms(self):
+            return 3
+
+    atom_types, partial_charges, torsion_parameters = ligand_gaff2.get_ligand_force_field_data(Molecule(), False, ".")
+
+    assert atom_types == ["c", "c", "c"]
+    assert partial_charges == [0.0, 0.0, 0.0]
+    assert torsion_parameters == {}
+    assert ligand_gaff2.encode_atom_force_field(atom_types[0], partial_charges[0]) == (0, 0.0)
+
+
+def test_legacy_ligand_utils_reexport_public_force_field_functions():
+    assert (
+        ligand_utils.convert_v3000_mol_to_v2000_sdf
+        is ligand_gaff2.convert_v3000_mol_to_v2000_sdf
+    )
+    assert (
+        ligand_utils.record_gaff2_atom_types_and_parameters
+        is ligand_gaff2.record_gaff2_atom_types_and_parameters
+    )
+
+
+def test_torsion_force_field_parameters_preserve_reverse_lookup_and_field_order():
+    parameter = {
+        "barrier_factor": 2,
+        "barrier_height": 1.25,
+        "periodicity": 3,
+        "phase": 180.0,
+    }
+    torsion_parameter_nested_dict = {("c", "c3", "n", "o"): [parameter]}
+
+    result = ligand_gaff2.get_torsion_force_field_parameters(
+        [0, 1, 2, 3],
+        ["o", "n", "c3", "c"],
+        torsion_parameter_nested_dict,
+        True,
+    )
+
+    assert result == [[2, 1.25, 3, 180.0]]
+    assert (
+        ligand_gaff2.get_torsion_force_field_parameters(
+            [0, 1, 2, 3],
+            ["o", "n", "c3", "c"],
+            torsion_parameter_nested_dict,
+            False,
+        )
+        == []
+    )

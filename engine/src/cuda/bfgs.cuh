@@ -579,9 +579,9 @@ __device__ __forceinline__ void apply_grad_update_pose_tile(const cg::thread_blo
 
         if (tile.thread_rank() == 0){
             // then update center
-            out_x->center[0] = clamp_to_center(tmp1[0] + alpha * g->center_g[0], CU_BOX.x_hi, CU_BOX.x_lo);
-            out_x->center[1] = clamp_to_center(tmp1[1] + alpha * g->center_g[1], CU_BOX.y_hi, CU_BOX.y_lo);
-            out_x->center[2] = clamp_to_center(tmp1[2] + alpha * g->center_g[2], CU_BOX.z_hi, CU_BOX.z_lo);
+            out_x->center[0] = tmp1[0] + alpha * g->center_g[0];
+            out_x->center[1] = tmp1[1] + alpha * g->center_g[1];
+            out_x->center[2] = tmp1[2] + alpha * g->center_g[2];
 
             // and update orientation
             tmp2[0] = g->orientation_g[0] * alpha;

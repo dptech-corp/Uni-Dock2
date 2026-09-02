@@ -52,22 +52,28 @@ class RequiredConfig(_ConfigurationSection):
 
     receptor: str | None = Field(
         default=None,
-        description="Receptor structure file in PDB or DMS format",
+        description=(
+            "Receptor structure file in PDB or DMS format. "
+            "A DMS file is treated as an already prepared receptor and skips protein preparation"
+        ),
         json_schema_extra=cli(
             "-r",
             "--receptor",
-            commands=("docking", "protein_prep"),
+            commands=("docking", "prepare_protein"),
         ),
     )
     ligand: str | None = Field(
         default=None,
-        description="Single ligand structure file in SDF format",
-        json_schema_extra=cli("-l", "--ligand", commands=("docking",)),
+        description=(
+            "Ligand input: a single SDF file, a directory of SDF files, "
+            "or a UD2LIG directory that contains manifest.json"
+        ),
+        json_schema_extra=cli("-l", "--ligand", commands=("docking", "prepare_ligands")),
     )
     ligand_batch: str | None = Field(
         default=None,
         description="Text file containing one ligand SDF file path per line",
-        json_schema_extra=cli("-lb", "--ligand_batch", commands=("docking",)),
+        json_schema_extra=cli("-lb", "--ligand_batch", commands=("docking", "prepare_ligands")),
     )
     center: list[float] = Field(
         default_factory=lambda: [0.0, 0.0, 0.0],
@@ -132,6 +138,14 @@ class AdvancedConfig(_ConfigurationSection):
         description="Random seed for reproducibility",
         json_schema_extra=cli("--seed", commands=("docking",)),
     )
+    bias: str = Field(
+        default="no",
+        description="Native bias mode: no, pos (position), or align",
+    )
+    bias_k: float = Field(
+        default=0.1,
+        description="Scaling coefficient applied to native bias potentials",
+    )
     use_tor_lib: bool = Field(
         default=False,
         description="Use the torsion-angle library",
@@ -155,6 +169,10 @@ class HardwareConfig(_ConfigurationSection):
         default=0,
         description="GPU device index to use",
         json_schema_extra=cli("--gpu_device_id", commands=("docking",)),
+    )
+    max_gpu_memory: int = Field(
+        default=0,
+        description="Maximum GPU memory in MB (0 uses the available-memory limit)",
     )
 
 
@@ -199,6 +217,7 @@ class PreprocessingConfig(_ConfigurationSection):
     construct_ff: bool = Field(
         default=False,
         description="Construct force-field atom types and bonded parameters for ligands",
+        json_schema_extra=cli("--construct_ff", commands=("prepare_ligands",)),
     )
     template_docking: bool = Field(
         default=False,
@@ -228,30 +247,31 @@ class PreprocessingConfig(_ConfigurationSection):
         default=False,
         description="Preserve receptor hydrogens during topology preparation",
     )
-    temp_dir_name: str = Field(
-        default="/tmp",
-        description="Parent directory for temporary working directories",
-    )
-    engine_checkpoint: bool = Field(
+    keep_workdir: bool = Field(
         default=False,
-        description="Write prepared engine inputs to ud2_engine_inputs.json",
-    )
-    output_receptor_dms_file_name: str = Field(
-        default="receptor_parameterized.dms",
-        description="Output receptor DMS file name",
+        description=(
+            "Keep the working directory after a successful run; a failed run always keeps it"
+        ),
         json_schema_extra=cli(
-            "-o",
-            "--output_receptor_dms_file_name",
-            commands=("protein_prep",),
+            "--keep_workdir",
+            commands=("docking", "prepare_protein", "prepare_ligands"),
         ),
     )
-    output_docking_pose_sdf_file_name: str = Field(
+    engine_checkpoint: bool = Field(
+        default=True,
+        description=(
+            "Write a UD2LIG library next to the pose SDF after ligand preparation. "
+            "Skipped when docking from an existing UD2LIG, or for template/covalent jobs"
+        ),
+    )
+    output_sdf: str = Field(
         default="unidock2_pose.sdf",
         description="Output docking pose SDF file name",
         json_schema_extra=cli(
             "-o",
-            "--output_docking_pose_sdf_file_name",
+            "--output_sdf",
             commands=("docking",),
+            metavar="SDF",
         ),
     )
 

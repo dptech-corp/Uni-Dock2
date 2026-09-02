@@ -20,8 +20,6 @@ TEST_CASE("Test JSON", "[json]"){
     REQUIRE(fix_mol.natom == 5);
     REQUIRE(fix_mol.coords.size() == 5 * 3);
     REQUIRE(fix_mol.vina_types.size() == 5);
-    REQUIRE(fix_mol.ff_types.size() == 5);
-    REQUIRE(fix_mol.charges.size() == 5);
 
     // check all members of flex_mol_list
     REQUIRE(flex_mol_list.size() == 2);
@@ -38,8 +36,6 @@ TEST_CASE("Test JSON", "[json]"){
     REQUIRE_THAT(flex_mol.center[1], Catch::Matchers::WithinAbs(14.577332, 1e-4));
     REQUIRE_THAT(flex_mol.center[2], Catch::Matchers::WithinAbs(43.487335, 1e-4));
     REQUIRE(flex_mol.vina_types.size() == natom);
-    REQUIRE(flex_mol.ff_types.size() == natom);
-    REQUIRE(flex_mol.charges.size() == natom);
     REQUIRE(flex_mol.dihedrals.size() == 2);
     REQUIRE(flex_mol.dihedrals[0] == ang_to_rad(177));
     REQUIRE(flex_mol.dihedrals[1] == ang_to_rad(70));
@@ -57,8 +53,6 @@ TEST_CASE("Test JSON", "[json]"){
     REQUIRE_THAT(flex_mol.center[1], Catch::Matchers::WithinAbs(12.872499, 1e-4));
     REQUIRE_THAT(flex_mol.center[2], Catch::Matchers::WithinAbs(41.792999, 1e-4));
     REQUIRE(flex_mol.vina_types.size() == natom);
-    REQUIRE(flex_mol.ff_types.size() == natom);
-    REQUIRE(flex_mol.charges.size() == natom);
     REQUIRE(flex_mol.dihedrals.size() == 2);
     REQUIRE(flex_mol.dihedrals[0] == ang_to_rad(-13.5));
     REQUIRE(flex_mol.dihedrals[1] == ang_to_rad(110));

@@ -1,10 +1,12 @@
-import os
 from rdkit import Chem
 from rdkit.Chem import GetMolFrags, FragmentOnBonds
 from rdkit.Chem.rdPartialCharges import ComputeGasteigerCharges
-from unidock2.atom_types.vina_atom_type import AtomType
-from unidock2.atom_types.unidock_vina_atom_types import VINA_ATOM_TYPE_DICT
-from unidock2.atom_types.unidock_ff_atom_types import FF_ATOM_TYPE_DICT
+from unidock2.atom_types.vina import (
+    VINA_ATOM_TYPE_DICT,
+    VINA_ATOM_TYPE_PROPERTY,
+    VinaAtomTyper,
+)
+from unidock2.force_field import ligand_gaff2
 from unidock2.torsion_library.torsion_library_driver import TorsionLibraryDriver
 from unidock2.ligand_topology import utils
 from unidock2.ligand_topology.rotatable_bond import BaseRotatableBond
@@ -28,7 +30,7 @@ class GenericMolGraph(BaseMolGraph):
 
     def preprocess_mol(self):
         mol = self.mol
-        atom_typer = AtomType()
+        atom_typer = VinaAtomTyper()
         atom_typer.assign_atom_types(mol)
         ComputeGasteigerCharges(mol)
         utils.assign_atom_properties(mol)
@@ -39,19 +41,8 @@ class GenericMolGraph(BaseMolGraph):
         return rotatable_bond_finder.identify_rotatable_bonds(self.mol)
 
     def construct_gaff2(self) -> tuple[list[int], list[float], dict[tuple, dict]]:
-        temp_ligand_sdf_file_name = os.path.join(self.working_dir_name, 'ligand.sdf')
-        with Chem.SDWriter(temp_ligand_sdf_file_name) as writer:
-            writer.write(self.mol)
-
-        (
-            atom_type_list,
-            partial_charge_list,
-            atom_parameter_dict,
-            torsion_parameter_nested_dict
-        ) = utils.record_gaff2_atom_types_and_parameters(
-            temp_ligand_sdf_file_name, 'gas', self.working_dir_name
-        )
-        return atom_type_list, partial_charge_list, torsion_parameter_nested_dict
+        """Compatibility wrapper for the relocated GAFF2 implementation."""
+        return ligand_gaff2.construct_gaff2(self.mol, self.working_dir_name)
 
     def freeze_bond(self, rotatable_bond_info_list:list[tuple[int,...]]) -> list[Chem.Mol]:
         mol = self.mol
@@ -88,16 +79,18 @@ class GenericMolGraph(BaseMolGraph):
         atom_info_nested_list = []
         for atom_idx in range(mol.GetNumAtoms()):
             atom = mol.GetAtomWithIdx(atom_idx)
-            ff_atom_type = atom_type_list[atom_idx]
-            vina_atom_type = atom.GetProp('vina_atom_type')
+            vina_atom_type = atom.GetProp(VINA_ATOM_TYPE_PROPERTY)
+            ff_atom_type, partial_charge = ligand_gaff2.encode_atom_force_field(
+                atom_type_list[atom_idx], partial_charge_list[atom_idx]
+            )
 
             atom_info = (
                 atom.GetDoubleProp('x'),
                 atom.GetDoubleProp('y'),
                 atom.GetDoubleProp('z'),
                 VINA_ATOM_TYPE_DICT[vina_atom_type],
-                FF_ATOM_TYPE_DICT[ff_atom_type],
-                partial_charge_list[atom_idx],
+                ff_atom_type,
+                partial_charge,
                 atom_pair_12_13_nested_list[atom_idx],
                 atom_pair_14_nested_list[atom_idx]
             )
@@ -125,23 +118,12 @@ class GenericMolGraph(BaseMolGraph):
             torsion_range_list = torsion_library_driver.enumerated_torsion_range_nested_list[torsion_idx]
             torsion_mobile_atom_idx_list = torsion_library_driver.mobile_atom_idx_nested_list[torsion_idx]
 
-            if construct_ff:
-                torsion_type = [atom_type_list[torsion_atom_idx_list[i]] for i in range(4)]
-                if tuple(torsion_type) not in torsion_parameter_nested_dict:
-                    torsion_type = reversed(torsion_type)
-                torsion_parameter_dict_list = torsion_parameter_nested_dict[tuple(torsion_type)]
-
-                torsion_parameter_nested_list = [
-                    [
-                        torsion_parameter_dict['barrier_factor'],
-                        torsion_parameter_dict['barrier_height'],
-                        torsion_parameter_dict['periodicity'],
-                        torsion_parameter_dict['phase']
-                    ] for torsion_parameter_dict in torsion_parameter_dict_list
-                ]
-
-            else:
-                torsion_parameter_nested_list = []
+            torsion_parameter_nested_list = ligand_gaff2.get_torsion_force_field_parameters(
+                torsion_atom_idx_list,
+                atom_type_list,
+                torsion_parameter_nested_dict,
+                construct_ff,
+            )
 
             torsion_info_list = [
                 torsion_atom_idx_list,
@@ -167,12 +149,15 @@ class GenericMolGraph(BaseMolGraph):
         atom_pair_12_13_nested_list, atom_pair_14_nested_list = utils.calculate_nonbonded_atom_pairs(self.mol)
 
         if self.construct_ff:
-            atom_type_list, partial_charge_list, torsion_parameter_nested_dict = self.construct_gaff2()
-        else:  # allow for no-ff construction
-            num_atoms = self.mol.GetNumAtoms()
-            atom_type_list = ['c'] * num_atoms
-            partial_charge_list = [0.0] * num_atoms
-            torsion_parameter_nested_dict = {}
+            atom_type_list, partial_charge_list, torsion_parameter_nested_dict = (
+                self.construct_gaff2()
+            )
+        else:
+            atom_type_list, partial_charge_list, torsion_parameter_nested_dict = (
+                ligand_gaff2.get_ligand_force_field_data(
+                    self.mol, False, self.working_dir_name
+                )
+            )
 
         rotatable_bond_info_list = self.get_rotatable_bond_info()
 

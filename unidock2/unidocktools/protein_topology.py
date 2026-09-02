@@ -1,6 +1,3 @@
-import math
-import warnings
-
 import msys
 
 from rdkit.Chem import SplitMolByPDBResidues, GetMolFrags, FragmentOnBonds
@@ -10,13 +7,19 @@ from unidock2.utils.molecule_processing import (
     get_mol_with_indices,
     get_mol_without_indices,
 )
-from unidock2.atom_types.vina_atom_type import AtomType
+from unidock2.atom_types.vina import VinaAtomTyper
+# Legacy import paths remain available while implementation stays in force_field.
+from unidock2.force_field.receptor_parameters import (
+    FALLBACK_RECEPTOR_CHARGE as FALLBACK_RECEPTOR_CHARGE,
+    FALLBACK_RECEPTOR_FF_ATOM_TYPE as FALLBACK_RECEPTOR_FF_ATOM_TYPE,
+    MissingNonbondedTermsWarning as MissingNonbondedTermsWarning,
+    _read_receptor_force_field_data as _read_receptor_force_field_data,
+    assign_receptor_force_field_properties,
+)
 from unidock2.unidocktools.supported_protein_residue_name import (
     PROTEIN_RESIUDE_NAME_LIST,
 )
 
-FALLBACK_RECEPTOR_FF_ATOM_TYPE = "c"
-FALLBACK_RECEPTOR_CHARGE = 0.0
 RECEPTOR_ATOM_PROPERTY_NAMES = (
     "atom_idx",
     "atom_name",
@@ -31,57 +34,6 @@ RECEPTOR_ATOM_PROPERTY_NAMES = (
     "y",
     "z",
 )
-
-
-class MissingNonbondedTermsWarning(UserWarning):
-    """Warning emitted when receptor force-field placeholders are used."""
-
-
-def _safe_fallback_charge(value):
-    try:
-        charge = float(value)
-    except (TypeError, ValueError, OverflowError):
-        return FALLBACK_RECEPTOR_CHARGE
-    return charge if math.isfinite(charge) else FALLBACK_RECEPTOR_CHARGE
-
-
-def _read_receptor_force_field_data(receptor_msys_system):
-    """Read nonbonded types, or provide Vina-compatible placeholders when absent."""
-    num_receptor_atoms = receptor_msys_system.natoms
-    receptor_nb_table = receptor_msys_system.getTable("nonbonded")
-    num_nonbonded_terms = 0 if receptor_nb_table is None else receptor_nb_table.nterms
-
-    if num_nonbonded_terms not in (0, num_receptor_atoms):
-        raise ValueError(
-            "Problematic receptor preparation: "
-            f"nonbonded term count ({num_nonbonded_terms}) does not match "
-            f"atom count ({num_receptor_atoms})."
-        )
-
-    if num_nonbonded_terms == num_receptor_atoms and num_receptor_atoms > 0:
-        ff_atom_types = [
-            receptor_nb_table.term(atom_idx)["type"]
-            for atom_idx in range(num_receptor_atoms)
-        ]
-        charges = [
-            receptor_msys_system.atom(atom_idx).charge
-            for atom_idx in range(num_receptor_atoms)
-        ]
-        return ff_atom_types, charges
-
-    warnings.warn(
-        "Receptor has no nonbonded terms; using fallback FF atom type "
-        f"'{FALLBACK_RECEPTOR_FF_ATOM_TYPE}' and atom charges, with "
-        f"{FALLBACK_RECEPTOR_CHARGE} for invalid charges.",
-        MissingNonbondedTermsWarning,
-        stacklevel=2,
-    )
-    ff_atom_types = [FALLBACK_RECEPTOR_FF_ATOM_TYPE] * num_receptor_atoms
-    charges = [
-        _safe_fallback_charge(receptor_msys_system.atom(atom_idx).charge)
-        for atom_idx in range(num_receptor_atoms)
-    ]
-    return ff_atom_types, charges
 
 
 def is_peptide_bond(bond):
@@ -197,8 +149,11 @@ def prepare_receptor_residue_mol_list(receptor_msys_system):
 
         atom.SetIntProp("atom_idx", int(receptor_atom_idx_list[atom_idx]))
         atom.SetProp("atom_name", receptor_atom_name_list[atom_idx])
-        atom.SetDoubleProp("atom_charge", receptor_atom_charge_list[atom_idx])
-        atom.SetProp("ff_atom_type", receptor_ff_atom_type_list[atom_idx])
+        assign_receptor_force_field_properties(
+            atom,
+            receptor_ff_atom_type_list[atom_idx],
+            receptor_atom_charge_list[atom_idx],
+        )
         atom.SetIntProp("residue_idx", int(receptor_resid_list[atom_idx]))
         atom.SetProp("residue_name", receptor_resname_list[atom_idx])
         atom.SetProp("chain_idx", receptor_chain_idx_list[atom_idx])
@@ -229,7 +184,7 @@ def prepare_receptor_residue_mol_list(receptor_msys_system):
         keep_properties=RECEPTOR_ATOM_PROPERTY_NAMES,
     )
 
-    atom_typer = AtomType()
+    atom_typer = VinaAtomTyper()
     atom_typer.assign_atom_types(protein_mol)
 
     protein_residue_mol_list = split_mol_by_residues(protein_mol)

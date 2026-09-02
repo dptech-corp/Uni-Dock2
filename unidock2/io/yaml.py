@@ -5,29 +5,7 @@ from pathlib import Path
 from pydantic import ValidationError
 import yaml
 
-from unidock2.config.models import (
-    AdvancedConfig,
-    HardwareConfig,
-    PreprocessingConfig,
-    RequiredConfig,
-    SettingsConfig,
-    UnidockConfig,
-    UnknownConfigurationWarning,
-)
-
-__all__ = [
-    "AdvancedConfig",
-    "DEFAULT_CONFIG_FILE_NAME",
-    "HardwareConfig",
-    "PreprocessingConfig",
-    "RequiredConfig",
-    "SettingsConfig",
-    "UnidockConfig",
-    "UnknownConfigurationWarning",
-    "dump_default_config_yaml",
-    "read_unidock_params_from_yaml",
-    "render_default_config_yaml",
-]
+from unidock2.config import UnidockConfig as _UnidockConfig
 
 DEFAULT_CONFIG_FILE_NAME = "unidock2_config.yaml"
 
@@ -39,19 +17,43 @@ class _IndentedSafeDumper(yaml.SafeDumper):
         return super().increase_indent(flow, indentless=False)
 
 
-def _render_field(field_name, value):
-    return yaml.dump(
+class _FlowStyleList(list):
+    """Mark a simple list for compact YAML flow-style rendering."""
+
+
+def _represent_flow_style_list(dumper, value):
+    return dumper.represent_sequence("tag:yaml.org,2002:seq", value, flow_style=True)
+
+
+_IndentedSafeDumper.add_representer(_FlowStyleList, _represent_flow_style_list)
+
+
+def _render_field(field_name, value, description=None):
+    if isinstance(value, list) and all(not isinstance(item, (dict, list, tuple)) for item in value):
+        value = _FlowStyleList(value)
+
+    field_yaml = yaml.dump(
         {field_name: value},
         Dumper=_IndentedSafeDumper,
         allow_unicode=True,
         default_flow_style=False,
         sort_keys=False,
     ).rstrip()
+    lines = field_yaml.splitlines()
+    if description:
+        inline_comment = " ".join(description.split())
+        lines[0] = f"{lines[0]}  # {inline_comment}"
+    return "\n".join(lines)
+
+
+def _serialized_field_name(field_name, field):
+    return field.serialization_alias or field.alias or field_name
 
 
 def render_default_config_yaml() -> str:
     """Render the Pydantic defaults as an annotated, round-trippable YAML template."""
-    config = UnidockConfig()
+    config = _UnidockConfig()
+    serialized_config = config.model_dump(by_alias=True)
     lines = [
         "# Uni-Dock2 default docking configuration.",
         "# Replace null input paths before running docking.",
@@ -61,7 +63,8 @@ def render_default_config_yaml() -> str:
 
     for section_name, section_field in type(config).model_fields.items():
         section = getattr(config, section_name)
-        section_alias = section_field.alias or section_name
+        section_alias = _serialized_field_name(section_name, section_field)
+        serialized_section = serialized_config[section_alias]
         section_description = (type(section).__doc__ or "").strip()
 
         lines.append("")
@@ -70,9 +73,12 @@ def render_default_config_yaml() -> str:
         lines.append(f"{section_alias}:")
 
         for field_name, field in type(section).model_fields.items():
-            if field.description:
-                lines.append(f"  # {field.description}")
-            field_yaml = _render_field(field_name, getattr(section, field_name))
+            field_alias = _serialized_field_name(field_name, field)
+            field_yaml = _render_field(
+                field_alias,
+                serialized_section[field_alias],
+                field.description,
+            )
             lines.extend(f"  {line}" for line in field_yaml.splitlines())
 
     return "\n".join(lines) + "\n"
@@ -92,7 +98,7 @@ def dump_default_config_yaml(output_file: str | Path = DEFAULT_CONFIG_FILE_NAME)
     return output_path
 
 
-def read_unidock_params_from_yaml(yaml_file: str) -> UnidockConfig:
+def read_unidock_params_from_yaml(yaml_file: str) -> _UnidockConfig:
     """Read and validate Uni-Dock2 parameters from a YAML file."""
     with open(yaml_file, encoding="utf-8") as file:
         params = yaml.safe_load(file)
@@ -101,7 +107,7 @@ def read_unidock_params_from_yaml(yaml_file: str) -> UnidockConfig:
         params = {}
 
     try:
-        return UnidockConfig.from_dict(params)
+        return _UnidockConfig.from_dict(params)
     except ValidationError as error:
         print(f"Configuration Error:\n{error.json(indent=2)}")
         raise

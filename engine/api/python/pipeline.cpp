@@ -1,217 +1,220 @@
-#include <string>
-#include <vector>
-#include <filesystem>
+#include <array>
+#include <cmath>
 #include <stdexcept>
-#include <sstream>
+#include <string>
+#include <utility>
 
-#include <cuda_runtime.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include <spdlog/spdlog.h>
-#include "model/model.h"
 #include "format/json.h"
 #include "screening/core.h"
 
 namespace py = pybind11;
 
-// ============ Docstring generation using macro ============
-#define DOC_LINE(name) << "    " #name ": " << CoreInputDocs::name << "(Default: " << CoreInputDefaults::name << ")\n"
+namespace {
 
-inline std::string generate_init_docstring() {
-    std::ostringstream ss;
-    ss << "Initialize a molecular docking pipeline.\n\n"
-       << "Args:\n"
-       DOC_LINE(output_dir)
-       << "    center_x: float: X coordinate of docking box center (Angstrom)\n"
-       << "    center_y: float: Y coordinate of docking box center (Angstrom)\n"
-       << "    center_z: float: Z coordinate of docking box center (Angstrom)\n"
-       << "    size_x: float: Docking box size along X axis (Angstrom)\n"
-       << "    size_y: float: Docking box size along Y axis (Angstrom)\n"
-       << "    size_z: float: Docking box size along Z axis (Angstrom)\n"
-       DOC_LINE(task)
-       DOC_LINE(search_mode)
-       DOC_LINE(exhaustiveness)
-       DOC_LINE(randomize)
-       DOC_LINE(mc_steps)
-       DOC_LINE(opt_steps)
-       DOC_LINE(refine_steps)
-       DOC_LINE(num_pose)
-       DOC_LINE(rmsd_limit)
-       DOC_LINE(energy_range)
-       DOC_LINE(seed)
-       DOC_LINE(bias)
-       DOC_LINE(bias_k)
-       DOC_LINE(constraint_docking)
-       DOC_LINE(use_tor_lib)
-       DOC_LINE(energy_decomp)
-       DOC_LINE(gpu_device_id)
-       DOC_LINE(name_json)
-       DOC_LINE(max_gpu_memory);
-    return ss.str();
+py::object get_item(const py::dict& mapping, const char* key) {
+    return mapping[py::str(key)];
 }
 
-#undef DOC_LINE
+py::dict get_dict(const py::dict& mapping, const char* key, const std::string& location) {
+    py::object value = get_item(mapping, key);
+    if (!py::isinstance<py::dict>(value)) {
+        throw py::type_error(location + "." + key + " must be a dict");
+    }
+    return py::cast<py::dict>(value);
+}
 
-class DockingPipeline {
-public:
-    DockingPipeline(
-        std::string output_dir,
-        Real center_x, Real center_y, Real center_z,
-        Real size_x, Real size_y, Real size_z,
-        std::string task,
-        std::string search_mode,
-        int exhaustiveness,
-        bool randomize,
-        int mc_steps,
-        int opt_steps,
-        int refine_steps,
-        int num_pose,
-        Real rmsd_limit,
-        Real energy_range,
-        int seed,
-        std::string bias,
-        Real bias_k,
-        bool constraint_docking,
-        bool use_tor_lib,
-        bool energy_decomp,
-        int gpu_device_id,
-        std::string name_json,
-        int max_gpu_mem
-    ) : use_tor_lib(use_tor_lib), energy_decomp(energy_decomp) {
+std::string field_location(const std::string& location, const char* key) {
+    return location + "." + key;
+}
 
-        ipt.gpu_device_id = gpu_device_id;
-        ipt.max_gpu_memory = max_gpu_mem;
-        ipt.output_dir = output_dir;
-        ipt.name_json = name_json;
+std::string get_string(const py::dict& mapping, const char* key, const std::string& location) {
+    py::object value = get_item(mapping, key);
+    if (!py::isinstance<py::str>(value)) {
+        throw py::type_error(field_location(location, key) + " must be a string");
+    }
+    return py::cast<std::string>(value);
+}
 
-        ipt.box.x_lo = center_x - size_x / 2;
-        ipt.box.x_hi = center_x + size_x / 2;
-        ipt.box.y_lo = center_y - size_y / 2;
-        ipt.box.y_hi = center_y + size_y / 2;
-        ipt.box.z_lo = center_z - size_z / 2;
-        ipt.box.z_hi = center_z + size_z / 2;
+int get_integer(const py::dict& mapping, const char* key, const std::string& location) {
+    py::object value = get_item(mapping, key);
+    if (!py::isinstance<py::int_>(value) || py::isinstance<py::bool_>(value)) {
+        throw py::type_error(field_location(location, key) + " must be an integer");
+    }
+    return py::cast<int>(value);
+}
 
-        ipt.exhaustiveness = exhaustiveness;
-        ipt.mc_steps = mc_steps;
-        ipt.opt_steps = opt_steps;
-        ipt.randomize = randomize;
-        ipt.refine_steps = refine_steps;
-        ipt.num_pose = num_pose;
-        ipt.rmsd_limit = rmsd_limit;
-        ipt.energy_range = energy_range;
-        ipt.seed = seed;
+bool get_boolean(const py::dict& mapping, const char* key, const std::string& location) {
+    py::object value = get_item(mapping, key);
+    if (!py::isinstance<py::bool_>(value)) {
+        throw py::type_error(field_location(location, key) + " must be a boolean");
+    }
+    return py::cast<bool>(value);
+}
 
-        ipt.bias = bias;
-        ipt.bias_k = bias_k;
-        ipt.constraint_docking = constraint_docking;
-        ipt.energy_decomp = energy_decomp;
-        ipt.task = task;
-        ipt.search_mode = search_mode;
+Real get_number(py::handle value, const std::string& location) {
+    const bool is_integer = py::isinstance<py::int_>(value) && !py::isinstance<py::bool_>(value);
+    if (!is_integer && !py::isinstance<py::float_>(value)) {
+        throw py::type_error(location + " must be a number");
     }
 
-    void set_receptor(py::list receptor_info) {
-        json_data["receptor"] = receptor_info;
-        spdlog::info("Receptor data loaded into JSON cache");
+    const Real result = py::cast<Real>(value);
+    if (!std::isfinite(result)) {
+        throw py::value_error(location + " must be finite");
+    }
+    return result;
+}
+
+Real get_number(const py::dict& mapping, const char* key, const std::string& location) {
+    return get_number(get_item(mapping, key), field_location(location, key));
+}
+
+std::array<Real, 3> get_triplet(
+    const py::dict& mapping,
+    const char* key,
+    const std::string& location
+) {
+    py::object value = get_item(mapping, key);
+    if (!py::isinstance<py::list>(value)) {
+        throw py::type_error(location + "." + key + " must be a JSON array");
     }
 
-    void add_ligands(py::dict ligands_info) {
-        for (const auto& item : ligands_info) {
-            json_data[item.first] = item.second;
-        }
-        spdlog::info("Ligands data loaded into JSON cache");
+    py::list values = py::cast<py::list>(value);
+    if (py::len(values) != 3) {
+        throw py::value_error(location + "." + key + " must contain exactly 3 values");
     }
 
-    void run() {
-        // generate json string
-        std::string json_str;
-        {
-            py::gil_scoped_acquire acquire;
-            py::module_ json = py::module_::import("json");
-            json_str = py::str(json.attr("dumps")(json_data));
-        }
-        py::gil_scoped_release release;
-
-        // run screening
-        ipt.fix_mol = UDFixMol();
-        ipt.flex_mol_list.clear();
-        ipt.fns_flex.clear();
-        read_ud_from_json_string(json_str, ipt.box, ipt.fix_mol, ipt.flex_mol_list, ipt.fns_flex, use_tor_lib);
-
-        if (core_pipeline(ipt) != 0) {
-            throw std::runtime_error("Core pipeline failed.");
-        }
+    std::array<Real, 3> result{};
+    for (py::ssize_t index = 0; index < 3; ++index) {
+        result[static_cast<std::size_t>(index)] = get_number(
+            values[index],
+            field_location(location, key) + "[" + std::to_string(index) + "]"
+        );
     }
+    return result;
+}
 
-private:
+struct ParsedEngineRequest {
+    CoreInput input;
     bool use_tor_lib = false;
-    bool energy_decomp = false;
-    CoreInput ipt;
-    py::dict json_data;
+    py::dict molecules;
 };
 
+ParsedEngineRequest parse_engine_request(const py::dict& request) {
+    const py::dict parameters = get_dict(request, "parameters", "request");
+    const py::dict runtime = get_dict(request, "runtime", "request");
+    py::dict molecules = get_dict(request, "molecules", "request");
 
-PYBIND11_MODULE(pipeline, m) { // shared lib name: "pipeline.<py_version>-<platform>-<arch>.so"
-    m.doc() = "Python bindings for the Uni-Dock2 molecular docking engine pipeline";
+    for (const auto& item : molecules) {
+        if (!py::isinstance<py::str>(item.first)) {
+            throw py::type_error("request.molecules keys must be strings");
+        }
+    }
+    if (!molecules.contains(py::str("receptor"))) {
+        throw py::key_error("request.molecules is missing required key: receptor");
+    }
 
-    // Generate docstring from CoreInputDocs (single source of truth)
-    static const std::string init_doc = generate_init_docstring();
+    const auto center = get_triplet(parameters, "center", "request.parameters");
+    const auto box_size = get_triplet(parameters, "box_size", "request.parameters");
 
-    py::class_<DockingPipeline>(m, "DockingPipeline",
-        R"pbdoc(Uni-Dock2 molecular docking pipeline.)pbdoc")
-        .def(py::init<
-                std::string, Real, Real, Real, Real, Real, Real, std::string, std::string, 
-                int, bool, int, int, int, int, Real, Real, int, std::string, Real,
-                bool, bool, bool, int, std::string, int>(),
-            init_doc.c_str(),  // use generated docstring
-            py::kw_only(),  // force keyword-only 
-            py::arg("output_dir") = CoreInputDefaults::output_dir,
-            py::arg("center_x"), py::arg("center_y"), py::arg("center_z"),
-            py::arg("size_x"), py::arg("size_y"), py::arg("size_z"),
-            py::arg("task") = CoreInputDefaults::task,
-            py::arg("search_mode") = CoreInputDefaults::search_mode,
-            py::arg("exhaustiveness") = CoreInputDefaults::exhaustiveness,
-            py::arg("randomize") = CoreInputDefaults::randomize,
-            py::arg("mc_steps") = CoreInputDefaults::mc_steps,
-            py::arg("opt_steps") = CoreInputDefaults::opt_steps,
-            py::arg("refine_steps") = CoreInputDefaults::refine_steps,
-            py::arg("num_pose") = CoreInputDefaults::num_pose,
-            py::arg("rmsd_limit") = CoreInputDefaults::rmsd_limit,
-            py::arg("energy_range") = CoreInputDefaults::energy_range,
-            py::arg("seed") = CoreInputDefaults::seed,
-            py::arg("bias") = CoreInputDefaults::bias,
-            py::arg("bias_k") = CoreInputDefaults::bias_k,
-            py::arg("constraint_docking") = CoreInputDefaults::constraint_docking,
-            py::arg("use_tor_lib") = CoreInputDefaults::use_tor_lib,
-            py::arg("energy_decomp") = CoreInputDefaults::energy_decomp,
-            py::arg("gpu_device_id") = CoreInputDefaults::gpu_device_id,
-            py::arg("name_json") = CoreInputDefaults::name_json,
-            py::arg("max_gpu_mem") = CoreInputDefaults::max_gpu_memory
-        )
+    ParsedEngineRequest parsed;
+    parsed.input.box.x_lo = center[0] - box_size[0] / 2;
+    parsed.input.box.x_hi = center[0] + box_size[0] / 2;
+    parsed.input.box.y_lo = center[1] - box_size[1] / 2;
+    parsed.input.box.y_hi = center[1] + box_size[1] / 2;
+    parsed.input.box.z_lo = center[2] - box_size[2] / 2;
+    parsed.input.box.z_hi = center[2] + box_size[2] / 2;
 
-        .def("set_receptor", &DockingPipeline::set_receptor,
-            R"pbdoc(
-Set the receptor molecule.
+    parsed.input.task = get_string(parameters, "task", "request.parameters");
+    parsed.input.search_mode = get_string(parameters, "search_mode", "request.parameters");
+    parsed.input.exhaustiveness = get_integer(parameters, "exhaustiveness", "request.parameters");
+    parsed.input.randomize = get_boolean(parameters, "randomize", "request.parameters");
+    parsed.input.mc_steps = get_integer(parameters, "mc_steps", "request.parameters");
+    parsed.input.opt_steps = get_integer(parameters, "opt_steps", "request.parameters");
+    parsed.input.refine_steps = get_integer(parameters, "refine_steps", "request.parameters");
+    parsed.input.num_pose = get_integer(parameters, "num_pose", "request.parameters");
+    parsed.input.rmsd_limit = get_number(parameters, "rmsd_limit", "request.parameters");
+    parsed.input.energy_range = get_number(parameters, "energy_range", "request.parameters");
+    parsed.input.seed = get_integer(parameters, "seed", "request.parameters");
+    parsed.input.bias = get_string(parameters, "bias", "request.parameters");
+    parsed.input.bias_k = get_number(parameters, "bias_k", "request.parameters");
+    parsed.use_tor_lib = get_boolean(parameters, "use_tor_lib", "request.parameters");
+    parsed.input.energy_decomp = get_boolean(parameters, "energy_decomp", "request.parameters");
+    parsed.input.constraint_docking = get_boolean(parameters, "constraint_docking", "request.parameters");
 
-Args:
-    receptor_info (list): A list containing receptor atom information.
-        Each element represents an atom with its properties (type, coordinates, etc.).
-            )pbdoc")
-            
-        .def("add_ligands", &DockingPipeline::add_ligands,
-            R"pbdoc(
-Add ligand molecules to the docking pipeline.
+    parsed.input.gpu_device_id = get_integer(runtime, "gpu_device_id", "request.runtime");
+    parsed.input.max_gpu_memory = get_integer(runtime, "max_gpu_memory", "request.runtime");
+    parsed.molecules = std::move(molecules);
+    return parsed;
+}
 
-Args:
-    ligands_info (dict): A dictionary containing ligand information.
-        Keys are ligand identifiers, values contain atom and bond data.
-            )pbdoc")
+py::dict pose_map_to_python(const PoseMap& poses) {
+    py::dict result;
+    for (const auto& item : poses) {
+        py::list py_poses;
+        for (const auto& pose : item.second) {
+            py::dict record;
+            record["energy"] = pose.energy;
+            record["coords"] = pose.coords;
+            record["dihedrals"] = pose.dihedrals;
+            if (!pose.decomp.empty()) {
+                record["decomp"] = pose.decomp;
+            }
+            py_poses.append(record);
+        }
+        result[py::str(item.first)] = py_poses;
+    }
+    return result;
+}
 
-        .def("run", &DockingPipeline::run,
-            R"pbdoc(
-Run the docking simulation.
+py::dict run_engine_request(const py::dict& request) {
+    ParsedEngineRequest parsed = parse_engine_request(request);
 
-Executes the molecular docking calculation on GPU. Results will be written as JSON files
-to the output directory specified during initialization, with the name specified by name_json.
-            )pbdoc");
+    py::module_ json = py::module_::import("json");
+    const std::string json_string = py::cast<std::string>(
+        json.attr("dumps")(parsed.molecules, py::arg("allow_nan") = false)
+    );
+
+    {
+        py::gil_scoped_release release;
+        parsed.input.fix_mol = UDFixMol();
+        parsed.input.flex_mol_list.clear();
+        parsed.input.fns_flex.clear();
+        parsed.input.poses.clear();
+        read_ud_from_json_string(
+            json_string,
+            parsed.input.box,
+            parsed.input.fix_mol,
+            parsed.input.flex_mol_list,
+            parsed.input.fns_flex,
+            parsed.use_tor_lib
+        );
+
+        if (core_pipeline(parsed.input) != 0) {
+            throw std::runtime_error("Core pipeline failed");
+        }
+    }
+
+    return pose_map_to_python(parsed.input.poses);
+}
+
+}  // namespace
+
+PYBIND11_MODULE(pipeline, module) {
+    module.doc() = "Private Python binding for the Uni-Dock2 molecular docking engine";
+    module.def(
+        "run",
+        &run_engine_request,
+        py::arg("request"),
+        R"pbdoc(
+Run one docking request and return poses keyed by ligand name.
+
+Each pose is a dictionary with ``energy``, ``coords``, ``dihedrals``, and
+optional ``decomp``. The request must be a JSON-compatible dictionary produced
+by ``unidock2._engine.build_engine_request``. This native module is private; use
+``UnidockProtocolRunner`` for the supported public workflow.
+        )pbdoc"
+    );
 }

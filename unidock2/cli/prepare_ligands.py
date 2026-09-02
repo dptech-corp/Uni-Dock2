@@ -1,0 +1,61 @@
+from unidock2.cli._arguments import add_config_arguments
+from unidock2.cli._resolve import resolve_prepare_ligands_request
+from unidock2.io.ud2lig import prep_from_config, write_ud2lig
+
+
+class CLICommand:
+    """Prepare ligands into a reusable UD2LIG directory.
+
+    ``-l`` accepts a single SDF file or a directory of SDF files. ``-lb`` is
+    unchanged. A UD2LIG directory cannot be prepared again.
+
+    Intermediate files go to one directory per run under ``unidock2_temp``
+    beside the output library. A successful run removes it, a failed run keeps
+    it, and ``--keep_workdir`` always keeps it.
+
+    Values are resolved in this order: Pydantic defaults, YAML configuration,
+    then explicitly supplied command-line arguments.
+    """
+
+    help = "Prepare ligands into a reusable UD2LIG directory"
+
+    @staticmethod
+    def add_arguments(parser):
+        add_config_arguments(parser, "prepare_ligands")
+        parser.add_argument(
+            "-o",
+            "--output_ud2lig_dir",
+            required=True,
+            dest="output_ud2lig_dir",
+            help="Output UD2LIG directory",
+        )
+
+    @staticmethod
+    def run(args):
+        from unidock2.io.workdir import run_workdir
+        from unidock2.unidocktools.unidock_ligand_topology_builder import (
+            UnidockLigandTopologyBuilder,
+        )
+
+        request = resolve_prepare_ligands_request(args)
+
+        with run_workdir(
+            request.workdir_root,
+            "prepare_ligands",
+            keep=request.keep_workdir,
+        ) as working_dir_name:
+            ligand_builder = UnidockLigandTopologyBuilder(
+                list(request.ligand_sdf_file_name_list),
+                n_cpu=request.config.hardware.n_cpu,
+                working_dir_name=working_dir_name,
+                construct_ff=request.config.preprocessing.construct_ff,
+            )
+            ligand_builder.generate_batch_ligand_topology()
+            ligand_builder.get_summary_ligand_info_dict()
+            write_ud2lig(
+                request.output_ud2lig_dir,
+                ligand_builder.summary_ligand_info_dict,
+                ligand_builder.ligand_mol_list,
+                prep_from_config(request.config),
+            )
+        print(f"UD2LIG directory written to: {request.output_ud2lig_dir}")

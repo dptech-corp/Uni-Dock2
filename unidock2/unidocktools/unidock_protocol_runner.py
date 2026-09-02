@@ -2,6 +2,7 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
+from unidock2._engine import build_engine_request
 from unidock2.config import UnidockConfig
 
 
@@ -13,28 +14,21 @@ class _UnsetType:
 UNSET = _UnsetType()
 
 
-def _build_pipeline_kwargs(
-    config: UnidockConfig,
-    target_center,
-    output_dir,
-):
-    """Translate the typed Python config to the native pipeline boundary."""
-    settings = config.settings.model_dump()
-    box_size = settings.pop("box_size")
+def _ud2lig_dir_for_pose_sdf(pose_sdf_file_name: str) -> str:
+    stem, _ = os.path.splitext(os.path.abspath(pose_sdf_file_name))
+    return f"{stem}.ud2lig"
 
-    return {
-        "output_dir": output_dir,
-        "center_x": target_center[0],
-        "center_y": target_center[1],
-        "center_z": target_center[2],
-        "size_x": box_size[0],
-        "size_y": box_size[1],
-        "size_z": box_size[2],
-        **settings,
-        **config.advanced.model_dump(),
-        "constraint_docking": (config.preprocessing.template_docking or config.preprocessing.covalent_ligand),
-        "gpu_device_id": config.hardware.gpu_device_id,
-    }
+
+def _write_ud2lig_checkpoint(output_dir, ligand_info_dict, ligand_mol_list, config):
+    from unidock2.io.ud2lig import prep_from_config, write_ud2lig
+
+    write_ud2lig(
+        output_dir,
+        ligand_info_dict,
+        ligand_mol_list,
+        prep_from_config(config),
+        overwrite=True,
+    )
 
 
 class UnidockProtocolRunner:
@@ -74,6 +68,10 @@ class UnidockProtocolRunner:
         use_tor_lib: bool = UNSET,
         energy_decomp: bool = UNSET,
         engine_checkpoint: bool = UNSET,
+        bias: str = UNSET,
+        bias_k: float = UNSET,
+        max_gpu_memory: int = UNSET,
+        ud2lig_dir: Optional[str] = None,
         **config_overrides: Any,
     ) -> None:
         """Adapt the historical constructor to the typed configuration path.
@@ -93,7 +91,7 @@ class UnidockProtocolRunner:
 
         overrides["center"] = list(target_center)
         if docking_pose_sdf_file_name is not UNSET:
-            overrides["output_docking_pose_sdf_file_name"] = docking_pose_sdf_file_name
+            overrides["output_sdf"] = docking_pose_sdf_file_name
         config = config.with_overrides(**overrides)
 
         self._initialize(
@@ -103,6 +101,7 @@ class UnidockProtocolRunner:
             working_dir_name=working_dir_name,
             ligand_json_file_name=ligand_json_file_name,
             atom_mapper_align=atom_mapper_align,
+            ud2lig_dir=ud2lig_dir,
             config=config,
         )
 
@@ -117,6 +116,7 @@ class UnidockProtocolRunner:
         docking_pose_sdf_file_name: Optional[str] = None,
         ligand_json_file_name: Optional[str] = None,
         atom_mapper_align: bool = False,
+        ud2lig_dir: Optional[str] = None,
     ):
         """Create a runner directly from the canonical typed configuration."""
         if config is None:
@@ -126,7 +126,7 @@ class UnidockProtocolRunner:
 
         overrides = {"center": list(target_center)}
         if docking_pose_sdf_file_name is not None:
-            overrides["output_docking_pose_sdf_file_name"] = docking_pose_sdf_file_name
+            overrides["output_sdf"] = docking_pose_sdf_file_name
         config = config.with_overrides(**overrides)
 
         runner = cls.__new__(cls)
@@ -137,6 +137,7 @@ class UnidockProtocolRunner:
             working_dir_name=working_dir_name,
             ligand_json_file_name=ligand_json_file_name,
             atom_mapper_align=atom_mapper_align,
+            ud2lig_dir=ud2lig_dir,
             config=config,
         )
         return runner
@@ -150,6 +151,7 @@ class UnidockProtocolRunner:
         ligand_json_file_name,
         atom_mapper_align,
         config,
+        ud2lig_dir=None,
     ):
         self.config = config
         for field_name, value in config.to_protocol_kwargs().items():
@@ -160,18 +162,19 @@ class UnidockProtocolRunner:
         self.ligand_json_file_name = (
             os.path.abspath(ligand_json_file_name) if ligand_json_file_name is not None else None
         )
+        self.ud2lig_dir = os.path.abspath(ud2lig_dir) if ud2lig_dir is not None else None
+        if self.ud2lig_dir is not None and self.ligand_json_file_name is not None:
+            raise ValueError("ud2lig_dir cannot be combined with ligand_json_file_name")
+        if self.ud2lig_dir is not None and (self.template_docking or self.covalent_ligand):
+            raise ValueError("UD2LIG reuse is only supported for generic docking")
         self.target_center = target_center
         self.atom_mapper_align = atom_mapper_align
         self.reference_sdf_file_name = (
             os.path.abspath(self.reference_sdf_file_name) if self.reference_sdf_file_name else None
         )
         self.working_dir_name = os.path.abspath(working_dir_name)
-        self.unidock2_output_dir_name = os.path.join(
-            self.working_dir_name,
-            "unidock2_output",
-        )
-        self.docking_pose_sdf_file_name = os.path.abspath(self.output_docking_pose_sdf_file_name)
-        os.makedirs(self.unidock2_output_dir_name, exist_ok=True)
+        self.docking_pose_sdf_file_name = os.path.abspath(self.output_sdf)
+        os.makedirs(self.working_dir_name, exist_ok=True)
 
         self.core_atom_mapping_dict_list = (
             [
@@ -246,60 +249,66 @@ class UnidockProtocolRunner:
             receptor_builder.get_summary_receptor_info()
             receptor_atom_info_list = receptor_builder.atom_info_nested_list
 
-        use_specified_ligand_info = bool(self.specified_ligand_info_dict)
-        if use_specified_ligand_info:
-            print("Using specified ligand info dict...")
+        if self.ud2lig_dir is not None:
+            from unidock2.io.ud2lig import read_ud2lig, validate_ud2lig_against_config
 
-        ligand_builder = UnidockLigandTopologyBuilder(
-            self.ligand_sdf_file_name_list,
-            covalent_ligand=self.covalent_ligand,
-            template_docking=self.template_docking,
-            reference_sdf_file_name=self.reference_sdf_file_name,
-            core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
-            n_cpu=self.n_cpu,
-            working_dir_name=self.working_dir_name,
-            construct_ff=self.construct_ff,
-            atom_mapper_align=self.atom_mapper_align,
-        )
-        if use_specified_ligand_info:
-            ligand_info_dict = self.specified_ligand_info_dict
+            print(f"Using UD2LIG directory: {self.ud2lig_dir}")
+            ligand_info_dict, ligand_mol_list, manifest = read_ud2lig(self.ud2lig_dir)
+            validate_ud2lig_against_config(manifest, self._current_config())
         else:
-            ligand_builder.generate_batch_ligand_topology()
-            ligand_builder.get_summary_ligand_info_dict()
-            ligand_info_dict = ligand_builder.summary_ligand_info_dict
+            use_specified_ligand_info = bool(self.specified_ligand_info_dict)
+            if use_specified_ligand_info:
+                print("Using specified ligand info dict...")
+
+            ligand_builder = UnidockLigandTopologyBuilder(
+                self.ligand_sdf_file_name_list,
+                covalent_ligand=self.covalent_ligand,
+                template_docking=self.template_docking,
+                reference_sdf_file_name=self.reference_sdf_file_name,
+                core_atom_mapping_dict_list=self.core_atom_mapping_dict_list,
+                n_cpu=self.n_cpu,
+                working_dir_name=self.working_dir_name,
+                construct_ff=self.construct_ff,
+                atom_mapper_align=self.atom_mapper_align,
+            )
+            if use_specified_ligand_info:
+                ligand_info_dict = self.specified_ligand_info_dict
+                ligand_mol_list = ligand_builder.ligand_mol_list
+            else:
+                ligand_builder.generate_batch_ligand_topology()
+                ligand_builder.get_summary_ligand_info_dict()
+                ligand_info_dict = ligand_builder.summary_ligand_info_dict
+                ligand_mol_list = ligand_builder.ligand_mol_list
+
+        engine_request = build_engine_request(
+            self._current_config(),
+            target_center=self.target_center,
+            receptor=receptor_atom_info_list,
+            ligands=ligand_info_dict,
+        )
 
         if self.engine_checkpoint:
-            with open(
-                os.path.join(self.working_dir_name, "ud2_engine_inputs.json"),
-                "w",
-                encoding="utf-8",
-            ) as file:
-                json.dump(
-                    {
-                        "receptor": receptor_atom_info_list,
-                        **ligand_info_dict,
-                    },
-                    file,
+            if self.ud2lig_dir is not None:
+                print("Skipping UD2LIG dump: docking already uses a UD2LIG library")
+            elif self.template_docking or self.covalent_ligand:
+                print(
+                    "Skipping UD2LIG dump: template/covalent docking is not "
+                    "supported in the first UD2LIG version"
                 )
+            else:
+                ud2lig_path = _ud2lig_dir_for_pose_sdf(self.docking_pose_sdf_file_name)
+                _write_ud2lig_checkpoint(
+                    ud2lig_path,
+                    ligand_info_dict,
+                    ligand_mol_list,
+                    self._current_config(),
+                )
+                print(f"UD2LIG directory written to: {ud2lig_path}")
 
-        pipeline_kwargs = _build_pipeline_kwargs(
-            self._current_config(),
-            self.target_center,
-            self.unidock2_output_dir_name,
-        )
-        docking_pipeline = pipeline.DockingPipeline(**pipeline_kwargs)
-        docking_pipeline.set_receptor(receptor_atom_info_list)
-        docking_pipeline.add_ligands(ligand_info_dict)
-        docking_pipeline.run()
-
-        pose_json_files = [
-            os.path.join(self.unidock2_output_dir_name, file_name)
-            for file_name in os.listdir(self.unidock2_output_dir_name)
-            if file_name.endswith(".json")
-        ]
+        pose_dict = pipeline.run(engine_request)
         pose_writer = UnidockLigandPoseWriter(
-            ligand_builder.ligand_mol_list,
-            pose_json_files,
+            ligand_mol_list,
+            pose_dict,
             covalent_ligand=self.covalent_ligand,
             energy_decomp=self.energy_decomp,
             docking_pose_sdf_file_name=self.docking_pose_sdf_file_name,

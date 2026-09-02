@@ -1,18 +1,18 @@
 from types import SimpleNamespace
 
-from unidock2.cli import protein_prep
+from unidock2.cli import prepare_protein
 from unidock2.unidocktools import unidock_receptor_topology_builder as builder_module
 
 
-def test_protein_prep_copies_dms_when_paths_contain_spaces(tmp_path, monkeypatch):
+def test_prepare_protein_copies_dms_when_paths_contain_spaces(tmp_path, monkeypatch):
     root_temp_dir = tmp_path / "temporary root"
     root_temp_dir.mkdir()
     output_file = tmp_path / "prepared receptor output.dms"
     request = SimpleNamespace(
         receptor_file_name=str(tmp_path / "input receptor.pdb"),
-        root_temp_dir_name=str(root_temp_dir),
+        workdir_root=str(root_temp_dir),
         receptor_dms_file_name=str(output_file),
-        remove_temp_dir=True,
+        keep_workdir=False,
         config=SimpleNamespace(
             preprocessing=SimpleNamespace(
                 preserve_receptor_hydrogen=True,
@@ -30,9 +30,9 @@ def test_protein_prep_copies_dms_when_paths_contain_spaces(tmp_path, monkeypatch
             with open(self.receptor_parameterized_dms_file_name, "wb") as output:
                 output.write(b"DMS content")
 
-    monkeypatch.setattr(protein_prep, "resolve_protein_prep_request", lambda args: request)
+    monkeypatch.setattr(prepare_protein, "resolve_prepare_protein_request", lambda args: request)
     monkeypatch.setattr(builder_module, "UnidockReceptorTopologyBuilder", FakeReceptorBuilder)
 
-    protein_prep.CLICommand.run(SimpleNamespace())
+    prepare_protein.CLICommand.run(SimpleNamespace())
 
     assert output_file.read_bytes() == b"DMS content"

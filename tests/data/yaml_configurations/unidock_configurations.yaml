@@ -27,6 +27,4 @@ Preprocessing:
   covalent_ligand: false
   covalent_residue_atom_info_list: null
   preserve_receptor_hydrogen: false
-  temp_dir_name: /tmp
-  output_receptor_dms_file_name: receptor_parameterized.dms
-  output_docking_pose_sdf_file_name: unidock2_pose.sdf
+  output_sdf: unidock2_pose.sdf

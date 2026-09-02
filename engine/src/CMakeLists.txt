@@ -26,7 +26,6 @@ set(sources
         myutils/common.h
         myutils/errors.h        myutils/errors.cpp
         myutils/matrix.h
-        myutils/myio.h          myutils/myio.cpp
         myutils/mymath.h
 
         optimize/bfgs.h
@@ -36,16 +35,14 @@ set(sources
         screening/core.cpp screening/core.h
 
         search/mc.h
-        search/bvh.cpp          search/bvh.h
 
-        score/gaff2.cpp         score/gaff2.h
         score/score.cpp         score/score.h
         score/vina.h
 
         task/DockTask.cpp       task/DockTask.h
 )
 
-# compile lib for the bin to link to
+# Compile reusable core objects for the private Python binding and native tests.
 add_library(${LIB_NAME} OBJECT ${sources})
 
 # include src directory

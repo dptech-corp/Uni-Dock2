@@ -28,5 +28,4 @@ Preprocessing:
   covalent_ligand: true
   covalent_residue_atom_info_list: [["", "CYX", 25, "CA"], ["", "CYX", 25, "CB"], ["", "CYX", 25, "SG"]]
   preserve_receptor_hydrogen: true
-  temp_dir_name: /tmp
-  output_docking_pose_sdf_file_name: unidock2_pose.sdf
+  output_sdf: unidock2_pose.sdf

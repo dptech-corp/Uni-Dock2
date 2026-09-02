@@ -20,10 +20,12 @@ DEFAULT_CONFIG = {
         "rmsd_limit": 1.0,
         "energy_range": 5.0,
         "seed": 1234567,
+        "bias": "no",
+        "bias_k": 0.1,
         "use_tor_lib": False,
         "energy_decomp": False,
     },
-    "Hardware": {"n_cpu": None, "gpu_device_id": 0},
+    "Hardware": {"n_cpu": None, "gpu_device_id": 0, "max_gpu_memory": 0},
     "Settings": {
         "box_size": [30.0, 30.0, 30.0],
         "task": "screen",
@@ -38,10 +40,9 @@ DEFAULT_CONFIG = {
         "covalent_ligand": False,
         "covalent_residue_atom_info_list": None,
         "preserve_receptor_hydrogen": False,
-        "temp_dir_name": "/tmp",
-        "engine_checkpoint": False,
-        "output_receptor_dms_file_name": "receptor_parameterized.dms",
-        "output_docking_pose_sdf_file_name": "unidock2_pose.sdf",
+        "keep_workdir": False,
+        "engine_checkpoint": True,
+        "output_sdf": "unidock2_pose.sdf",
     },
 }
 

@@ -3,15 +3,11 @@
 //
 
 #include "spdlog/spdlog.h"
+#include <cmath>
 #include <string>
-#include <set>
 #include <fstream>
+#include <utility>
 #include <rapidjson/document.h>
-#include "rapidjson/filewritestream.h"
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
-#include <sstream>
-#include <iomanip>
 
 #include "json.h"
 #include "rapidjson_parser.h"
@@ -42,15 +38,6 @@ void read_ud_from_json_string(const std::string& json_str, const Box& box, UDFix
 
     spdlog::info("Json is successfully parsed");
 
-    //---------------- Parse score types ----------------
-    std::set<std::string> score_types;
-    if (doc.HasMember("score")) {
-        const auto& scores = doc["score"].GetArray();
-        for (const auto& score : scores) {
-            score_types.insert(score.GetString());
-        }
-    }
-    
     // Use RapidJsonParser to parse the data
     RapidJsonParser parser(doc);
 
@@ -85,107 +72,63 @@ auto safe_val = [](float v) -> float {
 };
 
 
-void write_poses_to_json(std::string fp_json, const std::vector<std::string>& flex_names,
-                         const std::vector<std::vector<int>>& filtered_pose_inds_list,
-                         const FlexPose* flex_pose_list,
-                         const UDFlexMolList& udflex_mols,
-                         const std::vector<std::vector<std::vector<AtomEnergyDecomp>>>& decomp_list){
-    rj::Document doc;
-    doc.SetObject();
+void collect_poses_to_map(
+    PoseMap& out,
+    const std::vector<std::string>& flex_names,
+    const std::vector<std::vector<int>>& filtered_pose_inds_list,
+    const FlexPose* flex_pose_list,
+    const UDFlexMolList& udflex_mols,
+    const std::vector<std::vector<std::vector<AtomEnergyDecomp>>>& decomp_list){
 
-    // add poses
-
-    for (int i = 0; i < flex_names.size(); i++){
-        auto flex_name = flex_names[i];
-        int n_coords = udflex_mols[i].natom * 3;
-        int natom = udflex_mols[i].natom;
-        int n_dihe = udflex_mols[i].dihedrals.size();
-        rj::Value flex_data(rj::kArrayType);
+    for (int i = 0; i < static_cast<int>(flex_names.size()); i++){
+        const auto& flex_name = flex_names[i];
+        const int n_coords = udflex_mols[i].natom * 3;
+        const int natom = udflex_mols[i].natom;
+        const int n_dihe = static_cast<int>(udflex_mols[i].dihedrals.size());
+        std::vector<PoseRecord> poses;
 
         int pose_idx = 0;
         for (auto& j: filtered_pose_inds_list[i]){
-            rj::Value pose_obj;
-            pose_obj.SetObject();
+            PoseRecord pose;
+            pose.energy = {
+                safe_val(flex_pose_list[j].rot_vec[0]),
+                safe_val(flex_pose_list[j].rot_vec[1]),
+                safe_val(flex_pose_list[j].center[0]),
+                safe_val(flex_pose_list[j].center[1]),
+                safe_val(flex_pose_list[j].center[2]),
+                safe_val(flex_pose_list[j].rot_vec[2]),
+                safe_val(flex_pose_list[j].rot_vec[3]),
+            };
 
-            rj::Value energy(rj::kArrayType);
-            energy.PushBack(safe_val(flex_pose_list[j].rot_vec[0]), doc.GetAllocator()); // affinity
-            energy.PushBack(safe_val(flex_pose_list[j].rot_vec[1]), doc.GetAllocator()); // total = intra + inter
-            energy.PushBack(safe_val(flex_pose_list[j].center[0]), doc.GetAllocator()); // intra
-            energy.PushBack(safe_val(flex_pose_list[j].center[1]), doc.GetAllocator()); // inter
-            energy.PushBack(safe_val(flex_pose_list[j].center[2]), doc.GetAllocator()); // penalty
-            energy.PushBack(safe_val(flex_pose_list[j].rot_vec[2]), doc.GetAllocator()); // conf independent contribution
-            energy.PushBack(safe_val(flex_pose_list[j].rot_vec[3]), doc.GetAllocator()); // bias
-
-            // energy.PushBack(flex_pose_list[j].rot_vec[3], doc.GetAllocator()); // bias reward
-            pose_obj.AddMember("energy", energy.Move(), doc.GetAllocator());
-
-            rj::Value coords(rj::kArrayType);
+            pose.coords.reserve(n_coords);
             for (int k = 0; k < n_coords; k++){
-                coords.PushBack(safe_val(flex_pose_list[j].coords[k]), doc.GetAllocator());
+                pose.coords.push_back(safe_val(flex_pose_list[j].coords[k]));
             }
-            pose_obj.AddMember("coords", coords.Move(), doc.GetAllocator());
 
-            rj::Value dihedrals(rj::kArrayType);
+            pose.dihedrals.reserve(n_dihe);
             for (int k = 0; k < n_dihe; k++){
-                dihedrals.PushBack(safe_val(rad_to_ang(flex_pose_list[j].dihedrals[k])), doc.GetAllocator());
+                pose.dihedrals.push_back(safe_val(rad_to_ang(flex_pose_list[j].dihedrals[k])));
             }
-            pose_obj.AddMember("dihedrals", dihedrals.Move(), doc.GetAllocator());
 
-            // per-atom inter energy decomposition: [gauss1, gauss2, repulsion, hydrophobic, hbond]
-            if (i < decomp_list.size() && pose_idx < decomp_list[i].size()){
+            if (i < static_cast<int>(decomp_list.size()) &&
+                pose_idx < static_cast<int>(decomp_list[i].size())){
                 const auto& atom_decomp = decomp_list[i][pose_idx];
-                rj::Value decomp_arr(rj::kArrayType);
+                pose.decomp.reserve(natom);
                 for (int a = 0; a < natom; a++){
-                    rj::Value atom_terms(rj::kArrayType);
-                    atom_terms.PushBack(safe_val(atom_decomp[a].gauss1), doc.GetAllocator());
-                    atom_terms.PushBack(safe_val(atom_decomp[a].gauss2), doc.GetAllocator());
-                    atom_terms.PushBack(safe_val(atom_decomp[a].repulsion), doc.GetAllocator());
-                    atom_terms.PushBack(safe_val(atom_decomp[a].hydrophobic), doc.GetAllocator());
-                    atom_terms.PushBack(safe_val(atom_decomp[a].hbond), doc.GetAllocator());
-                    decomp_arr.PushBack(atom_terms.Move(), doc.GetAllocator());
+                    pose.decomp.push_back({
+                        safe_val(atom_decomp[a].gauss1),
+                        safe_val(atom_decomp[a].gauss2),
+                        safe_val(atom_decomp[a].repulsion),
+                        safe_val(atom_decomp[a].hydrophobic),
+                        safe_val(atom_decomp[a].hbond),
+                    });
                 }
-                pose_obj.AddMember("decomp", decomp_arr.Move(), doc.GetAllocator());
             }
 
-            flex_data.PushBack(pose_obj.Move(), doc.GetAllocator());
+            poses.push_back(std::move(pose));
             pose_idx++;
         }
 
-        rj::Value key(flex_name.c_str(), doc.GetAllocator());
-        doc.AddMember(key, flex_data, doc.GetAllocator());
-    }
-
-    // write to file
-    char writeBuffer[65536];
-    FILE* f = fopen(fp_json.c_str(), "w");
-    if (!f) {
-        throw std::runtime_error("Failed to open file for writing: " + fp_json +
-                                " Error: " + std::string(strerror(errno)));
-    }
-
-    rj::FileWriteStream os(f, writeBuffer, sizeof(writeBuffer));
-    rj::Writer<rj::FileWriteStream> writer(os);
-    writer.SetMaxDecimalPlaces(3);
-    doc.Accept(writer);
-
-    os.Flush(); // FileWriteStream
-
-    if (fflush(f) != 0) {
-        int saved_errno = errno;
-        fclose(f);
-        throw std::runtime_error("fflush failed for: " + fp_json +
-                                " Error: " + std::string(strerror(saved_errno)));
-    }
-
-    if (fsync(fileno(f)) != 0) {
-        int saved_errno = errno;
-        fclose(f);
-        throw std::runtime_error("fsync failed for: " + fp_json +
-                                " Error: " + std::string(strerror(saved_errno)));
-    }
-
-    if (fclose(f) != 0) {
-        throw std::runtime_error("fclose failed for: " + fp_json +
-                                " Error: " + std::string(strerror(errno)));
+        out[flex_name] = std::move(poses);
     }
 }

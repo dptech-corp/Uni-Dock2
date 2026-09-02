@@ -25,11 +25,7 @@ extern __constant__ Real BIAS_K;
 extern __constant__ Box CU_BOX;
 extern __constant__ Real CU_VDW_RADII[21];
 
-#if true
 extern __constant__ Vina Score;
-#else
-extern __constant__ Gaff2 Score;
-#endif
 
 void init_constants(const DockParam& dock_param);
 
@@ -74,21 +70,6 @@ SCOPE_INLINE Real get_real_within_by_int(int c, Real min, Real max, int n=1001) 
     }
     return v;
 }
-
-
-
-/**
- * @brief Generate a real number in [min, max] on CUDA
- * 
- * @param state CUDA random state
- * @param min Minimum value (Real)
- * @param max Maximum value (Real)
- * @return A real number in [min, max]
- */
-__forceinline__ __device__ Real gen_rand_real_within(curandStatePhilox4_32_10_t* state, Real min, Real max) {
-    return get_real_within_by_int(curand(state), min, max);
-}
-
 
 
 

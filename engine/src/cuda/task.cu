@@ -296,6 +296,18 @@ static void alloc_fix_mol(FixMol*& fix_mol_cu, Real*& fix_mol_real_cu, const UDF
 }
 
 
+static void alloc_fix_param(FixParamVina*& fix_param_cu, int*& fix_param_int_cu, const UDFixMol& udfix_mol){
+    checkCUDA(cudaMalloc(&fix_param_cu, sizeof(FixParamVina)));
+    checkCUDA(cudaMalloc(&fix_param_int_cu, sizeof(int) * udfix_mol.natom));
+    FixParamVina fix_param;
+    fix_param.atom_types = fix_param_int_cu;
+    checkCUDA(
+        cudaMemcpy(fix_param.atom_types, udfix_mol.vina_types.data(), sizeof(int) * udfix_mol.natom,
+            cudaMemcpyHostToDevice));
+    checkCUDA(cudaMemcpy(fix_param_cu, &fix_param, sizeof(FixParamVina), cudaMemcpyHostToDevice));
+}
+
+
 void DockTask::cp_to_cpu(){
     flex_pose_list_manager->copy_to_host();
 }
@@ -351,26 +363,19 @@ void DockTask::alloc_gpu(){
                          udflex_mols, list_n_atom_flex, list_n_dihe, list_n_range, list_n_rotated_atoms);
 
 
-    //----- fix_mol -----
-    // GPU cost: sizeof(FixMol) + udfix_mol.coords.size() * sizeof(Real)
-    alloc_fix_mol(fix_mol_cu, fix_mol_real_cu, udfix_mol);
+    //----- receptor -----
+    // The receptor is identical for every batch, and predict_gpu_fix() budgets a
+    // single copy, so allocate it on the first batch and keep it until
+    // free_fix_gpu() runs after the last one.
+    if (fix_mol_cu == nullptr){
+        alloc_fix_mol(fix_mol_cu, fix_mol_real_cu, udfix_mol);
+        alloc_fix_param(fix_param_cu, fix_param_int_cu, udfix_mol);
+    }
 
 
     //----- flex_param_list_cu -----
     alloc_flex_param_list(flex_param_list_manager, flex_param_list_cu, udflex_mols,
                          n_atom_all_flex);
-
-
-    //----- fix_param_cu -----
-    // GPU cost: sizeof(FixParamVina) + udfix_mol.natom * sizeof(int)
-    checkCUDA(cudaMalloc(&fix_param_cu, sizeof(FixParamVina)));
-    checkCUDA(cudaMalloc(&fix_param_int_cu, sizeof(int) * udfix_mol.natom));
-    FixParamVina fix_param;
-    fix_param.atom_types = fix_param_int_cu;
-    checkCUDA(
-        cudaMemcpy(fix_param.atom_types, udfix_mol.vina_types.data(), sizeof(int) * udfix_mol.natom,
-            cudaMemcpyHostToDevice));
-    checkCUDA(cudaMemcpy(fix_param_cu, &fix_param, sizeof(FixParamVina), cudaMemcpyHostToDevice));
 
 
     //----- aux_pose_cu -----
@@ -428,9 +433,6 @@ void DockTask::free_memory_all(){
         // flex_param_list_cu is managed by flex_param_list_manager
     }
 
-    checkCUDA(cudaFree(fix_param_cu));
-    checkCUDA(cudaFree(fix_param_int_cu));
-
     if (aux_poses_manager){
         aux_poses_manager->free_all();
         delete aux_poses_manager;
@@ -468,7 +470,13 @@ void DockTask::free_memory_all(){
     spdlog::info("Memory free on CPU is done.");
 }
 
-void DockTask::free_fix_mol_gpu(){
+void DockTask::free_fix_gpu(){
     checkCUDA(cudaFree(fix_mol_cu));
     checkCUDA(cudaFree(fix_mol_real_cu));
+    checkCUDA(cudaFree(fix_param_cu));
+    checkCUDA(cudaFree(fix_param_int_cu));
+    fix_mol_cu = nullptr;
+    fix_mol_real_cu = nullptr;
+    fix_param_cu = nullptr;
+    fix_param_int_cu = nullptr;
 }
