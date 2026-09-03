@@ -1,11 +1,12 @@
 import msys
 
-from rdkit.Chem import SplitMolByPDBResidues, GetMolFrags, FragmentOnBonds
+from rdkit import Chem
 from rdkit.Chem.PropertyMol import PropertyMol
 
 from unidock2.utils.molecule_processing import (
     get_mol_with_indices,
     get_mol_without_indices,
+    set_atom_properties,
 )
 from unidock2.atom_types.vina import VinaAtomTyper
 # Legacy import paths remain available while implementation stays in force_field.
@@ -62,8 +63,47 @@ def is_peptide_bond(bond):
         return True
 
 
+def _build_residue_mol(atom_data_list, atom_idx_list, residue_bond_list):
+    """Assemble one residue from atom data already snapshotted from the parent.
+
+    Only the residue's own atoms and bonds are touched, so the cost is
+    proportional to the residue rather than to the whole protein.
+    """
+
+    editable_mol = Chem.RWMol(Chem.Mol())
+    parent_to_residue_atom_idx_dict = {}
+    for parent_atom_idx in atom_idx_list:
+        atom_symbol, chiral_tag, formal_charge, num_explicit_hs, properties = (
+            atom_data_list[parent_atom_idx]
+        )
+        atom = Chem.Atom(atom_symbol)
+        atom.SetChiralTag(chiral_tag)
+        atom.SetFormalCharge(formal_charge)
+        atom.SetNumExplicitHs(num_explicit_hs)
+        set_atom_properties(atom, properties)
+        parent_to_residue_atom_idx_dict[parent_atom_idx] = editable_mol.AddAtom(atom)
+
+    for begin_atom_idx, end_atom_idx, bond_type in residue_bond_list:
+        editable_mol.AddBond(
+            parent_to_residue_atom_idx_dict[begin_atom_idx],
+            parent_to_residue_atom_idx_dict[end_atom_idx],
+            bond_type,
+        )
+
+    residue_mol = Chem.Mol(editable_mol)
+    Chem.GetSymmSSSR(residue_mol)
+    residue_mol.UpdatePropertyCache(strict=False)
+    return residue_mol
+
+
 def split_mol_by_residues(protein_mol):
     """Splits a protein_mol in multiple fragments based on residues
+
+    Every atom already records the residue it belongs to, so the residues are
+    read from ``internal_residue_idx`` in a single pass over the atoms and a
+    single pass over the bonds. Recovering them from connectivity instead
+    requires RDKit to materialize one fragment at a time out of the whole
+    protein, which costs a full copy of ``protein_mol`` per residue.
 
     Parameters
     ----------
@@ -76,36 +116,46 @@ def split_mol_by_residues(protein_mol):
         A list of :class:`rdkit.Chem.Mol` containing sorted residues of protein molecule
     """
 
-    protein_residue_mol_list = []
-    for residue_type_fragments in SplitMolByPDBResidues(protein_mol).values():
-        for fragment in GetMolFrags(
-            residue_type_fragments, asMols=True, sanitizeFrags=False
-        ):
-            # split on peptide bonds
-            peptide_bond_idx_list = []
-            for bond in fragment.GetBonds():
-                if is_peptide_bond(bond):
-                    peptide_bond_idx_list.append(bond.GetIdx())
+    num_protein_atoms = protein_mol.GetNumAtoms()
+    atom_residue_idx_list = [None] * num_protein_atoms
+    atom_data_list = [None] * num_protein_atoms
+    residue_atom_idx_dict = {}
 
-            if len(peptide_bond_idx_list) > 0:
-                splitted_mol = FragmentOnBonds(
-                    fragment, peptide_bond_idx_list, addDummies=False
-                )
-                splitted_mol_list = GetMolFrags(
-                    splitted_mol, asMols=True, sanitizeFrags=False
-                )
-                protein_residue_mol_list.extend(splitted_mol_list)
-            else:
-                protein_residue_mol_list.append(fragment)
+    for atom in protein_mol.GetAtoms():
+        atom_idx = atom.GetIdx()
+        internal_residue_idx = atom.GetIntProp("internal_residue_idx")
+        atom_residue_idx_list[atom_idx] = internal_residue_idx
+        residue_atom_idx_dict.setdefault(internal_residue_idx, []).append(atom_idx)
+        atom_data_list[atom_idx] = (
+            atom.GetSymbol(),
+            atom.GetChiralTag(),
+            atom.GetFormalCharge(),
+            atom.GetNumExplicitHs(),
+            atom.GetPropsAsDict(),
+        )
+
+    # Bonds that join two residues are dropped, matching a split on those bonds.
+    residue_bond_dict = {
+        internal_residue_idx: [] for internal_residue_idx in residue_atom_idx_dict
+    }
+    for bond in protein_mol.GetBonds():
+        begin_atom_idx = bond.GetBeginAtomIdx()
+        end_atom_idx = bond.GetEndAtomIdx()
+        internal_residue_idx = atom_residue_idx_list[begin_atom_idx]
+        if internal_residue_idx == atom_residue_idx_list[end_atom_idx]:
+            residue_bond_dict[internal_residue_idx].append(
+                (begin_atom_idx, end_atom_idx, bond.GetBondType())
+            )
 
     protein_residue_mol_dict = {}
-    for protein_residue_mol in protein_residue_mol_list:
-        atom = protein_residue_mol.GetAtomWithIdx(0)
-        if atom.GetSymbol() == "H":
+    for internal_residue_idx, atom_idx_list in residue_atom_idx_dict.items():
+        if atom_data_list[atom_idx_list[0]][0] == "H":
             continue
 
-        protein_residue_mol_dict[atom.GetIntProp("internal_residue_idx")] = (
-            protein_residue_mol
+        protein_residue_mol_dict[internal_residue_idx] = _build_residue_mol(
+            atom_data_list,
+            atom_idx_list,
+            residue_bond_dict[internal_residue_idx],
         )
 
     return [x[1] for x in sorted(protein_residue_mol_dict.items(), key=lambda x: x[0])]
