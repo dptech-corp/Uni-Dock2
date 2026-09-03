@@ -5,8 +5,6 @@ import msys
 import pytest
 
 from unidock2.force_field.receptor_parameters import (
-    FALLBACK_RECEPTOR_CHARGE,
-    FALLBACK_RECEPTOR_FF_ATOM_TYPE,
     MissingNonbondedTermsWarning,
     _read_receptor_force_field_data,
 )
