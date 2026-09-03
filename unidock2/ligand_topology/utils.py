@@ -15,11 +15,6 @@ from unidock2.utils.molecule_processing import (
     get_mol_without_indices,
     get_mol_with_indices,
 )
-# Legacy import paths; the implementations live in unidock2.force_field.
-from unidock2.force_field.ligand_gaff2 import (
-    convert_v3000_mol_to_v2000_sdf as convert_v3000_mol_to_v2000_sdf,
-    record_gaff2_atom_types_and_parameters as record_gaff2_atom_types_and_parameters,
-)
 
 
 def prepare_covalent_ligand_mol(mol):
@@ -314,8 +309,6 @@ def get_core_alignment_for_template_docking(
         if minimize_seed == 0:
             break
 
-    query_mol.SetProp("aligned_conformer_energy", str(ff.CalcEnergy()))
-
     core_atom_idx_list = list(core_atom_mapping_dict.keys())
 
     return core_atom_idx_list
@@ -385,7 +378,6 @@ def assign_atom_properties(mol):
     for atom_idx in range(num_atoms):
         atom = mol.GetAtomWithIdx(atom_idx)
         atom.SetIntProp("internal_atom_idx", atom_idx)
-        atom.SetIntProp("sdf_atom_idx", atom_idx + 1)
         if not atom.HasProp("atom_name"):
             atom_element = atom.GetSymbol()
             atom_name = atom_element + str(internal_atom_idx + 1)

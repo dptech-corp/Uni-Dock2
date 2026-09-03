@@ -1,7 +1,6 @@
 from typing import Optional
 import os
 import math
-import json
 import logging
 
 from multiprocessing import get_context
@@ -131,14 +130,7 @@ class UnidockLigandTopologyBuilder(object):
         else:
             self.reference_sdf_file_name = None
 
-        self.static_root = False
-        if self.template_docking or self.covalent_ligand:
-            self.static_root = True
-
         self.root_working_dir_name = os.path.abspath(working_dir_name)
-        self.ligand_json_file_name = os.path.join(
-            self.root_working_dir_name, 'ligands_unidock2.json'
-        )
 
         self.n_cpu = os.cpu_count()
         if n_cpu:
@@ -146,10 +138,6 @@ class UnidockLigandTopologyBuilder(object):
 
         self.construct_ff = construct_ff
         self.atom_mapper_align = atom_mapper_align
-
-        self.summary_ligand_info_json_file_name = os.path.join(
-            self.root_working_dir_name, 'summary_ligand_info.json'
-        )
 
     def generate_batch_ligand_topology(self):
         Chem.SetDefaultPickleProperties(Chem.PropertyPickleOptions.AllProps)
@@ -213,7 +201,3 @@ class UnidockLigandTopologyBuilder(object):
                                                           'torsions': ligand_info_dict['torsion_info'],
                                                           'root_atoms': ligand_info_dict['root_atom_idx'],
                                                           'fragment_atom_idx': ligand_info_dict['fragment_atom_idx']}
-
-    def write_summary_ligand_info_json_file(self):
-        with open(self.summary_ligand_info_json_file_name, 'w') as f:
-            json.dump(self.summary_ligand_info_dict, f)

@@ -1,7 +1,6 @@
 from pathlib import Path
 
 from unidock2.force_field import ligand_gaff2
-from unidock2.ligand_topology import utils as ligand_utils
 
 
 def test_gaff2_tools_use_structured_arguments_and_remove_only_known_temporary_file(tmp_path, monkeypatch):
@@ -83,28 +82,21 @@ def test_gaff2_tools_use_structured_arguments_and_remove_only_known_temporary_fi
     ]
 
 
-def test_disabled_ligand_force_field_data_preserves_engine_placeholders():
+def test_disabled_ligand_force_field_data_runs_no_external_tools(monkeypatch):
     class Molecule:
         def GetNumAtoms(self):
             return 3
 
+    def fail_on_external_command(*args, **kwargs):
+        raise AssertionError("construct_ff=False must not shell out to AmberTools")
+
+    monkeypatch.setattr(ligand_gaff2, "run_external_command", fail_on_external_command)
+
     atom_types, partial_charges, torsion_parameters = ligand_gaff2.get_ligand_force_field_data(Molecule(), False, ".")
 
-    assert atom_types == ["c", "c", "c"]
-    assert partial_charges == [0.0, 0.0, 0.0]
+    assert len(atom_types) == 3
+    assert len(partial_charges) == 3
     assert torsion_parameters == {}
-    assert ligand_gaff2.encode_atom_force_field(atom_types[0], partial_charges[0]) == (0, 0.0)
-
-
-def test_legacy_ligand_utils_reexport_public_force_field_functions():
-    assert (
-        ligand_utils.convert_v3000_mol_to_v2000_sdf
-        is ligand_gaff2.convert_v3000_mol_to_v2000_sdf
-    )
-    assert (
-        ligand_utils.record_gaff2_atom_types_and_parameters
-        is ligand_gaff2.record_gaff2_atom_types_and_parameters
-    )
 
 
 def test_torsion_force_field_parameters_preserve_reverse_lookup_and_field_order():

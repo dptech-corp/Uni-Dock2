@@ -31,7 +31,9 @@ def _atom_copy_data(atom, atom_property_names):
     )
 
 
-def _set_atom_properties(atom, properties):
+def set_atom_properties(atom, properties):
+    """Assign properties to an atom, dispatching on the Python value type."""
+
     for property_name, property_value in properties.items():
         if isinstance(property_value, str):
             atom.SetProp(property_name, property_value)
@@ -69,7 +71,7 @@ def _copy_submolecule(
         copied_atom.SetChiralTag(atom_data[1])
         copied_atom.SetFormalCharge(atom_data[2])
         copied_atom.SetNumExplicitHs(atom_data[3])
-        _set_atom_properties(copied_atom, atom_data[4])
+        set_atom_properties(copied_atom, atom_data[4])
         old_to_new_index[old_atom_index] = editable_molecule.AddAtom(copied_atom)
 
     for source_bond in mol_input.GetBonds():

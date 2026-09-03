@@ -5,16 +5,8 @@ import msys
 import pytest
 
 from unidock2.force_field.receptor_parameters import (
-    FALLBACK_RECEPTOR_CHARGE,
-    FALLBACK_RECEPTOR_FF_ATOM_TYPE,
     MissingNonbondedTermsWarning,
     _read_receptor_force_field_data,
-)
-from unidock2.unidocktools.protein_topology import (
-    FALLBACK_RECEPTOR_CHARGE as LEGACY_FALLBACK_RECEPTOR_CHARGE,
-    FALLBACK_RECEPTOR_FF_ATOM_TYPE as LEGACY_FALLBACK_RECEPTOR_FF_ATOM_TYPE,
-    MissingNonbondedTermsWarning as LegacyMissingNonbondedTermsWarning,
-    _read_receptor_force_field_data as legacy_read_receptor_force_field_data,
 )
 from unidock2.unidocktools.unidock_receptor_topology_builder import (
     UnidockReceptorTopologyBuilder,
@@ -66,13 +58,6 @@ def test_missing_nonbonded_terms_use_fallback_types_and_safe_atom_charges(nonbon
     assert charges == [0.25, 0.0, 0.0, 0.0]
     assert str(warning_records[0].message) == MISSING_NONBONDED_WARNING
     assert Path(warning_records[0].filename) == Path(__file__)
-
-
-def test_legacy_protein_topology_imports_reexport_force_field_implementation():
-    assert LEGACY_FALLBACK_RECEPTOR_FF_ATOM_TYPE is FALLBACK_RECEPTOR_FF_ATOM_TYPE
-    assert LEGACY_FALLBACK_RECEPTOR_CHARGE is FALLBACK_RECEPTOR_CHARGE
-    assert LegacyMissingNonbondedTermsWarning is MissingNonbondedTermsWarning
-    assert legacy_read_receptor_force_field_data is _read_receptor_force_field_data
 
 
 def test_complete_nonbonded_terms_preserve_existing_types_and_charges():
