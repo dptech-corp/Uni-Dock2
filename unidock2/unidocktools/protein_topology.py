@@ -37,32 +37,6 @@ RECEPTOR_ATOM_PROPERTY_NAMES = (
 )
 
 
-def is_peptide_bond(bond):
-    """Checks if a bond is a peptide bond based on the residue_id and chain_id
-    of the atoms on each part of the bond. Also works for disulfide bridges or any bond
-    that links two residues in biopolymers.
-
-    Parameters
-    ----------
-    bond: rdkit.Chem.rdchem.Bond
-        The bond to check
-    """
-
-    begin_atom = bond.GetBeginAtom()
-    end_atom = bond.GetEndAtom()
-
-    begin_residue_idx = begin_atom.GetIntProp("internal_residue_idx")
-    end_residue_idx = end_atom.GetIntProp("internal_residue_idx")
-
-    begin_chain_idx = begin_atom.GetProp("chain_idx")
-    end_chain_idx = end_atom.GetProp("chain_idx")
-
-    if begin_residue_idx == end_residue_idx and begin_chain_idx == end_chain_idx:
-        return False
-    else:
-        return True
-
-
 def _build_residue_mol(atom_data_list, atom_idx_list, residue_bond_list):
     """Assemble one residue from atom data already snapshotted from the parent.
 

@@ -309,8 +309,6 @@ def get_core_alignment_for_template_docking(
         if minimize_seed == 0:
             break
 
-    query_mol.SetProp("aligned_conformer_energy", str(ff.CalcEnergy()))
-
     core_atom_idx_list = list(core_atom_mapping_dict.keys())
 
     return core_atom_idx_list
@@ -380,7 +378,6 @@ def assign_atom_properties(mol):
     for atom_idx in range(num_atoms):
         atom = mol.GetAtomWithIdx(atom_idx)
         atom.SetIntProp("internal_atom_idx", atom_idx)
-        atom.SetIntProp("sdf_atom_idx", atom_idx + 1)
         if not atom.HasProp("atom_name"):
             atom_element = atom.GetSymbol()
             atom_name = atom_element + str(internal_atom_idx + 1)
