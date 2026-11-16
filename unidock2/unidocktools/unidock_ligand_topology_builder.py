@@ -38,6 +38,12 @@ def batch_topology_builder_process(
     ligand_info_dict_list = [None] * num_batch_ligands
     for ligand_idx in range(num_batch_ligands):
         ligand_mol = batch_ligand_mol_list[ligand_idx]
+        if ligand_mol is None:
+            logging.error(
+                "Skipping unreadable molecule: file=%s, record=%d",
+                ligand_sdf_file_name, ligand_idx + 1,
+            )
+            continue
         ligand_name = ligand_mol.GetProp('ud2_molecule_name')
         core_atom_mapping_dict = core_atom_mapping_dict_list[ligand_idx]
         mol_graph_builder = BaseMolGraph.create(
@@ -192,6 +198,36 @@ class UnidockLigandTopologyBuilder(object):
                 'Collected number of batch ligands does not equal to \
                     real total number of input ligands!!'
             )
+
+        valid_indices = [
+            i for i, info in enumerate(self.total_ligand_info_dict_list)
+            if info is not None
+        ]
+
+        if len(valid_indices) != self.num_ligands:
+            for i, info in enumerate(self.total_ligand_info_dict_list):
+                if info is None:
+                    mol = self.ligand_mol_list[i]
+                    logging.error(
+                        "Skipping molecule: name=%s, source=%s, record=%d",
+                        mol.GetProp('ud2_molecule_name'),
+                        mol.GetProp('source_sdf_file_name'),
+                        mol.GetIntProp('source_mol_idx') + 1,
+                    )
+
+            self.total_ligand_info_dict_list = [
+                self.total_ligand_info_dict_list[i] for i in valid_indices
+            ]
+            self.ligand_mol_list = [
+                self.ligand_mol_list[i] for i in valid_indices
+            ]
+            self.core_atom_mapping_dict_list = [
+                self.core_atom_mapping_dict_list[i] for i in valid_indices
+            ]
+            self.num_ligands = len(valid_indices)
+
+            if self.num_ligands == 0:
+                raise ValueError("No valid ligands remain.")
 
     def get_summary_ligand_info_dict(self):
         self.summary_ligand_info_dict = {}
